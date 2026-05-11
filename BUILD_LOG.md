@@ -2,6 +2,51 @@
 
 Append-only. One entry per milestone.
 
+## M7 — Observability Baseline  (2026-05-11 20:16 UTC)
+- Hours: 1.25 (slightly over 1h budget; ULID helper + readiness rewrite cost 15m)
+- Commit: e2e9e4b
+- Gate: **green**
+- Verification output:
+  ```
+  make gate → GATE GREEN
+  TestM7_RequestIDEchoedAndGenerated        → PASS
+  TestM7_ReadyzReturns200WhenAllChecksPass  → PASS
+  TestM7_ReadyzReturns503WhenAnyCheckFails  → PASS
+  TestM7_RequestLogContainsExpectedFields   → PASS
+  End-to-end: curl -H X-Request-Id:user-trace-xyz POST /v1/messages;
+    grep user-trace-xyz stderr →
+      {"time":"...","level":"INFO","msg":"http request",
+       "request_id":"user-trace-xyz","method":"POST","path":"/v1/messages",
+       "status":401,"latency_ms":0,"bytes_out":91,
+       "remote_ip":"127.0.0.1","user_agent":"curl/8.7.1"}
+  /readyz with empty pool → 503
+    {"checks":{"pool":"no accounts configured","vault":"ok"},"status":"not_ready"}
+  ```
+- Files added:
+  - internal/server/logging.go    (loggingMiddleware + ULID gen inline)
+  - internal/server/readiness.go  (/readyz handler, registered via Options)
+  - internal/server/obs_test.go   (4 tests)
+- Files modified:
+  - cmd/kiroxy/main.go: slog JSON handler by default; wire Logger + checks
+  - internal/server/server.go: /readyz route; logMW(authMW(mux)) ordering
+- Design decisions:
+  - **JSON by default**: every stderr line is jq-pipeable. Text handler gone.
+  - **ULID inline, no lib**: 26 chars, Crockford base32, no external dep.
+    Could swap for oklog/ulid later if we want lexical sorting guarantees.
+  - **Logger middleware WRAPS auth middleware** (outermost): we want to log
+    the *final* status including 401s. If auth wrapped logger, 401s bypass
+    the log — operationally wrong.
+  - **/readyz does NOT probe upstream Kiro**: DNS fluke would flap readiness.
+    Pool health tracking already cools down bad accounts; readiness answers
+    "is the proxy process able to serve at all" (vault ping + ≥1 account).
+  - **/healthz skipped from request log**: noisy on aggressive health
+    pollers. /readyz still logs — failures there are interesting.
+- Surprises: none.
+- Next: M8 — Docs & Quickstart
+
+---
+
+
 ## M6 — API Key Auth  (2026-05-11 20:14 UTC)
 - Hours: 1.0 (on budget)
 - Commit: d5595ed
