@@ -2,6 +2,51 @@
 
 Append-only. One entry per milestone.
 
+## M6 — API Key Auth  (2026-05-11 20:14 UTC)
+- Hours: 1.0 (on budget)
+- Commit: d5595ed
+- Gate: **green**
+- Verification output:
+  ```
+  make gate → GATE GREEN
+  TestM6_AuthMiddleware_TableDriven → 7/7 subtests PASS
+    • valid X-Api-Key         → 200
+    • valid Bearer            → 200
+    • valid Bearer lowercase  → 200
+    • missing header          → 401 missing_api_key
+    • wrong key               → 401 invalid_api_key
+    • malformed Bearer        → 401 missing_api_key
+    • Basic auth (wrong)      → 401 missing_api_key
+  TestM6_HealthzBypassesAuth       → PASS
+  TestM6_NoKeyConfiguredMeansOpen  → PASS
+  ```
+- Files added:
+  - internal/server/auth.go         (auth middleware + isLoopback helper)
+  - internal/server/auth_test.go    (9 subtest cases)
+- Files modified:
+  - internal/server/server.go       (wrap mux in auth middleware)
+- Design decisions:
+  - **Pre-hash the expected key at startup**: `sha256.Sum256(apiKey)` once,
+    compare SHA32 on each request via `crypto/subtle.ConstantTimeCompare`.
+    The KIROXY_API_KEY string lives in env + briefly in memory; post-startup
+    only its hash is retained.
+  - **/healthz bypasses auth.** Liveness probes shouldn't need creds; K8s,
+    Docker, curl-monitoring etc. expect this.
+  - **application/problem+json** per RFC 7807 with stable `code` field that
+    clients can switch on. Matches what the rest of the kiroxy error surface
+    will settle on.
+  - **Empty KIROXY_API_KEY = open mode.** For personal laptop use where the
+    user already has loopback-only binding, the API key requirement is
+    noise. Still prints a warning when bound to non-loopback (M1 already
+    logs that separately; auth middleware doesn't duplicate).
+  - **isLoopback helper** exposed in this file so M10 dashboard can reuse
+    the same loopback-detection logic without duplication.
+- Surprises: none.
+- Next: M7 — Observability Baseline
+
+---
+
+
 ## M5 — Multi-Account Pool  (2026-05-11 20:08 UTC)
 - Hours: 2.0 (on budget)
 - Commit: f6d5134

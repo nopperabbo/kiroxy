@@ -85,7 +85,7 @@ func runServe(ctx context.Context, args []string) error {
 	}
 
 	// TODO(M7): swap for structured json handler with request_id middleware.
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
 		Level: cfg.LogLevel(),
 	})))
 
@@ -149,10 +149,12 @@ func runServe(ctx context.Context, args []string) error {
 	}
 
 	srv := server.New(server.Options{
-		Version:    version,
-		Auth:       authMgr,
-		KiroClient: kiroClient,
-		APIKey:     cfg.APIKey,
+		Version:         version,
+		Auth:            authMgr,
+		KiroClient:      kiroClient,
+		APIKey:          cfg.APIKey,
+		Logger:          slog.Default(),
+		ReadinessChecks: buildReadinessChecks(vault, poolInst),
 	})
 
 	addr := net.JoinHostPort(cfg.Bind, strconv.Itoa(cfg.Port))
@@ -218,3 +220,29 @@ func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Durat
 
 // silenceUnused keeps the flag import alive; other subcommands use flag.FlagSet.
 var _ = flag.ExitOnError
+
+// buildReadinessChecks assembles the /readyz subchecks. We check:
+//   - "vault":  SQLite ping
+//   - "pool":   at least one account enabled
+//
+// Upstream reachability is intentionally NOT checked every /readyz poll — a
+// DNS fluke or Kiro 5xx shouldn't mark us as unready; we rely on pool health
+// tracking (M5) to cool down bad accounts and let the server keep serving.
+func buildReadinessChecks(vault *tokenvault.Vault, p *pool.Pool) map[string]server.ReadinessChecker {
+	checks := map[string]server.ReadinessChecker{}
+	if vault != nil {
+		checks["vault"] = func(ctx context.Context) error {
+			_, err := vault.ListByProvider(ctx, "kiro")
+			return err
+		}
+	}
+	if p != nil {
+		checks["pool"] = func(_ context.Context) error {
+			if p.Count() == 0 {
+				return errors.New("no accounts configured")
+			}
+			return nil
+		}
+	}
+	return checks
+}

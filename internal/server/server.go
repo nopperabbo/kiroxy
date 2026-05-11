@@ -3,6 +3,7 @@ package server
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -22,8 +23,16 @@ type Options struct {
 	// KiroClient is the upstream HTTP client. Defaults to kiroclient.NewHTTPClient().
 	KiroClient kiroclient.Client
 
-	// APIKey is the inbound proxy key. M2 does not enforce it; M6 will.
+	// APIKey is the inbound proxy key. M6 enforces it via constant-time compare.
 	APIKey string
+
+	// ReadinessChecks are registered as subchecks of /readyz. Missing checks
+	// just aren't probed.
+	ReadinessChecks map[string]ReadinessChecker
+
+	// Logger is used by the logging middleware for structured request logs.
+	// If nil, slog.Default() is used.
+	Logger *slog.Logger
 }
 
 // Server bundles the process-wide handler tree.
@@ -31,9 +40,11 @@ type Server struct {
 	opts      Options
 	startedAt time.Time
 	msgSvc    *messages.Service
+	ready     *readiness
+	logger    *slog.Logger
 }
 
-// New returns a Server with /healthz, /v1/messages, /v1/messages/count_tokens
+// New returns a Server with /healthz, /readyz, /v1/messages, /v1/messages/count_tokens
 // routes registered.
 func New(opts Options) *Server {
 	if opts.KiroClient == nil {
@@ -43,10 +54,20 @@ func New(opts Options) *Server {
 	if opts.Auth != nil {
 		svc = messages.New(opts.Auth, opts.KiroClient)
 	}
+	ready := newReadiness()
+	for name, c := range opts.ReadinessChecks {
+		ready.register(name, c)
+	}
+	logger := opts.Logger
+	if logger == nil {
+		logger = slog.Default()
+	}
 	return &Server{
 		opts:      opts,
 		startedAt: time.Now().UTC(),
 		msgSvc:    svc,
+		ready:     ready,
+		logger:    logger,
 	}
 }
 
@@ -55,6 +76,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
+	mux.HandleFunc("GET /readyz", s.ready.handle)
 
 	if s.msgSvc != nil {
 		mux.HandleFunc("POST /v1/messages", s.msgSvc.HandleMessages)
@@ -65,7 +87,8 @@ func (s *Server) Handler() http.Handler {
 	}
 
 	authMW := newAuthMiddleware(s.opts.APIKey)
-	return authMW.wrap(mux)
+	logMW := newLoggingMiddleware(s.logger)
+	return logMW.wrap(authMW.wrap(mux))
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
