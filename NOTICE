@@ -1,0 +1,65 @@
+kiroxy
+======
+
+Copyright (c) 2026 kiroxy contributors. Licensed under the MIT License (see LICENSE).
+
+kiroxy includes code derived from the following upstream projects. Each donor's
+license applies to its respective files; per-file header comments identify the
+exact origin (repository + commit SHA).
+
+--------------------------------------------------------------------------------
+d-kuro/kirocc — Apache License 2.0
+--------------------------------------------------------------------------------
+Repository:  https://github.com/d-kuro/kirocc
+Pinned SHA:  5633c47f0d65aaef748728bae1c68160b0ea538d (2026-04-26)
+
+Derived files (Apache-2.0):
+  internal/kiroproto/*.go
+  internal/reqconv/*.go
+  internal/respconv/*.go
+  internal/kiroclient/*.go
+  internal/anthropic/*.go
+  internal/logging/logging.go
+  internal/httpx/error.go
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use those files except in compliance with the License. You may obtain a copy
+of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+Modifications made for kiroxy are noted in per-file headers as required by
+Apache §4(b).
+
+--------------------------------------------------------------------------------
+Quorinex/Kiro-Go — MIT License
+--------------------------------------------------------------------------------
+Repository:  https://github.com/Quorinex/Kiro-Go
+Pinned SHA:  940dc782cb0a9a0d095abc6f407adf21ccc24ae2 (v1.0.6, 2026-05-11)
+
+Derived files (MIT):
+  internal/kiroauth/{builderid,iam_sso,sso_token,oidc,http_client}.go
+  internal/pool/account.go  (modified: RR → LRU selection)
+  internal/config/config.go (modified: persistence removed, tokenvault owns tokens)
+
+Original MIT notice preserved in per-file headers.
+
+--------------------------------------------------------------------------------
+kadangkesel/hexos — MIT License
+--------------------------------------------------------------------------------
+Repository:  https://github.com/kadangkesel/hexos
+Pinned SHA:  d4c0d1ce556d7012771ffa289523ad008b0414df (2026-05-10, final commit)
+
+Derived files (MIT, ported from TypeScript → Go):
+  internal/tokenvault/vault.go   (port of src/auth/token-vault.ts)
+
+Original MIT notice preserved in per-file headers.
+
+--------------------------------------------------------------------------------
+Reference / pattern-only (no code copied): jwadow/kiro-gateway (AGPL-3.0, SHA 0398d74f)
+--------------------------------------------------------------------------------

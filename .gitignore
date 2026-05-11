@@ -1,0 +1,23 @@
+# binaries
+/kiroxy
+/dist/
+*.test
+*.out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# secrets & runtime
+.env
+.env.local
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+~/.kiroxy/
+
+# go
+vendor/
