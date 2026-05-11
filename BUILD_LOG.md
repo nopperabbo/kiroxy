@@ -2,6 +2,55 @@
 
 Append-only. One entry per milestone.
 
+## M2 — Kirocc Converter Graft  (2026-05-11 19:50 UTC)
+- Hours: ~2.5 (slightly over 2h budget; kirocc packages have deeper coupling than expected — see Surprises)
+- Commit: 7ab3f72
+- Gate: **green**
+- Verification output:
+  ```
+  make gate → GATE GREEN
+  go test ./... → 15 packages OK
+  TestM2_PostMessagesWithStubClient → PASS
+  curl :8787/healthz → 200 OK
+  curl POST :8787/v1/messages (no KIROXY_KIRO_DB_PATH) → 503 authentication_error
+  ```
+- Files added (from d-kuro/kirocc @5633c47f, Apache-2.0):
+  - internal/anthropic, auth, httpx, kiroclient, kiroproto, logging, messages,
+    models, reqconv, respconv, testutil, tokencount, toolsearch, tracing
+    (14 packages; 64 prod files; 26 test files; ~7,957 prod LoC + ~8,303 test LoC)
+  - Every file has attribution header citing kirocc SHA + Apache-2.0 notice.
+- Files modified:
+  - cmd/kiroxy/main.go — wire auth.AuthManager + kiroclient + messages.Service
+    when KIROXY_KIRO_DB_PATH is set
+  - internal/server/server.go — register POST /v1/messages + /count_tokens;
+    503 handler when no auth configured
+  - internal/config/config.go — add KiroDBPath field + env parse
+  - README.md — added GOEXPERIMENT=jsonv2 build note
+- Files added (own):
+  - Makefile (pins GOEXPERIMENT=jsonv2, defines build/vet/fmt/test/gate targets)
+  - internal/server/server_test.go (M2 integration: stub kiroclient + EventStream
+    binary frame builder in test helper; proves end-to-end glue works)
+- Surprises:
+  - Kirocc uses **Go 1.26 experimental encoding/json/v2**. Required
+    `GOEXPERIMENT=jsonv2` at build time for all packages. Captured in
+    Makefile so this is ambient.
+  - Kirocc's `app/messages` package has deeper import reach than anticipated:
+    needed to also copy `logging`, `httpx`, `models`, `testutil`, `toolsearch`,
+    `tracing` to compile. Not a problem — all Apache-2.0, all useful.
+  - OTel dep tree is heavy (36 direct+indirect deps). Decided to adopt it as-is
+    rather than strip — kiroxy will benefit from free OTel later (M7 stretch).
+  - Quorinex's "server" never arrived in kiroxy: kirocc's messages.Service is
+    the request-path code; Quorinex's code lands in M5 for the pool only.
+    This is a **deviation from original BUILD_PLAN** (which assumed Quorinex's
+    handler.go would be kept) — but it's the correct simplification because
+    kirocc's code is already tested and cleaner.
+- Tests currently passing:
+  - stub kiroclient + stub TokenGetter → builds AWS EventStream frames in test,
+    feeds them through messages.Service, verifies Anthropic response shape.
+  - All 15 donor packages pass their own tests.
+- Next: M3 — SSE Streaming (already half-done; kirocc's messages.Service handles
+  stream=true; M3 will add the client-disconnect / backpressure integration test)
+
 ---
 
 ## M1 — Fork & Scaffold  (2026-05-11 19:28 UTC)
