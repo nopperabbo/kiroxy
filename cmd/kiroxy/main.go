@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -33,7 +34,9 @@ import (
 	"local/kiroxy/internal/config"
 	"local/kiroxy/internal/kiroclient"
 	"local/kiroxy/internal/messages"
+	"local/kiroxy/internal/pool"
 	"local/kiroxy/internal/server"
+	"local/kiroxy/internal/tokenvault"
 )
 
 const (
@@ -89,6 +92,8 @@ func runServe(ctx context.Context, args []string) error {
 	var (
 		authMgr    messages.TokenGetter
 		kiroClient kiroclient.Client
+		vault      *tokenvault.Vault
+		poolInst   *pool.Pool
 	)
 	if cfg.KiroDBPath != "" {
 		authMgr = auth.NewAuthManager(cfg.KiroDBPath)
@@ -106,7 +111,41 @@ func runServe(ctx context.Context, args []string) error {
 			slog.String("db_path", cfg.KiroDBPath),
 		)
 	} else {
-		slog.Warn("KIROXY_KIRO_DB_PATH not set; /v1/messages will return 503 until M4/M5")
+		if err := os.MkdirAll(filepath.Dir(cfg.DBPath), 0o700); err != nil {
+			return fmt.Errorf("mkdir vault parent: %w", err)
+		}
+		v, err := tokenvault.Open(ctx, cfg.DBPath)
+		if err != nil {
+			return fmt.Errorf("open token vault: %w", err)
+		}
+		if err := os.Chmod(cfg.DBPath, 0o600); err != nil {
+			slog.Warn("chmod vault db", slog.String("err", err.Error()))
+		}
+		vault = v
+		poolInst = pool.New(pool.DefaultPolicy())
+
+		accts, err := vault.ListByProvider(ctx, "kiro")
+		if err != nil {
+			return fmt.Errorf("list vault accounts: %w", err)
+		}
+		for _, a := range accts {
+			poolInst.Add(pool.Account{
+				ID:       a.ConnectionID,
+				Label:    a.ConnectionID,
+				Provider: a.Provider,
+				Region:   cfg.KiroRegion,
+				Enabled:  true,
+			})
+		}
+		slog.Info("upstream auth: pool+tokenvault",
+			slog.String("db_path", cfg.DBPath),
+			slog.Int("account_count", poolInst.Count()),
+		)
+		if poolInst.Count() == 0 {
+			slog.Warn("no accounts in token vault; /v1/messages will return 503 until 'kiroxy add-account' runs (M9)")
+		}
+		authMgr = &pool.TokenGetter{Pool: poolInst, Vault: vault}
+		kiroClient = kiroclient.NewHTTPClient()
 	}
 
 	srv := server.New(server.Options{
@@ -137,7 +176,7 @@ func runServe(ctx context.Context, args []string) error {
 		slog.Warn("binding to non-loopback address; ensure you have TLS + a reverse proxy in front")
 	}
 
-	done := awaitShutdown(ctx, httpSrv, cfg.ShutdownTimeout)
+	done := awaitShutdown(ctx, httpSrv, cfg.ShutdownTimeout, vault)
 
 	if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("listen: %w", err)
@@ -148,7 +187,8 @@ func runServe(ctx context.Context, args []string) error {
 
 // awaitShutdown registers SIGINT/SIGTERM handlers and drains the HTTP server
 // with the configured timeout. Derived from d-kuro/kirocc's cmd/kirocc/main.go.
-func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Duration) <-chan struct{} {
+// If vault is non-nil, closes it after the HTTP server stops.
+func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Duration, vault *tokenvault.Vault) <-chan struct{} {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -166,6 +206,11 @@ func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Durat
 		defer cancel()
 		if err := httpSrv.Shutdown(shutdownCtx); err != nil {
 			slog.Error("graceful shutdown failed", slog.String("err", err.Error()))
+		}
+		if vault != nil {
+			if err := vault.Close(); err != nil {
+				slog.Error("vault close failed", slog.String("err", err.Error()))
+			}
 		}
 	}()
 	return done

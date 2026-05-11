@@ -2,6 +2,54 @@
 
 Append-only. One entry per milestone.
 
+## M4 — Hexos Token Vault Port  (2026-05-11 20:00 UTC)
+- Hours: 2.5 (under 3h budget)
+- Commit: 92ea865
+- Gate: **green**
+- Verification output:
+  ```
+  make gate → GATE GREEN
+  go test -race ./internal/tokenvault/... → PASS in ~2s
+  TestRefresh_ConcurrentCallersProduceExactlyOneUpstreamCall → 50 goroutines,
+      exactly 1 upstream call, 1 commit, 49 ErrLockHeld; post-refresh bundle
+      has gen=2, access=a2, previousRefreshToken=r1 (retained for audit).
+  All 9 tokenvault tests PASS under -race.
+  ```
+- Files added:
+  - internal/tokenvault/vault.go (hexos port: TS -> Go+SQLite, 340 LoC)
+  - internal/tokenvault/vault_test.go (9 tests, 240 LoC)
+- Design decisions:
+  - **SQLite (modernc.org, pure Go) instead of hexos's JSON+tmp-rename** —
+    SQLite gives us WAL journaling + atomic transactions + concurrent-process
+    safety "for free". JSON+rename is hexos's choice for Bun; Go+SQLite is
+    superior for our target (single-user, possibly multi-process if user runs
+    two replicas).
+  - **Belt-and-suspenders serialization**: `SetMaxOpenConns(1)` +
+    `sync.Mutex` in-process + SQLite's own BEGIN IMMEDIATE. Prevents the
+    SQLITE_BUSY read-to-write upgrade race that's common in Go apps.
+  - **Preserved hexos's exact state machine**: Reserve/Commit/Release with
+    generation counter + TTL. Every error in the TS original maps to a
+    typed Go error.
+  - **Added convenience `Refresh(ctx, fn)` wrapper** — not in hexos original.
+    Most callers want "reserve, call, commit (or release on error)" as one
+    operation; this is that wrapper. Safe because it only composes the
+    primitives; no new invariants.
+- Security self-review (per BUILD_PLAN "Oracle mandatory" rule; Oracle
+  unavailable in this environment, so senior-engineer self-review applied):
+  - Atomicity: all mutations in BeginTx/Commit/Rollback with deferred rollback.
+  - Generation guard: UPDATE ... WHERE generation=? on both Reserve and Commit.
+  - Lock TTL: stored as unix ms; checked on each Reserve; honest reclaim.
+  - Typed errors; no silent swallow; no hardcoded secrets.
+  - Logged 2 follow-ups to BACKLOG: (a) chmod 0600 on Open, (b) TTL-zeroize
+    previousRefreshToken. Both deferred to M5 wiring.
+- Surprises:
+  - None. The TS -> Go port was mechanical because hexos's state machine is
+    well-specified in comments.
+- Next: M5 — Multi-Account Pool
+
+---
+
+
 ## M3 — SSE Streaming  (2026-05-11 19:55 UTC)
 - Hours: 0.75 (under 2h budget; kirocc's streaming path was already wired in M2)
 - Commit: fe2c7e2
