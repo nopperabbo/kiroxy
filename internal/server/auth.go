@@ -39,6 +39,12 @@ func (m *authMiddleware) wrap(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		// Dashboard bypasses auth for loopback requests (personal-use UX).
+		// Non-loopback dashboard access still requires the API key.
+		if strings.HasPrefix(r.URL.Path, "/dashboard") && isLoopback(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
 		provided := extractAPIKey(r)
 		if provided == "" {
 			writeAuthProblem(w, http.StatusUnauthorized, "missing_api_key", "set X-Api-Key header or Authorization: Bearer <token>")

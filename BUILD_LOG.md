@@ -2,6 +2,46 @@
 
 Append-only. One entry per milestone.
 
+## M9 — CLI UX  (2026-05-11 20:25 UTC)
+- Hours: 1.25 (under 1.5h budget)
+- Commit: 0503397
+- Gate: **green**
+- Verification output:
+  ```
+  make gate → GATE GREEN
+  End-to-end flow against fresh vault:
+    kiroxy add-account --label=x --refresh-token=rt --access-token=at
+    kiroxy list-accounts   → PROVIDER ID GEN REFRESH_PENDING UPDATED
+    kiroxy status          → vault, count, per-account table
+    kiroxy serve            → 'account_count: 1'
+    curl /readyz            → 200 {'checks':{'pool':'ok','vault':'ok'}}
+    kiroxy remove-account x → 'removed account x'
+  ```
+- Files added:
+  - cmd/kiroxy/accounts.go (155 LoC): subcommand implementations using the
+    tokenvault + pool packages directly.
+- Files modified:
+  - cmd/kiroxy/main.go: subcommand dispatch extended, `help` subcommand added
+- Design decisions:
+  - **Device-code OAuth is out of scope for M9.** Users either have a refresh
+    token to paste or they're using KIROXY_KIRO_DB_PATH already. Full Builder
+    ID device-code flow is a Quorinex port candidate for Phase 2.
+  - **add-account accepts placeholder access token** (refreshed on first use).
+    The vault's Refresh() flow handles this gracefully — first request triggers
+    a refresh, generation bumps to 2, downstream requests use the real token.
+  - **No interactive confirmation on destructive commands.** Single-user UX;
+    the user is the threat model.
+  - **tabwriter output** rather than json-only: CLI is for human eyes.
+    `kiroxy list-accounts --json` can be Phase 2 if needed.
+- Follow-ups to BACKLOG:
+  - AWS Builder ID device-code OAuth inside add-account
+  - --json flag on list-accounts / status for machine consumption
+  - Interactive --yes/-y on remove-account if we ever go multi-user
+- Next: M10 — Minimal Dashboard
+
+---
+
+
 ## M8 — Docs & Quickstart  (2026-05-11 20:20 UTC)
 - Hours: 1.25 (under 2h budget)
 - Commit: 2a4533d

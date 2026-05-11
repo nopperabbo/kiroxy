@@ -180,6 +180,13 @@ func runServe(ctx context.Context, args []string) error {
 		APIKey:          cfg.APIKey,
 		Logger:          slog.Default(),
 		ReadinessChecks: buildReadinessChecks(vault, poolInst),
+		DashboardStateProvider: &dashboardProvider{
+			version:   version,
+			vaultPath: cfg.DBPath,
+			vault:     vault,
+			pool:      poolInst,
+			startedAt: time.Now(),
+		},
 	})
 
 	addr := net.JoinHostPort(cfg.Bind, strconv.Itoa(cfg.Port))

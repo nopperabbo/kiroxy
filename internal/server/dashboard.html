@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>kiroxy</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    * { box-sizing: border-box }
+    body { font: 14px/1.5 -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background: #0f1115; color: #e5e7eb; }
+    header { padding: 14px 24px; border-bottom: 1px solid #2a2f3a; display: flex; gap: 24px; align-items: center; }
+    h1 { font-size: 16px; font-weight: 600; letter-spacing: .5px; margin: 0; color: #fff; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; vertical-align: middle; margin-right: 6px; }
+    .ok { background: #4ade80 }
+    .err { background: #f87171 }
+    .warn { background: #fbbf24 }
+    main { padding: 24px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .card { background: #171a22; border: 1px solid #2a2f3a; border-radius: 8px; padding: 16px; }
+    .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: #9ca3af; margin: 0 0 8px; font-weight: 500; }
+    .card .big { font-size: 28px; font-weight: 600; color: #fff; }
+    .card .sub { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #2a2f3a; }
+    th { color: #9ca3af; font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+    tr:last-child td { border-bottom: none; }
+    code { font-family: ui-monospace, SFMono-Regular, monospace; background: #0b0d12; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #d1d5db; }
+    footer { padding: 16px 24px; border-top: 1px solid #2a2f3a; color: #6b7280; font-size: 12px; display: flex; justify-content: space-between; }
+    .muted { color: #6b7280 }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>KIROXY</h1>
+    <span id="status-pill"><span class="dot warn"></span><span id="status-text">loading…</span></span>
+    <span class="muted">auto-refresh every 3s</span>
+  </header>
+  <main>
+    <div class="grid">
+      <div class="card">
+        <h2>accounts</h2>
+        <div class="big" id="acct-count">—</div>
+        <div class="sub" id="acct-sub">in vault</div>
+      </div>
+      <div class="card">
+        <h2>ready</h2>
+        <div class="big" id="ready-status">—</div>
+        <div class="sub" id="ready-sub"></div>
+      </div>
+      <div class="card">
+        <h2>vault</h2>
+        <div class="big" id="vault-status">—</div>
+        <div class="sub" id="vault-path"></div>
+      </div>
+      <div class="card">
+        <h2>version</h2>
+        <div class="big" id="version">—</div>
+        <div class="sub" id="uptime"></div>
+      </div>
+    </div>
+    <div class="card" style="padding: 0;">
+      <h2 style="padding: 16px 16px 0;">pool</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Enabled</th>
+            <th>Requests</th>
+            <th>Errors</th>
+            <th>Cooldown until</th>
+            <th>Last error</th>
+          </tr>
+        </thead>
+        <tbody id="pool-body">
+          <tr><td colspan="6" class="muted">loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+  <footer>
+    <span>kiroxy dashboard · MIT</span>
+    <span id="last-updated">never</span>
+  </footer>
+
+  <script>
+    async function tick() {
+      try {
+        const r = await fetch('/dashboard/api/state', { headers: { 'Accept': 'application/json' } });
+        if (!r.ok) throw new Error('state API returned ' + r.status);
+        const s = await r.json();
+        renderStatus(s);
+        document.getElementById('last-updated').textContent =
+          'updated ' + new Date().toLocaleTimeString();
+      } catch (e) {
+        document.getElementById('status-text').textContent = 'error: ' + e.message;
+        document.querySelector('#status-pill .dot').className = 'dot err';
+      }
+    }
+    function renderStatus(s) {
+      document.getElementById('status-text').textContent = s.ready ? 'ready' : 'not ready';
+      document.querySelector('#status-pill .dot').className = 'dot ' + (s.ready ? 'ok' : 'err');
+      document.getElementById('acct-count').textContent = s.accounts.length;
+      document.getElementById('ready-status').textContent = s.ready ? 'YES' : 'NO';
+      document.getElementById('ready-sub').textContent = s.ready_detail || '';
+      document.getElementById('vault-status').textContent = s.vault_ok ? 'OK' : 'ERR';
+      document.getElementById('vault-path').textContent = s.vault_path || '';
+      document.getElementById('version').textContent = s.version;
+      document.getElementById('uptime').textContent = s.uptime_s + ' s uptime';
+
+      const body = document.getElementById('pool-body');
+      if (!s.accounts.length) {
+        body.innerHTML = '<tr><td colspan="6" class="muted">no accounts \u2014 run <code>kiroxy add-account</code></td></tr>';
+        return;
+      }
+      body.innerHTML = s.accounts.map(a => `
+        <tr>
+          <td><code>${escapeHtml(a.id)}</code></td>
+          <td>${a.enabled ? 'yes' : 'no'}</td>
+          <td>${a.requests}</td>
+          <td>${a.errors}</td>
+          <td>${a.cooldown_until || '—'}</td>
+          <td class="muted">${escapeHtml(a.last_error || '')}</td>
+        </tr>`).join('');
+    }
+    function escapeHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+    tick();
+    setInterval(tick, 3000);
+  </script>
+</body>
+</html>

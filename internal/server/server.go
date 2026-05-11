@@ -33,6 +33,10 @@ type Options struct {
 	// Logger is used by the logging middleware for structured request logs.
 	// If nil, slog.Default() is used.
 	Logger *slog.Logger
+
+	// DashboardStateProvider, when set, powers the /dashboard/api/state endpoint.
+	// When nil, /dashboard/api/state returns an empty state.
+	DashboardStateProvider DashboardStateProvider
 }
 
 // Server bundles the process-wide handler tree.
@@ -77,6 +81,7 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /readyz", s.ready.handle)
+	s.registerDashboard(mux)
 
 	if s.msgSvc != nil {
 		mux.HandleFunc("POST /v1/messages", s.msgSvc.HandleMessages)
