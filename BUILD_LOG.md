@@ -2,6 +2,46 @@
 
 Append-only. One entry per milestone.
 
+## M10 — Minimal Dashboard  (2026-05-11 20:32 UTC)
+- Hours: 1.5 (on upper budget)
+- Commit: 0d624d1
+- Gate: **green**
+- Verification output:
+  ```
+  make gate → GATE GREEN
+  TestM10_DashboardHTMLServed                    → PASS
+  TestM10_DashboardStateEndpointReturnsSnapshot  → PASS
+  TestM10_DashboardRequiresKeyFromNonLoopback    → PASS
+  Loopback bypass smoke (binary with KIROXY_BIND=0.0.0.0 KIROXY_API_KEY=...):
+    127.0.0.1/dashboard                       → 200
+    192.168.1.6/dashboard (no key)            → 401
+    192.168.1.6/dashboard (X-Api-Key correct) → 200
+  ```
+- Files added:
+  - internal/server/dashboard.go      (go:embed HTML + state JSON handler)
+  - internal/server/dashboard.html    (≈150 LoC plain HTML + fetch polling)
+  - internal/server/dashboard_test.go (3 tests)
+  - cmd/kiroxy/dashboard.go           (DashboardStateProvider impl)
+- Files modified:
+  - internal/server/server.go: register /dashboard + /dashboard/api/state
+  - internal/server/auth.go:   loopback-only bypass for /dashboard*
+  - cmd/kiroxy/main.go:        wire DashboardStateProvider into Options
+- Design decisions:
+  - **Plain HTML + embedded via go:embed**: no framework, no build step, no
+    static-file directory to mount. HTML is a single 5.6KB asset.
+  - **Loopback bypass limited to /dashboard/***: /v1/messages always requires
+    the key, even on loopback. Dashboard is a human UI; /v1/messages is a
+    programmatic surface that might leak via a shared config file.
+  - **Dashboard state API has its own envelope shape** (DashboardState) rather
+    than reusing /readyz, because the dashboard needs per-account detail that
+    readyz deliberately omits to keep the JSON flat.
+  - **3s polling, not WebSocket/SSE**: personal-use UI, 3s is snappy enough.
+- Surprises: none.
+- Next: tag v0.1.0-mvp. MVP complete.
+
+---
+
+
 ## M9 — CLI UX  (2026-05-11 20:25 UTC)
 - Hours: 1.25 (under 1.5h budget)
 - Commit: 0503397

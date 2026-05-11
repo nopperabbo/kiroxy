@@ -4,28 +4,35 @@ All notable changes to kiroxy will be documented in this file. Format loosely fo
 
 ## [Unreleased]
 
-### In progress
-- Building v0.1.0-mvp per `../BUILD_PLAN.md`.
+(no unreleased changes)
 
-## [0.1.0-mvp] — TBD
+## [0.1.0-mvp] — 2026-05-11
 
-MVP milestones M1..M10 — see commit history and BUILD_LOG.md for per-milestone detail.
+First cut of kiroxy. MIT, personal-use, self-hosted Kiro-to-Anthropic proxy.
 
-### Added (milestones M1–M7, complete)
-- `./kiroxy serve` HTTP server binding to 127.0.0.1:8787 by default.
-- `POST /v1/messages` Anthropic Messages API compatibility (streaming + non-streaming).
-- `POST /v1/messages/count_tokens` tiktoken-based count endpoint.
-- `GET /healthz` liveness probe (bypasses auth).
-- `GET /readyz` readiness probe with per-dependency subchecks (vault + pool).
-- Inbound auth via `X-Api-Key` or `Authorization: Bearer` with constant-time compare.
-- Multi-account pool with LRU selection, per-account cooldown + circuit breaker.
-- SQLite-backed token vault with generation-locked OAuth refresh (50-goroutine safety test).
-- Structured JSON logs with per-request ULID, echoed via `X-Request-Id` header.
+### Added
+- `./kiroxy serve` HTTP server (default 127.0.0.1:8787).
+- `POST /v1/messages` Anthropic Messages API (streaming + non-streaming, tool calls, vision, thinking, tool_search).
+- `POST /v1/messages/count_tokens` via tiktoken.
+- `GET /healthz` liveness.
+- `GET /readyz` readiness with per-dep subchecks (vault + pool).
+- `GET /dashboard` HTML dashboard with live account stats; loopback bypasses auth, remote sources still need `KIROXY_API_KEY`.
+- `GET /dashboard/api/state` JSON snapshot for the dashboard's fetch loop.
+- Inbound auth via `X-Api-Key` or `Authorization: Bearer` with SHA-256 constant-time compare.
+- Multi-account pool with LRU selection, per-account cooldown, and 3-strikes circuit breaker.
+- SQLite-backed token vault with generation-locked OAuth refresh (50-goroutine race-safe).
+- CLI subcommands `add-account`, `list-accounts`, `remove-account`, `status`, `version`, `help`.
+- Structured JSON logs with per-request ULID; `X-Request-Id` in + out.
 - Graceful 30s SIGTERM shutdown that flushes SSE streams and closes the vault.
 - Makefile with `make build / gate / test / test-race` (pins `GOEXPERIMENT=jsonv2`).
 
-### In progress (milestones M8–M10)
-- M8: this README + quickstart.
-- M9: `kiroxy add-account / list-accounts / remove-account / status` subcommands.
-- M10: minimal HTML dashboard with localhost-bypass auth.
+### Attribution
+- Derived from `d-kuro/kirocc` @ `5633c47f` (Apache-2.0): most of `internal/*`.
+- Derived from `Quorinex/Kiro-Go` @ `940dc782` (MIT): `internal/pool/pool.go` (selection policy swapped to LRU).
+- Derived from `kadangkesel/hexos` @ `d4c0d1ce` (MIT): `internal/tokenvault/vault.go` (TS → Go port, generation-lock preserved).
+- Full per-file attribution + `NOTICE`.
 
+### Known follow-ups (see `BACKLOG.md`)
+- AWS Builder ID device-code flow inside `kiroxy add-account`.
+- OpenAI-compatible `/v1/chat/completions` surface.
+- Prometheus / OTel exporters (wiring already in `internal/tracing/`).
