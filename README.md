@@ -13,6 +13,25 @@ Built on `Quorinex/Kiro-Go` (MIT), with converter code from `d-kuro/kirocc` (Apa
 - Rotates across multiple Kiro accounts with cooldown + health tracking.
 - Manages OAuth refresh tokens safely under concurrent load.
 
+
+## Build requirement
+
+kiroxy inherits the kirocc converter packages, which use Go 1.26's experimental
+`encoding/json/v2` package. Use the provided Makefile (which pins
+`GOEXPERIMENT=jsonv2`) or export it manually:
+
+```bash
+export GOEXPERIMENT=jsonv2
+go build -o kiroxy ./cmd/kiroxy
+```
+
+Or simply:
+
+```bash
+make build
+make gate   # build + vet + fmt + test
+```
+
 ## Quick start (after build completes)
 
 ```bash

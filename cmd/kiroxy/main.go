@@ -29,7 +29,10 @@ import (
 	"syscall"
 	"time"
 
+	"local/kiroxy/internal/auth"
 	"local/kiroxy/internal/config"
+	"local/kiroxy/internal/kiroclient"
+	"local/kiroxy/internal/messages"
 	"local/kiroxy/internal/server"
 )
 
@@ -83,8 +86,34 @@ func runServe(ctx context.Context, args []string) error {
 		Level: cfg.LogLevel(),
 	})))
 
+	var (
+		authMgr    messages.TokenGetter
+		kiroClient kiroclient.Client
+	)
+	if cfg.KiroDBPath != "" {
+		authMgr = auth.NewAuthManager(cfg.KiroDBPath)
+		kiroClient = kiroclient.NewHTTPClient(
+			kiroclient.WithTokenRefresher(func(ctx context.Context) (string, error) {
+				authMgr.(*auth.AuthManager).InvalidateCache()
+				creds, err := authMgr.GetToken(ctx)
+				if err != nil {
+					return "", err
+				}
+				return creds.AccessToken, nil
+			}),
+		)
+		slog.Info("upstream auth: kiro-cli SQLite",
+			slog.String("db_path", cfg.KiroDBPath),
+		)
+	} else {
+		slog.Warn("KIROXY_KIRO_DB_PATH not set; /v1/messages will return 503 until M4/M5")
+	}
+
 	srv := server.New(server.Options{
-		Version: version,
+		Version:    version,
+		Auth:       authMgr,
+		KiroClient: kiroClient,
+		APIKey:     cfg.APIKey,
 	})
 
 	addr := net.JoinHostPort(cfg.Bind, strconv.Itoa(cfg.Port))

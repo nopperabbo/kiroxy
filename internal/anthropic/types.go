@@ -1,0 +1,272 @@
+// This file is derived from github.com/d-kuro/kirocc
+// Original commit: 5633c47f0d65aaef748728bae1c68160b0ea538d
+// Copyright (c) 2026 d-kuro. Licensed under Apache License, Version 2.0.
+// Modifications (c) 2026 kiroxy contributors.
+
+package anthropic
+
+import (
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"fmt"
+)
+
+// Request represents an incoming Anthropic Messages API request.
+type Request struct {
+	Model         string          `json:"model"`
+	Messages      []Message       `json:"messages"`
+	System        SystemPrompt    `json:"system"`
+	Tools         []Tool          `json:"tools,omitempty"`
+	MaxTokens     int             `json:"max_tokens"`
+	StopSequences []string        `json:"stop_sequences,omitempty"`
+	Stream        bool            `json:"stream"`
+	Thinking      *ThinkingConfig `json:"thinking,omitempty"`
+	OutputConfig  *OutputConfig   `json:"output_config,omitempty"`
+}
+
+// OutputConfig represents the output_config field in the Anthropic API.
+type OutputConfig struct {
+	Effort string `json:"effort,omitempty"`
+}
+
+// ThinkingConfig represents the thinking configuration in the Anthropic API.
+type ThinkingConfig struct {
+	Type         string `json:"type"`
+	BudgetTokens int    `json:"budget_tokens,omitzero"`
+}
+
+// Thinking type constants.
+const (
+	ThinkingTypeEnabled  = "enabled"
+	ThinkingTypeAdaptive = "adaptive"
+)
+
+// Effort level constants (set via output_config.effort).
+const (
+	EffortMax    = "max"
+	EffortXHigh  = "xhigh"
+	EffortHigh   = "high"
+	EffortMedium = "medium"
+	EffortLow    = "low"
+)
+
+// Thinking budget tokens per reasoning effort level.
+const (
+	ThinkingBudgetMax    = 160000
+	ThinkingBudgetXHigh  = 80000
+	ThinkingBudgetHigh   = 40000
+	ThinkingBudgetMedium = 10000
+	ThinkingBudgetLow    = 4000
+)
+
+// IsThinkingEnabled reports whether extended thinking is enabled in the request.
+// Anthropic API supports type "enabled" and "adaptive".
+func (r *Request) IsThinkingEnabled() bool {
+	if r.Thinking == nil {
+		return false
+	}
+	return r.Thinking.Type == ThinkingTypeEnabled || r.Thinking.Type == ThinkingTypeAdaptive
+}
+
+// Effort returns the effort level from output_config.effort.
+// Returns empty string if unset.
+func (r *Request) Effort() string {
+	if r.OutputConfig != nil {
+		return r.OutputConfig.Effort
+	}
+	return ""
+}
+
+// Message represents a single message in the conversation.
+type Message struct {
+	Role    string         `json:"role"`
+	Content MessageContent `json:"content"`
+}
+
+// MessageContent is a union type: either a plain string or []ContentBlock.
+type MessageContent struct {
+	Text   string         // set when content is a plain string
+	Blocks []ContentBlock // set when content is an array of content blocks
+}
+
+// IsString reports whether the content is a plain string.
+func (mc MessageContent) IsString() bool {
+	return mc.Blocks == nil
+}
+
+// String returns the text representation. For blocks, joins text blocks with space.
+func (mc MessageContent) String() string {
+	if mc.IsString() {
+		return mc.Text
+	}
+	var s string
+	for _, b := range mc.Blocks {
+		if b.Type == BlockTypeText {
+			if s != "" {
+				s += " "
+			}
+			s += b.Text
+		}
+	}
+	return s
+}
+
+func (mc MessageContent) MarshalJSONTo(enc *jsontext.Encoder) error {
+	if mc.IsString() {
+		return json.MarshalEncode(enc, mc.Text)
+	}
+	return json.MarshalEncode(enc, mc.Blocks)
+}
+
+func (mc *MessageContent) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	switch dec.PeekKind() {
+	case '"':
+		return json.UnmarshalDecode(dec, &mc.Text)
+	case '[':
+		return json.UnmarshalDecode(dec, &mc.Blocks)
+	case '{':
+		// tool_search_tool_result content is an object — store as single-element Blocks.
+		var block ContentBlock
+		if err := json.UnmarshalDecode(dec, &block); err != nil {
+			return err
+		}
+		mc.Blocks = []ContentBlock{block}
+		return nil
+	default:
+		return fmt.Errorf("unexpected content type: %v", dec.PeekKind())
+	}
+}
+
+// ContentBlock represents a single content block within a message.
+type ContentBlock struct {
+	Type string `json:"type"`
+
+	// text block
+	Text string `json:"text,omitempty"`
+
+	// thinking block
+	Thinking  string `json:"thinking,omitempty"`
+	Signature string `json:"signature,omitempty"`
+
+	// tool_use / server_tool_use block (assistant)
+	ID    string         `json:"id,omitempty"`
+	Name  string         `json:"name,omitempty"`
+	Input map[string]any `json:"input,omitempty"`
+
+	// tool_result block (user)
+	ToolUseID string         `json:"tool_use_id,omitempty"`
+	Content   MessageContent `json:"content"`
+	IsError   bool           `json:"is_error,omitzero"`
+
+	// image block
+	Source *ImageSource `json:"source,omitempty"`
+
+	// tool_reference block
+	ToolName string `json:"tool_name,omitempty"`
+
+	// tool_search_tool_search_result (nested inside tool_search_tool_result content)
+	ToolReferences []ContentBlock `json:"tool_references,omitempty"`
+
+	// cache_control (prompt caching)
+	CacheControl *CacheControl `json:"cache_control,omitempty"`
+}
+
+// IsToolUse reports whether this block is a tool_use or server_tool_use block.
+func (b ContentBlock) IsToolUse() bool {
+	return b.Type == BlockTypeToolUse || b.Type == BlockTypeServerToolUse
+}
+
+// IsToolResult reports whether this block is a tool_result or tool_search_tool_result block.
+func (b ContentBlock) IsToolResult() bool {
+	return b.Type == BlockTypeToolResult || b.Type == BlockTypeToolSearchToolResult
+}
+
+// ImageSource represents the source of an image content block.
+type ImageSource struct {
+	Type      string `json:"type"`
+	MediaType string `json:"media_type"`
+	Data      string `json:"data"`
+}
+
+// CacheControl represents cache control settings for prompt caching.
+type CacheControl struct {
+	Type string `json:"type"`
+}
+
+// Tool Search Tool type constants.
+const (
+	ToolTypeSearchRegex = "tool_search_tool_regex_20251119"
+	ToolTypeSearchBM25  = "tool_search_tool_bm25_20251119"
+)
+
+// Content block type constants.
+const (
+	BlockTypeText                   = "text"
+	BlockTypeThinking               = "thinking"
+	BlockTypeImage                  = "image"
+	BlockTypeToolUse                = "tool_use"
+	BlockTypeServerToolUse          = "server_tool_use"
+	BlockTypeToolResult             = "tool_result"
+	BlockTypeToolSearchToolResult   = "tool_search_tool_result"
+	BlockTypeToolReference          = "tool_reference"
+	BlockTypeToolSearchSearchResult = "tool_search_tool_search_result"
+	BlockTypeToolSearchResultError  = "tool_search_tool_result_error"
+	BlockTypeRedactedThinking       = "redacted_thinking"
+)
+
+// Tool represents a tool definition in the Anthropic API.
+type Tool struct {
+	Type         string         `json:"type,omitempty"`
+	Name         string         `json:"name,omitempty"`
+	Description  string         `json:"description,omitempty"`
+	InputSchema  map[string]any `json:"input_schema,omitempty"`
+	CacheControl *CacheControl  `json:"cache_control,omitempty"`
+	DeferLoading bool           `json:"defer_loading,omitzero"`
+}
+
+// IsToolSearchTool reports whether this tool is a tool search tool definition.
+func (t Tool) IsToolSearchTool() bool {
+	return t.Type == ToolTypeSearchRegex || t.Type == ToolTypeSearchBM25
+}
+
+// SystemPrompt is a union type: either a plain string or []SystemBlock.
+type SystemPrompt struct {
+	Text   string        // set when system is a plain string
+	Blocks []SystemBlock // set when system is an array
+}
+
+// IsEmpty reports whether the system prompt is empty.
+func (sp SystemPrompt) IsEmpty() bool {
+	return sp.Text == "" && len(sp.Blocks) == 0
+}
+
+func (sp SystemPrompt) MarshalJSONTo(enc *jsontext.Encoder) error {
+	if len(sp.Blocks) > 0 {
+		return json.MarshalEncode(enc, sp.Blocks)
+	}
+	if sp.Text != "" {
+		return json.MarshalEncode(enc, sp.Text)
+	}
+	return enc.WriteToken(jsontext.Null)
+}
+
+func (sp *SystemPrompt) UnmarshalJSONFrom(dec *jsontext.Decoder) error {
+	switch dec.PeekKind() {
+	case 'n':
+		_, err := dec.ReadToken()
+		return err
+	case '"':
+		return json.UnmarshalDecode(dec, &sp.Text)
+	case '[':
+		return json.UnmarshalDecode(dec, &sp.Blocks)
+	default:
+		return fmt.Errorf("unexpected system type: %v", dec.PeekKind())
+	}
+}
+
+// SystemBlock represents a single block in an array-form system prompt.
+type SystemBlock struct {
+	Type         string        `json:"type"`
+	Text         string        `json:"text"`
+	CacheControl *CacheControl `json:"cache_control,omitempty"`
+}

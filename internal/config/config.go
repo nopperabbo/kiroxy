@@ -35,8 +35,12 @@ type Config struct {
 	// ShutdownTimeout is the deadline for http.Server.Shutdown. Default 30s.
 	ShutdownTimeout time.Duration
 
-	// KiroRegion is the AWS region for Kiro upstream. Default us-east-1.
 	KiroRegion string
+
+	// KiroDBPath, if set, points to a kiro-cli data.sqlite3 that the upstream
+	// auth manager will read. M2 uses this as the credential source until the
+	// tokenvault + pool land in M4/M5.
+	KiroDBPath string
 }
 
 // LogLevel returns the slog.Level parsed from LogLevelRaw.
@@ -93,6 +97,8 @@ func FromEnvAndFlags(args []string) (Config, error) {
 		}
 		cfg.ShutdownTimeout = time.Duration(n) * time.Second
 	}
+
+	cfg.KiroDBPath = os.Getenv("KIROXY_KIRO_DB_PATH")
 
 	// Flag overrides (thin layer)
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
