@@ -67,11 +67,36 @@ func run(ctx context.Context, args []string) error {
 	case "version", "-v", "--version":
 		fmt.Println(version)
 		return nil
-	case "add-account", "list-accounts", "remove-account", "status":
-		return fmt.Errorf("subcommand %q is reserved for M9; not implemented yet", sub)
+	case "add-account":
+		return runAddAccount(ctx, rest)
+	case "list-accounts":
+		return runListAccounts(ctx, rest)
+	case "remove-account":
+		return runRemoveAccount(ctx, rest)
+	case "status":
+		return runStatus(ctx, rest)
+	case "help", "-h", "--help":
+		printHelp()
+		return nil
 	default:
-		return fmt.Errorf("unknown subcommand %q; try: serve, version", sub)
+		return fmt.Errorf("unknown subcommand %q; try: serve, add-account, list-accounts, remove-account, status, version, help", sub)
 	}
+}
+
+func printHelp() {
+	fmt.Println("kiroxy \u2014 self-hosted Kiro-to-Anthropic proxy")
+	fmt.Println()
+	fmt.Println("usage: kiroxy <command> [flags]")
+	fmt.Println()
+	fmt.Println("commands:")
+	fmt.Println("  serve                  run the HTTP proxy (default)")
+	fmt.Println("  add-account            store a Kiro refresh token in the vault")
+	fmt.Println("  list-accounts          list accounts in the vault")
+	fmt.Println("  remove-account <id>    delete an account")
+	fmt.Println("  status                 show pool+vault state")
+	fmt.Println("  version                print kiroxy version")
+	fmt.Println("  help                   this message")
+	fmt.Println("\nenv vars: see .env.example and README.md")
 }
 
 func startsWithDash(s string) bool {

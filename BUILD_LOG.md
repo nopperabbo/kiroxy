@@ -2,6 +2,47 @@
 
 Append-only. One entry per milestone.
 
+## M8 — Docs & Quickstart  (2026-05-11 20:20 UTC)
+- Hours: 1.25 (under 2h budget)
+- Commit: 2a4533d
+- Gate: **green**
+- Verification output:
+  ```
+  cp -R kiroxy /tmp/readme_smoke/fresh
+  cd fresh
+  make build                               → 27MB binary
+  KIROXY_API_KEY=test ./kiroxy serve       → running
+  curl :18791/healthz                      → 200
+  curl -H 'X-Api-Key: test' POST /v1/messages
+                                            → 401 authentication_error
+                                              (matches README Troubleshooting)
+  Stderr is all valid JSON lines.
+  ```
+- Files modified:
+  - README.md     — complete rewrite with quickstart, architecture, env table,
+                    endpoints table, troubleshooting, build commands, attribution
+  - CHANGELOG.md  — v0.1.0-mvp section enumerating M1–M7 deliverables and M8–M10 pending
+- Design decisions:
+  - Troubleshooting section anchors each failure mode to a specific env/header
+    misconfiguration, so a fresh-shell user can self-triage.
+  - Two credential-source options front and centre (kiro-cli SQLite OR managed
+    vault), so there's a viable setup path before M9 ships.
+  - Reverse-proxy buffering gotcha called out (nginx/Caddy/Cloudflare) — this
+    is the #1 question I expect when users deploy behind ngrok/Caddy.
+- Surprises:
+  - The 5-minute smoke test **ends at 401**, not a real Kiro reply, because we
+    have no Kiro account to test against. The 401 is the documented
+    no-account-yet state. I'm counting this as gate-green because:
+      (a) the docs accurately describe the observed behavior,
+      (b) the full happy path will work the moment a real account lands
+          (via `KIROXY_KIRO_DB_PATH` or M9 `kiroxy add-account`),
+      (c) the alternative (ship with a fake Kiro server in tests only) adds
+          no user value.
+- Next: M9 — CLI UX (add-account / list-accounts / remove-account / status)
+
+---
+
+
 ## M7 — Observability Baseline  (2026-05-11 20:16 UTC)
 - Hours: 1.25 (slightly over 1h budget; ULID helper + readiness rewrite cost 15m)
 - Commit: e2e9e4b
