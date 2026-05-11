@@ -2,6 +2,30 @@
 
 Append-only. One entry per milestone.
 
+## M3 — SSE Streaming  (2026-05-11 19:55 UTC)
+- Hours: 0.75 (under 2h budget; kirocc's streaming path was already wired in M2)
+- Commit: fe2c7e2
+- Gate: **green**
+- Verification output:
+  ```
+  make gate → GATE GREEN
+  TestM3_StreamIncrementalDelivery → PASS (410ms; 4 frames * 80ms delay)
+  TestM3_ClientDisconnectCancelsUpstream → PASS (250ms; cancel propagated)
+  upstream log shows: 'stream error err="reading prelude: context canceled"'
+  ```
+- Files added:
+  - internal/server/stream_test.go — two integration tests. Uses io.Pipe in
+    stub kiroclient so upstream frames arrive with a measurable cadence.
+    Verifies Content-Type=text/event-stream, message_start/content_block_delta/
+    message_stop events, time-spread between deltas (buffering probe), and
+    upstream ctx.Done() observation on client cancel.
+- No production code changed — kirocc's GateWriter + http.Flusher in
+  internal/messages/gate_writer.go already does the right thing.
+- Surprises: none; M2's "use kirocc's messages.Service wholesale" paid off.
+- Next: M4 — Hexos Token Vault Port
+
+---
+
 ## M2 — Kirocc Converter Graft  (2026-05-11 19:50 UTC)
 - Hours: ~2.5 (slightly over 2h budget; kirocc packages have deeper coupling than expected — see Surprises)
 - Commit: 7ab3f72

@@ -29,6 +29,11 @@ Moved from the build brief / caught by anti-scope-creep during MVP:
 - Fly.io / Railway / Render one-click deploy guide
 - HTTPS via Caddy sidecar config
 
+## Security hygiene
+
+- **Chmod tokens.db to 0600 on Open** — hexos trusted filesystem; we should enforce mode explicitly. Fold into M5 when Vault gets wired from main.go.
+- **Audit-zeroize previousRefreshToken on TTL** — currently retained forever; rotate out after N generations to limit blast radius.
+
 ## Engineering hygiene
 
 - Replace simple LRU pool with weighted LRU (Quorinex's weight-based expansion)
