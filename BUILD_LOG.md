@@ -2,6 +2,55 @@
 
 Append-only. One entry per milestone.
 
+## M5 — Multi-Account Pool  (2026-05-11 20:08 UTC)
+- Hours: 2.0 (on budget)
+- Commit: f6d5134
+- Gate: **green**
+- Verification output:
+  ```
+  make gate → GATE GREEN (17 packages all pass)
+  TestM5_LRURotationAcross3AccountsViaHTTP → 30 reqs, a=10 b=10 c=10 ±1
+  TestM5_FailedAccountSkippedAfter3Errors  → 30 reqs, b=0 (cooldown), a+c split
+  End-to-end binary smoke:
+    KIROXY_DB_PATH=<tmp> ./kiroxy serve → vault created 0600,
+                                         pool logs 0 accounts,
+                                         /v1/messages → 401 auth_failed
+  ```
+- Files added:
+  - internal/pool/pool.go        (245 LoC; Quorinex LRU adaptation + TokenGetter)
+  - internal/pool/pool_test.go   (7 focused tests: Pick LRU, cooldown,
+                                  threshold, RecordSuccess clears, disabled
+                                  skip, List stable order, load-test)
+  - internal/server/pool_integration_test.go (2 HTTP-level M5 gate tests)
+- Files modified:
+  - cmd/kiroxy/main.go — vault open+chmod0600 + pool load + TokenGetter wire;
+                          awaitShutdown also closes vault
+- Security hygiene items from M4 backlog addressed here:
+  ✓ chmod 0600 on tokens.db at startup
+  ✗ previousRefreshToken TTL-zeroize — still open; BACKLOG kept
+- Design decisions:
+  - **Pool holds metadata only, not tokens.** Fresh token read per Pick from
+    the vault inside the lock. Cost: one SQLite SELECT per request (~µs,
+    negligible). Benefit: token rotation is never stale in Pick.
+  - **LRU over RR**: per BUILD_PLAN D7. Practical benefit for personal use:
+    spreads usage across accounts more evenly than RR when some accounts
+    have different quotas or when usage is bursty.
+  - **Failure classification explicit**: FailureQuota (1h cooldown) vs
+    FailureTransient (3-strikes short cooldown growing linearly). Quorinex's
+    original lumped these; splitting lets us be more aggressive on 429s.
+  - **TokenGetter adapter is the sole glue to messages package.** Keeps
+    pool testable in isolation and keeps messages.Service unaware of
+    how we multiplex accounts.
+- Surprises:
+  - HTTP-level integration tests exposed kirocc's ErrNoAccount → 401 mapping
+    (not 503 as I'd hoped). Correct behavior for the client (unauthenticated),
+    but log shows internal "pool: no usable account available" so operator can
+    debug.
+- Next: M6 — API Key Auth
+
+---
+
+
 ## M4 — Hexos Token Vault Port  (2026-05-11 20:00 UTC)
 - Hours: 2.5 (under 3h budget)
 - Commit: 92ea865

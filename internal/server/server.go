@@ -64,7 +64,8 @@ func (s *Server) Handler() http.Handler {
 		mux.HandleFunc("POST /v1/messages/count_tokens", s.handleNoAuth)
 	}
 
-	return mux
+	authMW := newAuthMiddleware(s.opts.APIKey)
+	return authMW.wrap(mux)
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
