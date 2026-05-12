@@ -1,10 +1,15 @@
-.PHONY: build vet fmt test test-race run tidy all gate clean
+.PHONY: build vet fmt test test-race run tidy all gate clean \
+        docker-build docker-run docker-compose-up docker-compose-down docker-clean
 
 export GOEXPERIMENT := jsonv2
 
 BIN := kiroxy
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -X main.version=$(VERSION)
+
+# Docker image coordinates. Override with `make docker-build IMAGE=foo:bar`.
+IMAGE  ?= kiroxy:$(VERSION)
+LATEST ?= kiroxy:local
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o $(BIN) ./cmd/kiroxy
@@ -35,3 +40,46 @@ gate: fmt vet build test
 
 clean:
 	rm -f $(BIN)
+
+# ---------------------------------------------------------------------------
+# Docker targets
+# ---------------------------------------------------------------------------
+# All targets degrade gracefully when docker is absent — a missing `docker`
+# binary triggers a clear error rather than a Make syntax failure.
+
+docker-build:
+	@command -v docker >/dev/null 2>&1 || { echo "docker not found in PATH" >&2; exit 1; }
+	docker build \
+	  --build-arg VERSION=$(VERSION) \
+	  -t $(IMAGE) \
+	  -t $(LATEST) \
+	  .
+
+docker-run: docker-build
+	@command -v docker >/dev/null 2>&1 || { echo "docker not found in PATH" >&2; exit 1; }
+	docker run --rm \
+	  -p 127.0.0.1:8787:8787 \
+	  -v kiroxy-data:/data \
+	  --name kiroxy \
+	  --read-only \
+	  --cap-drop=ALL \
+	  --security-opt=no-new-privileges:true \
+	  --tmpfs /tmp:size=16m,mode=1777 \
+	  -e KIROXY_API_KEY=$$KIROXY_API_KEY \
+	  -e KIROXY_LOG_LEVEL=$${KIROXY_LOG_LEVEL:-info} \
+	  $(LATEST)
+
+docker-compose-up:
+	@command -v docker >/dev/null 2>&1 || { echo "docker not found in PATH" >&2; exit 1; }
+	docker compose up -d --build
+	docker compose ps
+
+docker-compose-down:
+	@command -v docker >/dev/null 2>&1 || { echo "docker not found in PATH" >&2; exit 1; }
+	docker compose down
+
+docker-clean:
+	@command -v docker >/dev/null 2>&1 || { echo "docker not found in PATH" >&2; exit 1; }
+	-docker rm -f kiroxy 2>/dev/null
+	-docker rmi $(IMAGE) $(LATEST) 2>/dev/null
+	@echo "Note: named volume 'kiroxy-data' is preserved. Run 'docker volume rm kiroxy-data' to wipe the vault."

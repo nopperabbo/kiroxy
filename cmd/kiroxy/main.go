@@ -96,11 +96,15 @@ func run(ctx context.Context, args []string) error {
 		return runRemoveAccount(ctx, rest)
 	case "status":
 		return runStatus(ctx, rest)
+	case "healthcheck":
+		return runHealthcheck(ctx, rest)
+	case "opencode-config":
+		return runOpencodeConfig(ctx, rest)
 	case "help", "-h", "--help":
 		printHelp()
 		return nil
 	default:
-		return fmt.Errorf("unknown subcommand %q; try: serve, add-account, import-accounts, list-accounts, remove-account, status, version, help", sub)
+		return fmt.Errorf("unknown subcommand %q; try: serve, add-account, import-accounts, list-accounts, remove-account, status, healthcheck, opencode-config, version, help", sub)
 	}
 }
 
@@ -117,6 +121,8 @@ func printHelp() {
 	fmt.Println("  list-accounts          list accounts in the vault")
 	fmt.Println("  remove-account <id>    delete an account")
 	fmt.Println("  status                 show pool+vault state")
+	fmt.Println("  healthcheck            probe /healthz (container HEALTHCHECK target)")
+	fmt.Println("  opencode-config        emit opencode.ai provider JSON snippet")
 	fmt.Println("  version                print kiroxy version")
 	fmt.Println("  help                   this message")
 	fmt.Println("\nenv vars: see .env.example and README.md")
