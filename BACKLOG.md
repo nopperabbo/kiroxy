@@ -6,11 +6,10 @@ Last triaged: 2026-05-12 (post-Phase I).
 
 ---
 
-## P0 — next release (v0.4.0)
+## P0 — next release (v1.0.1)
 
-- **Wire pool-mode token refresher** — see the P1 item below, promoted to
-  P0 for the next release because without auto-refresh the v0.3.0
-  stack is only usable for ~1h per onboarded account.
+- **Upstream 403 with fresh credentials + new endpoint** — SURFACED 2026-05-12 live smoke. Symptoms: `/v1/messages` returns 502 (upstream 403 empty body) even with (a) freshly refreshed access_token verified valid via `kiroxy debug-refresh`, (b) migrated `runtime.us-east-1.kiro.dev` endpoint, (c) Phase 2.5 reactive refresh triggers 3x per request. Direct manual curl to `runtime.us-east-1.kiro.dev` with same access_token + profileArn + simpler payload shape returns 200 + valid EventStream SSE including `contextUsageEvent` and `meteringEvent`. Conclusion: kiroxy payload construction diverges from what the new endpoint accepts. Suspect: elaborate history/toolContext/agentTaskType fields that the manual minimal payload does not include. Next steps: (1) capture kiroxy's actual outbound body via the temp KIROXY_TAP, (2) diff against minimal-working curl body field-by-field, (3) identify which field triggers rejection. LoC estimate: 30-100 (likely field name or null-vs-omit issue in reqconv).
+- **`added_at + expires_in` vs `expires_at` discrepancy** — SURFACED 2026-05-12. `/tmp/dash-preview.db` showed `expires_at` 1h **beyond** what `added_at + expires_in` math predicts. First import at 22:08 claimed expiry at 00:09 (2h later) instead of 23:08 (1h). Impact: Phase 2.5 proactive refresh trigger window is miscalibrated — either fires too early or too late. Needs deterministic test with mocked time + reconciliation between `cmd/kiroxy/import_json.go` (sets `expires_at = time.Now().Unix() + ExpiresIn`) and kiro_login.py output (sets `addedAt` at login time). LoC estimate: 20-50.
 
 ## Phase G — Onboarder follow-ups (post G.0 + G.1 + G.FIX)
 
