@@ -15,7 +15,18 @@ Last triaged: 2026-05-12 (post-Phase I).
 ## Phase G — Onboarder follow-ups (post G.0 + G.1)
 
 G.0 scaffold + G.1 single-account flow landed in v0.3.0.
-Remaining work:
+
+### G.1 auto-login status: NOT RELIABLE (2026-05-12 live test)
+
+Multiple live-test attempts against Google SSO get stuck at the password-challenge step. Google's `checkConnection=youtube` probe gates progression and our Camoufox session is not passing the invisible fingerprint challenge. Patches applied (context-level listeners, persistent URL log, explicit new_context/new_page) did not change the outcome — the redirect never fires because Google never advances past challenge.
+
+This is not a code bug. Google automated-login detection is in an arms race with stealth frameworks (Camoufox, Patchright, undetected-chromedriver, etc.) and maintaining a high success rate requires dedicated stealth infrastructure we do not have. The kikirro extractor (user's sibling project) has 30%+ block rate even with 100-profile rotation + Patchright — that is the realistic ceiling.
+
+**Recommended operator workflow** (documented in `tools/onboard/README.md`): use the sibling `kiro_login.py` tool (Camoufox with **manual** login) for token acquisition. It is proven to work reliably because it lets the user solve any challenge Google presents. Then import via `kiroxy import-accounts-json`.
+
+The `onboard.py` script is kept in-tree as **best-effort** automation for accounts that don't trigger Google challenges. Document this caveat prominently. Do not promise "full automation" in user-facing docs.
+
+### Remaining work:
 
 - **P2: G.2 — Credential encryption.** Current onboarder ingests `--password` via CLI arg (visible in `ps`) or stdin. Batch mode (G.3) needs persistent credential storage. Options: age (modern, portable, no keyring dependency) or macOS Keychain (OS-integrated; requires `security(1)` shelling). Preferred: age with password-derived keys; fall back to Keychain on macOS if user opts in. Deliverable: `tools/onboard/credentials.enc` generator + decrypter; `onboard.py --credentials-file credentials.enc --email you@…` path that reads the decrypted password for that entry only.
 - **P2: G.3 — Batch mode with concurrency cap.** Accept `--credentials-file` (or plain `--accounts-file email:password`) and run N accounts through onboarder in parallel with a concurrency cap (default 3; Kiro/Google are both rate-sensitive). Atomic writes already in place; needs a lock file or fcntl around the output JSON for concurrent `_upsert`. Reuse profile rotation from `_pick_profile()`.
