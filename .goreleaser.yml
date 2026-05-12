@@ -1,0 +1,131 @@
+# .goreleaser.yml
+# Multi-platform release pipeline for kiroxy.
+# Docs: https://goreleaser.com
+#
+# Invocation (local, no push):
+#   goreleaser check
+#   goreleaser release --snapshot --clean --skip=publish,sign
+#
+# CI (tag-triggered) runs `goreleaser release --clean` under
+# .github/workflows/release.yml.
+version: 2
+
+project_name: kiroxy
+
+# Ensure GOEXPERIMENT=jsonv2 is set for every sub-process goreleaser spawns.
+# The build steps also declare it in env for defence-in-depth.
+env:
+  - GOEXPERIMENT=jsonv2
+  - CGO_ENABLED=0
+
+before:
+  hooks:
+    - go mod tidy
+    - go mod download
+
+builds:
+  - id: kiroxy
+    main: ./cmd/kiroxy
+    binary: kiroxy
+    env:
+      - CGO_ENABLED=0
+      - GOEXPERIMENT=jsonv2
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      # kiroxy targets personal dev machines + containers; skip 32-bit + odd
+      # GOOS combos to keep the artefact matrix lean.
+      - goos: linux
+        goarch: arm
+      - goos: windows
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.FullCommit}}
+      - -X main.date={{.Date}}
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+archives:
+  - id: kiroxy
+    ids: [kiroxy]
+    # goreleaser v2 uses `formats:` (plural). `format:` still works but is
+    # deprecated.
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - LICENSE
+      - NOTICE
+      - README.md
+      - CHANGELOG.md
+      - docs/OPENCODE.md
+      - docs/ARCHITECTURE.md
+      - docs/TROUBLESHOOTING.md
+      - BACKLOG.md
+
+checksum:
+  name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  # Used by `goreleaser release --snapshot`. {{ .Tag }} is the nearest tag;
+  # we append a short commit for readability.
+  version_template: '{{ incpatch .Version }}-snapshot-{{ .ShortCommit }}'
+
+changelog:
+  # Use the git log between tags. The release body is further customised
+  # below via release.header to point at CHANGELOG.md for the curated
+  # narrative.
+  sort: asc
+  use: git
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore\(deps\):'
+      - '^Merge '
+      - typo
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: Fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Build + CI
+      regexp: '^.*?(ci|build)(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: Other
+      order: 999
+
+release:
+  # github native release; body is auto-composed from changelog +
+  # header/footer. Operator can still edit after publish.
+  draft: false
+  prerelease: auto
+  mode: replace
+  name_template: 'v{{ .Version }}'
+  header: |
+    ## kiroxy {{ .Tag }}
+
+    See [CHANGELOG.md](./CHANGELOG.md) for the curated notes on this release.
+  footer: |
+    ---
+
+    **Install**
+
+    ```bash
+    # Linux amd64 example
+    curl -sSL -o kiroxy.tar.gz \
+      https://github.com/{{ .Env.GITHUB_REPOSITORY | default "OWNER/REPO" }}/releases/download/{{ .Tag }}/kiroxy_{{ .Version }}_Linux_amd64.tar.gz
+    tar -xzf kiroxy.tar.gz
+    ./kiroxy version
+    ```
+
+    Artefact checksums: `kiroxy_{{ .Version }}_checksums.txt` (SHA-256).
