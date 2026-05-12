@@ -1,0 +1,225 @@
+/**
+ * Design tokens — "Operator Desk" direction.
+ *
+ * Visual commitment (defended in docs/DASHBOARD_MANSION.md):
+ *
+ *   Warm dark-first. Charcoal + aged-brass accents. Monospace-primary for
+ *   data density. Hairline ledger dividers. No gradients, no glass. The
+ *   mood is "reading pool telemetry at a desk lit by brass lamps."
+ *
+ * OKLCH everywhere for perceptual uniformity. light-dark() gives us
+ * zero-JS theming — the JS layer only flips color-scheme on <html>.
+ * Cascade layer registration happens in base.css. Tokens live at :root so
+ * they cascade everywhere without specificity tricks.
+ *
+ * Palette rationale:
+ *   - bg / surface: deep warm charcoal, NOT true black (AA under-cost in
+ *     dark mode). Light mode is warm ivory, not #fff.
+ *   - accent: aged-brass amber (oklch h≈70). Historically operator-tool
+ *     adjacent (Warp, vintage terminals, brass instruments). Distinct
+ *     from typical SaaS indigo and from dashboard-next's indigo-mono.
+ *   - ink: true warm text colors (low chroma, warm hue) so body copy
+ *     never looks sterile next to brass accents.
+ *
+ * The `--c-accent-c` chroma is held low (≈0.12) so amber coexists with
+ * dense UI without becoming shouty.
+ */
+
+@layer tokens {
+  :root {
+    color-scheme: light dark;
+
+    /* ─── Typography ─────────────────────────────────────────────── */
+    --font-display:
+      "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Monaco, Consolas,
+      monospace;
+    --font-text:
+      "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", Roboto, sans-serif;
+    --font-mono:
+      "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Monaco, Consolas,
+      monospace;
+
+    --fs-2xs: 10px;
+    --fs-xs: 11px;
+    --fs-sm: 12px;
+    --fs-base: 13px;
+    --fs-md: 14px;
+    --fs-lg: 16px;
+    --fs-xl: 19px;
+    --fs-2xl: 23px;
+    --fs-display: 28px;
+
+    --lh-tight: 1.15;
+    --lh-snug: 1.3;
+    --lh-normal: 1.45;
+    --lh-relaxed: 1.6;
+
+    --fw-normal: 400;
+    --fw-medium: 500;
+    --fw-semibold: 600;
+    --fw-bold: 700;
+
+    --tr-tight: -0.01em;
+    --tr-normal: 0;
+    --tr-wide: 0.04em;
+    --tr-caps: 0.08em;
+
+    /* ─── Spacing (4px base) ─────────────────────────────────────── */
+    --sp-0: 0;
+    --sp-1: 2px;
+    --sp-2: 4px;
+    --sp-3: 8px;
+    --sp-4: 12px;
+    --sp-5: 16px;
+    --sp-6: 20px;
+    --sp-7: 28px;
+    --sp-8: 40px;
+    --sp-9: 56px;
+
+    /* ─── Radius ─────────────────────────────────────────────────── */
+    --r-xs: 2px;
+    --r-sm: 3px;
+    --r-md: 5px;
+    --r-lg: 8px;
+    --r-pill: 999px;
+
+    /* ─── Core palette (OKLCH, functional tokens) ────────────────── */
+
+    /* Surfaces — warm charcoal dark, warm ivory light. */
+    --c-bg:
+      light-dark(oklch(97.5% 0.008 75), oklch(14.5% 0.012 65));
+    --c-surface:
+      light-dark(oklch(100% 0 0), oklch(17.5% 0.013 65));
+    --c-surface-2:
+      light-dark(oklch(95% 0.01 75), oklch(20.5% 0.015 65));
+    --c-surface-hover:
+      light-dark(oklch(92% 0.012 75), oklch(24% 0.017 65));
+    --c-surface-sunken:
+      light-dark(oklch(93.5% 0.008 70), oklch(11.5% 0.01 65));
+
+    /* Borders — ledger hairlines. */
+    --c-border:
+      light-dark(oklch(88% 0.008 70), oklch(26% 0.013 65));
+    --c-border-strong:
+      light-dark(oklch(78% 0.012 70), oklch(36% 0.015 65));
+    --c-rule:
+      light-dark(oklch(92% 0.005 70), oklch(22% 0.01 65));
+
+    /* Ink — warm text. */
+    --c-text:
+      light-dark(oklch(22% 0.015 65), oklch(93% 0.01 75));
+    --c-text-dim:
+      light-dark(oklch(42% 0.016 65), oklch(70% 0.012 75));
+    --c-text-faint:
+      light-dark(oklch(58% 0.012 65), oklch(50% 0.014 75));
+    --c-text-ghost:
+      light-dark(oklch(72% 0.008 65), oklch(36% 0.012 75));
+
+    /* Accent — aged brass. */
+    --c-accent-h: 72;
+    --c-accent-c: 0.14;
+    --c-accent:
+      light-dark(
+        oklch(58% var(--c-accent-c) var(--c-accent-h)),
+        oklch(78% var(--c-accent-c) var(--c-accent-h))
+      );
+    --c-accent-strong:
+      light-dark(
+        oklch(48% 0.16 var(--c-accent-h)),
+        oklch(84% 0.16 var(--c-accent-h))
+      );
+    --c-accent-dim:
+      light-dark(
+        oklch(72% 0.08 var(--c-accent-h)),
+        oklch(58% 0.1 var(--c-accent-h))
+      );
+    --c-accent-bg: color-mix(in oklch, var(--c-accent), transparent 88%);
+    --c-accent-wash: color-mix(in oklch, var(--c-accent), transparent 94%);
+
+    /* Ember — a secondary warm hue for hover/interactions. */
+    --c-ember:
+      light-dark(oklch(58% 0.14 45), oklch(74% 0.14 45));
+    --c-ember-bg: color-mix(in oklch, var(--c-ember), transparent 90%);
+
+    /* States — warm-anchored greens/yellows/reds so they don't clash. */
+    --c-success:
+      light-dark(oklch(50% 0.14 155), oklch(74% 0.14 155));
+    --c-warn:
+      light-dark(oklch(60% 0.16 85), oklch(80% 0.16 85));
+    --c-danger:
+      light-dark(oklch(52% 0.2 27), oklch(72% 0.2 27));
+    --c-info:
+      light-dark(oklch(52% 0.14 230), oklch(74% 0.14 230));
+
+    --c-success-bg: color-mix(in oklch, var(--c-success), transparent 88%);
+    --c-warn-bg: color-mix(in oklch, var(--c-warn), transparent 88%);
+    --c-danger-bg: color-mix(in oklch, var(--c-danger), transparent 88%);
+    --c-info-bg: color-mix(in oklch, var(--c-info), transparent 90%);
+
+    /* Focus ring — accent-tinted, meets WCAG 2.2 SC 2.4.11. */
+    --c-focus: var(--c-accent);
+    --ring: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-focus);
+
+    /* ─── Elevation ──────────────────────────────────────────────── */
+    --sh-1:
+      light-dark(
+        0 1px 0 oklch(82% 0.005 70 / 0.5),
+        0 1px 0 oklch(0% 0 0 / 0.6)
+      );
+    --sh-2:
+      light-dark(
+        0 4px 16px oklch(70% 0.01 70 / 0.2),
+        0 6px 24px oklch(0% 0 0 / 0.5)
+      );
+    --sh-3:
+      light-dark(
+        0 12px 32px oklch(60% 0.01 70 / 0.25),
+        0 16px 40px oklch(0% 0 0 / 0.6)
+      );
+
+    /* ─── Motion ─────────────────────────────────────────────────── */
+    --mo-fast: 90ms;
+    --mo-med: 160ms;
+    --mo-slow: 240ms;
+    --ease-std: cubic-bezier(0.2, 0, 0, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+    /* ─── Layers ─────────────────────────────────────────────────── */
+    --z-base: 0;
+    --z-sticky: 50;
+    --z-drawer: 80;
+    --z-overlay: 100;
+    --z-dialog: 200;
+    --z-toast: 300;
+
+    /* ─── Grid ───────────────────────────────────────────────────── */
+    --app-pad: clamp(var(--sp-5), 2.5vw, var(--sp-7));
+    --app-max: 1320px;
+  }
+
+  /* Manual override */
+  :root[data-scheme="dark"] {
+    color-scheme: dark;
+  }
+  :root[data-scheme="light"] {
+    color-scheme: light;
+  }
+
+  @media (prefers-contrast: more) {
+    :root {
+      --c-border: light-dark(oklch(65% 0.015 70), oklch(48% 0.016 65));
+      --c-border-strong: light-dark(oklch(40% 0.015 70), oklch(65% 0.016 65));
+      --c-text-dim: light-dark(oklch(24% 0.016 65), oklch(84% 0.012 75));
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --mo-fast: 1ms;
+      --mo-med: 1ms;
+      --mo-slow: 1ms;
+    }
+  }
+}

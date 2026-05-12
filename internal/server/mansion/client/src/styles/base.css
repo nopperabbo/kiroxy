@@ -1,0 +1,225 @@
+/**
+ * Base stylesheet — resets, layers, global element defaults, keyframes.
+ *
+ * Layer order (lowest specificity first):
+ *   reset     → zero out browser defaults where we want deterministic rules
+ *   tokens    → design tokens (separate file, @imported below)
+ *   elements  → global element styling (body, a, button, code, kbd)
+ *   utilities → hand-rolled helpers (.faint, .mono, .ruler)
+ *
+ * Component styles live in Svelte files (scoped). They live OUTSIDE the
+ * layer stack so component specificity wins over globals, by design.
+ */
+
+@import "./tokens.css";
+
+@layer reset, tokens, elements, utilities;
+
+@layer reset {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    min-block-size: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    margin: 0;
+  }
+  button {
+    cursor: pointer;
+    padding: 0;
+  }
+  :focus {
+    outline: none;
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+    border-radius: var(--r-sm);
+  }
+  [hidden] {
+    display: none !important;
+  }
+}
+
+@layer elements {
+  html {
+    font-family: var(--font-text);
+    font-size: var(--fs-base);
+    line-height: var(--lh-normal);
+    color: var(--c-text);
+    background: var(--c-bg);
+    /* Warm paper grain — a single hand-drawn noise layer, barely visible.
+       Pattern stays under 2 KB inline because it's emitted as data URI by
+       Vite (svg is small). */
+    background-image:
+      radial-gradient(
+        circle at 12% 8%,
+        color-mix(in oklch, var(--c-accent), transparent 96%),
+        transparent 45%
+      ),
+      radial-gradient(
+        circle at 88% 92%,
+        color-mix(in oklch, var(--c-ember), transparent 94%),
+        transparent 50%
+      );
+    background-attachment: fixed;
+  }
+  body {
+    color: var(--c-text);
+  }
+  a {
+    color: var(--c-accent);
+    text-decoration: none;
+    border-block-end: 1px solid color-mix(in oklch, var(--c-accent), transparent 70%);
+    transition: color var(--mo-fast) var(--ease-std);
+  }
+  a:hover {
+    color: var(--c-accent-strong);
+    border-block-end-color: var(--c-accent-strong);
+  }
+  code,
+  pre,
+  kbd,
+  samp,
+  var {
+    font-family: var(--font-mono);
+    font-size: 0.94em;
+    font-feature-settings: "calt" 1, "liga" 0, "zero" 1;
+  }
+  kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    min-inline-size: 18px;
+    text-align: center;
+    font-size: var(--fs-2xs);
+    color: var(--c-text-dim);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-block-end-width: 2px;
+    border-radius: var(--r-sm);
+    font-feature-settings: "liga" 0;
+  }
+  hr {
+    border: 0;
+    border-block-start: 1px solid var(--c-rule);
+    margin: 0;
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--c-accent), transparent 70%);
+    color: var(--c-text);
+  }
+}
+
+@layer utilities {
+  .faint {
+    color: var(--c-text-faint);
+  }
+  .dim {
+    color: var(--c-text-dim);
+  }
+  .mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "calt" 1, "liga" 0, "zero" 1;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .caps {
+    text-transform: uppercase;
+    letter-spacing: var(--tr-caps);
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-semibold);
+    color: var(--c-text-dim);
+  }
+  .ruler {
+    display: block;
+    block-size: 1px;
+    inline-size: 100%;
+    background: var(--c-rule);
+  }
+  .sr-only {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: 2px var(--sp-3);
+    font-size: var(--fs-xs);
+    font-family: var(--font-mono);
+    letter-spacing: var(--tr-wide);
+    color: var(--c-text-dim);
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-pill);
+  }
+}
+
+/* Global keyframes used across components. Kept here so components don't
+   duplicate @keyframes across files (each duplicate re-registers). */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.6;
+  }
+  80% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
