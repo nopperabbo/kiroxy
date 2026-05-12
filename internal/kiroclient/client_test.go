@@ -29,7 +29,7 @@ func newTCP4TestServer(t *testing.T, handler http.Handler) *httptest.Server {
 
 func TestHTTPClient_Success(t *testing.T) {
 	srv := newTCP4TestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Amz-Target") != amzTarget {
+		if r.Header.Get("X-Amz-Target") != amzTargetCodeWhisperer {
 			t.Errorf("X-Amz-Target = %q", r.Header.Get("X-Amz-Target"))
 		}
 		if !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
@@ -53,6 +53,7 @@ func TestHTTPClient_Success(t *testing.T) {
 				UserInputMessage: kiroproto.UserInputMessage{Content: "Hello"},
 			},
 		},
+		ProfileARN: "arn:aws:codewhisperer:us-east-1:123:profile/test",
 	}
 	resp, err := c.GenerateAssistantResponse(context.Background(), "test-token", payload, "us-east-1")
 	if err != nil {
@@ -70,8 +71,8 @@ func TestHTTPClient_Success(t *testing.T) {
 
 func TestHTTPClient_CorrectHeaders(t *testing.T) {
 	srv := newTCP4TestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Amz-Target") != "AmazonCodeWhispererStreamingService.GenerateAssistantResponse" {
-			t.Errorf("wrong X-Amz-Target: %q", r.Header.Get("X-Amz-Target"))
+		if r.Header.Get("X-Amz-Target") != "AmazonQDeveloperStreamingService.SendMessage" {
+			t.Errorf("wrong X-Amz-Target: %q (expected AmazonQ target because payload has no profileArn)", r.Header.Get("X-Amz-Target"))
 		}
 		if r.Header.Get("Accept") != "*/*" {
 			t.Errorf("wrong Accept: %q", r.Header.Get("Accept"))

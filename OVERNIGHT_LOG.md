@@ -2,6 +2,115 @@
 
 Append-only. One entry per phase.
 
+## Phase C — Autonomous Smoke Test  (2026-05-12 13:08 UTC)
+- Hours: ~40 min
+- Commit: (this one)
+- Tag: NONE — verdict FAIL, BLOCKED.md written
+- Gate: **green** (make gate OK; `/v1/messages` upstream rejected)
+- Verdict: **FAIL — upstream Kiro rejects our Builder ID access_token**
+
+### What was tested (port 8788, account e3ba0c18, temp inbound API key)
+- TEST 1 (non-stream): HTTP 502, upstream "profileArn is required" / "credential is invalid"
+- TEST 2 (stream):    502 as JSON body, 0 SSE chunks
+- TEST 3 (bad key):   PASS, 401 problem+json (kiroxy auth middleware correct)
+- TEST 4 (5x):        5x 502, same root cause
+
+### Fix attempts (2 of 3 before hard-stop)
+1. **Route to AmazonQ target when profileArn absent** (new `internal/kiroclient/target.go`).
+   Result: error namespace changed from `com.amazon.kiro.runtimeservice` to
+   `com.amazon.aws.codewhisperer`. Proves routing works; different backend
+   now parses our request. But credential still rejected.
+2. **Swap kirocc's kiro-cli User-Agent to Kiro IDE aws-sdk-js UA** (matches
+   Quorinex). Result: no change; same "credential invalid" error.
+
+Attempt 3 NOT MADE per BUILD_PLAN hard-stop + Oracle-mandatory directive.
+
+### Root-cause evidence
+Decoded the `client_secret` JWT (stored in vault metadata) and found
+`hasRequestedScopes: false` + `areAllScopesConsentedTo: false`. Stored
+tokens have the Kiro social-auth `aoa...`/`aor...` prefix but were obtained
+through AWS SSO OIDC. Three hypotheses in SMOKE_TEST.md; user decision
+required to proceed.
+
+### Files retained from investigation (kept, all green in `make gate`)
+- `internal/kiroclient/target.go` + `target_test.go` — `chooseAmzTarget()`
+  switch logic. Works as intended; demonstrated by 2 distinct upstream
+  error shapes.
+- `internal/kiroclient/client.go` — KiroIDE UA constants + wired to
+  `chooseAmzTarget`. 2 pre-existing tests updated accordingly.
+
+### Clean-up verified
+- Port 8788 released after each run.
+- No kiroxy serve process leaked.
+- `~/.config/opencode/*` untouched (safety rule 1).
+- No git push.
+
+### What this blocks
+- Phase D (Docker) can still proceed (independent of upstream auth).
+- Phase F (opencode integration) can still proceed in terms of docs,
+  snippets, and `kiroxy opencode-config` subcommand; real end-to-end
+  through opencode waits on an account that authenticates upstream.
+
+### Waiting for user
+4 options enumerated in BLOCKED.md — kiro-cli path, triplet import,
+specialist consult, or proceed-despite-failure.
+
+---
+
+
+
+
+## Phase C-PREP — Bug Fixes Before Smoke Test  (2026-05-12 12:26 UTC)
+- Hours: ~30 min (on budget)
+- Commit: 9b599f3
+- Tag: v0.2.1-patch
+- Gate: **green**
+- Verification output:
+  ```
+  make gate → GATE GREEN (18 packages)
+  New vault tests: TestOpen_AutoCreatesParentDir, TestOpen_RejectsReadOnlyParent
+  
+  # Repro from user report, all now fixed:
+  Bug 1: KIROXY_DB_PATH=/tmp/missing/nested/tokens.db ./kiroxy list-accounts
+         → 'no accounts' (dirs created 0700)
+  Bug 2: ./kiroxy version                    → v0.2.1-patch
+  Bug 3: ./kiroxy --version / -version / -v  → version printed, exit 0
+         ./kiroxy --help / -h                → usage printed, exit 0
+  Bug 4: ./kiroxy add-account --help         → subcommand usage, exit 0
+         ./kiroxy serve --help               → subcommand usage, exit 0
+         ./kiroxy import-accounts --help     → subcommand usage, exit 0
+  ```
+- Files modified:
+  - internal/tokenvault/vault.go       — Open() now MkdirAll(parent, 0o700)
+  - internal/tokenvault/vault_test.go  — +2 tests for auto-create + readonly
+  - Makefile                           — VERSION via git describe + ldflags -X
+  - cmd/kiroxy/main.go                 — version is var (not const) + top-level
+                                          shortcut block for --version/-v/--help
+                                          + flag.ErrHelp → exit 0
+- Design decisions:
+  - **Top-level shortcuts before subcommand dispatch.** The alternative was to
+    swallow all unknown flags in serve's flag.FlagSet, but that would mask
+    real typos. Explicit whitelist is safer.
+  - **VERSION uses `git describe --tags --always --dirty`.** `--dirty` so the
+    dev loop shows '-dirty' when tree has uncommitted changes (this commit
+    produced 'v0.2.0-dirty' until committed; post-commit clean build prints
+    'v0.2.1-patch').
+  - **flag.ErrHelp → os.Exit(0) at main, not at each subcommand.** One place to
+    catch, applies uniformly.
+- Surprises:
+  - First attempt made version a `const`; ldflags `-X` silently no-op on
+    consts. Had to change to `var`. Go linker caveat I should have remembered.
+  - Subcommand dispatch initially used `startsWithDash(args[0])` to route
+    '-version' to 'serve', which then tried to parse it as a flag and failed.
+    The fix (top-level shortcuts) side-steps that entirely.
+- BACKLOG diff:
+  - No new items. 4 bugs closed.
+
+---
+
+
+
+
 ## Phase B — Builder ID Device-Code OAuth  (2026-05-12 11:35 UTC)
 - Hours: ~2.5 (under 3h budget)
 - Commit: c89057a

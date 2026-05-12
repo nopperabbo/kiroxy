@@ -26,12 +26,27 @@ import (
 )
 
 const (
-	amzTarget      = "AmazonCodeWhispererStreamingService.GenerateAssistantResponse"
+	// amzTargetCodeWhisperer is the X-Amz-Target the Kiro desktop/CLI clients use
+	// when authenticated via social (kiro-cli) auth that provides a profileArn.
+	amzTargetCodeWhisperer = "AmazonCodeWhispererStreamingService.GenerateAssistantResponse"
+
+	// amzTargetAmazonQ is the X-Amz-Target that works for Builder ID accounts
+	// which have no profileArn (the CodeWhisperer target rejects them with
+	// "profileArn is required for this request"). Quorinex/Kiro-Go proves this
+	// fallback works; kiroxy auto-switches to it when payload.ProfileARN == "".
+	amzTargetAmazonQ = "AmazonQDeveloperStreamingService.SendMessage"
+
 	maxRetries     = 3
 	baseRetryDelay = 1 * time.Second
 
-	userAgentValue    = "aws-sdk-rust/1.3.14 ua/2.1 api/codewhispererstreaming/0.1.14474 os/macos lang/rust/1.92.0 md/appVersion-2.0.0 app/AmazonQ-For-CLI"
-	amzUserAgentValue = "aws-sdk-rust/1.3.14 ua/2.1 api/codewhispererstreaming/0.1.14474 os/macos lang/rust/1.92.0 m/F app/AmazonQ-For-CLI"
+	// KiroIDE User-Agent (aws-sdk-js shape). Matches Quorinex/Kiro-Go's proven
+	// header format. The kirocc-native Rust SDK UA is appropriate for kiro-cli
+	// accounts but breaks Builder ID accounts at the gateway ("credential is
+	// invalid"). Kiro IDE UA accepts both credential sources.
+	kiroIDEVersion      = "0.11.107"
+	kiroStreamingSDKVer = "1.0.34"
+	userAgentValue      = "aws-sdk-js/1.0.34 ua/2.1 os/darwin#24.6.0 lang/js md/nodejs#22.22.0 api/codewhispererstreaming#1.0.34 m/E KiroIDE-0.11.107"
+	amzUserAgentValue   = "aws-sdk-js/1.0.34 KiroIDE-0.11.107"
 )
 
 // Client is the interface for calling the Kiro API.
@@ -190,7 +205,7 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 		req.Header.Set("Authorization", "Bearer "+currentToken)
 		req.Header.Set("Content-Type", "application/x-amz-json-1.0")
 		req.Header.Set("Accept", "*/*")
-		req.Header.Set("X-Amz-Target", amzTarget)
+		req.Header.Set("X-Amz-Target", chooseAmzTarget(payload))
 		req.Header.Set("User-Agent", userAgentValue)
 		req.Header.Set("x-amz-user-agent", amzUserAgentValue)
 		req.Header.Set("x-amzn-codewhisperer-optout", "false")
