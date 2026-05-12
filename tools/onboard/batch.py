@@ -213,22 +213,23 @@ def parse_credentials_file(path: Path) -> Tuple[List[Credential], List[str]]:
     seen: set = set()
     reasons: List[str] = []
     for i, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-        line = raw.strip()
-        if not line or line.startswith("#"):
+        # Strip only CR (Windows) — preserve trailing spaces in passwords
+        # which are legitimate. Then decide if the line is blank/comment
+        # using a trimmed copy, but partition on the un-trimmed raw.
+        raw = raw.rstrip("\r\n")
+        trimmed = raw.strip()
+        if not trimmed or trimmed.startswith("#"):
             continue
-        if ":" not in line:
+        if ":" not in raw:
             reasons.append(f"line {i}: missing ':' separator")
             continue
-        email_part, _, password_part = line.partition(":")
+        email_part, _, password_part = raw.partition(":")
         email = email_part.strip().lower()
-        password = password_part  # DO NOT strip — passwords may legitimately
-                                  # include trailing/leading whitespace. But
-                                  # we drop CRs from Windows-encoded files.
-        password = password.rstrip("\r\n")
+        password = password_part  # preserve leading/trailing whitespace
         if "@" not in email or "." not in email.split("@", 1)[1]:
             reasons.append(f"line {i}: {email_part!r} is not a valid email")
             continue
-        if not password:
+        if not password.strip():
             reasons.append(f"line {i}: empty password for {email}")
             continue
         if email in seen:
