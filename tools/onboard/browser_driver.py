@@ -269,7 +269,7 @@ class BrowserDriver:
           - 1-2% typo rate per char, capped at 2 typos per text, with
             120-300ms pause + backspace + correct keystroke.
         """
-        from human import burst_pause_delays, inject_typos  # lazy import
+        from human import burst_pause_delays, inject_typos, typo_pause_ms  # lazy import
 
         if pre_click:
             self.page.click(selector, timeout=self.default_step_timeout_ms)
@@ -279,6 +279,8 @@ class BrowserDriver:
         delays = burst_pause_delays(len(keys))
         for (key, delay_ms) in zip(keys, delays):
             if key == "\b":
+                # Pause before backspacing — humans notice the typo first.
+                self.page.wait_for_timeout(typo_pause_ms())
                 locator.press("Backspace")
             else:
                 locator.press_sequentially(key, delay=delay_ms)
