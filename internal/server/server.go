@@ -105,6 +105,12 @@ func (s *Server) Handler() http.Handler {
 		mux.HandleFunc("POST /v1/messages/count_tokens", s.handleNoAuth)
 	}
 
+	// OpenAI-compatible surface. /v1/models is always safe to serve (static
+	// listing); /v1/chat/completions shares msgSvc state with /v1/messages
+	// and returns a 503 via the OpenAI error shape when msgSvc is nil.
+	mux.HandleFunc("POST /v1/chat/completions", s.handleChatCompletions)
+	mux.HandleFunc("GET /v1/models", s.handleListModels)
+
 	authMW := newAuthMiddleware(s.opts.APIKey)
 	var rec RequestRecorder
 	if s.opts.RequestRing != nil {
