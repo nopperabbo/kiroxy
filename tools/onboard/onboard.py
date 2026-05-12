@@ -1,21 +1,31 @@
 #!/usr/bin/env python3
-"""kiroxy onboarder — single-account full-auto Kiro Desktop OAuth (Phase G.1).
+"""kiroxy onboarder — single-account Kiro Desktop OAuth (Phase G / G.FIX).
 
-Automates the Kiro Desktop authorization flow end-to-end:
+Automates the Kiro Desktop authorization flow:
 
-    (1) generate PKCE triple
-    (2) open Camoufox at Kiro's /login with idp=Google|Github
-    (3) drive through Google/GitHub sign-in with humanized typing
-    (4) handle consent screen
-    (5) intercept kiro://…?code=…&state=… redirect
-    (6) POST /oauth/token → collect {accessToken, refreshToken, profileArn, expiresIn}
-    (7) upsert result into output JSON compatible with `kiroxy import-accounts-json`
+    (1) (optional) warm up a persistent Camoufox profile so Google sees
+        session state (YouTube, google.com, github.com) before login
+    (2) generate PKCE triple
+    (3) open Camoufox at Kiro's /login with idp=Google|Github
+    (4) drive through Google/GitHub sign-in with human-like typing
+    (5) if Google shows a challenge, pause and let the operator solve it
+    (6) intercept kiro://…?code=…&state=… redirect
+    (7) POST /oauth/token → collect {accessToken, refreshToken, profileArn, expiresIn}
+    (8) upsert result into output JSON compatible with `kiroxy import-accounts-json`
 
 Security posture:
-  * Passwords are never written to disk or logged.
+  * Passwords never written to disk, never logged.
   * --password - reads stdin (single line) to avoid process-list exposure.
   * Error messages strip passwords if the input ever appears in a string.
   * Failure screenshots in ./screenshots/ are .gitignore'd.
+
+Reliability posture (Phase G.FIX):
+  * This tool is BEST-EFFORT against Google SSO. Expect 40-70% success on
+    fresh accounts with a residential proxy + warmed profile; lower without.
+  * When Google shows a challenge (reCAPTCHA, 2FA, "verify it's you"), the
+    script prompts the operator to solve it manually, then resumes.
+  * For accounts with active 2FA or heavy prior automation, prefer manually
+    signing in via `kiro_login.py` and importing the resulting token.
 
 Use only with accounts you own. Google automation may violate TOS.
 """
@@ -33,8 +43,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# Defer heavy imports (browser_driver pulls in camoufox) so --help works
-# even when the environment isn't fully set up.
 from kiro_oauth import (  # noqa: E402
     TokenExchangeError,
     build_login_url,
@@ -46,6 +54,7 @@ from kiro_oauth import (  # noqa: E402
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_OUTPUT = BASE_DIR / "kiro_tokens.json"
 PROFILES_PATH = BASE_DIR / "profiles.json"
+PROFILES_DATA_DIR = BASE_DIR / "profiles_data"
 SCREENSHOT_DIR = BASE_DIR / "screenshots"
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -113,6 +122,22 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _account_id(email: str) -> str:
+    """Stable content-addressed identifier for an account.
+
+    Used for profile dir name (`profiles_data/<id>/`) so the email
+    never appears on disk. 12 hex chars = 48 bits, collision-safe at
+    human scale.
+    """
+    return hashlib.sha256(email.lower().encode("utf-8")).hexdigest()[:12]
+
+
+def _derive_profile_dir(email: str, override: Optional[str]) -> Path:
+    if override:
+        return Path(override).expanduser().resolve()
+    return (PROFILES_DATA_DIR / _account_id(email)).resolve()
+
+
 def _load_profiles() -> List[Dict[str, Any]]:
     try:
         data = json.loads(PROFILES_PATH.read_text(encoding="utf-8"))
@@ -152,21 +177,14 @@ def _pick_profile(email: str, override_id: Optional[str]) -> Dict[str, Any]:
 
 
 def _read_password(raw: str) -> str:
-    """Resolve --password value. '-' means read one line from stdin.
-
-    Stdin mode is the recommended path for real use; the CLI form is kept
-    for convenience but documented as visible in `ps`.
-    """
     if raw != "-":
         return raw
     if sys.stdin.isatty():
         try:
             import getpass
-
             return getpass.getpass("password: ")
         except Exception:
             pass
-    # Non-tty or fallback: first line of stdin.
     line = sys.stdin.readline()
     if not line:
         raise SystemExit("error: --password - but no input on stdin")
@@ -174,7 +192,6 @@ def _read_password(raw: str) -> str:
 
 
 def _redact_password(msg: str, password: str) -> str:
-    """Scrub the password from an error string, if present. Best-effort."""
     if not password:
         return msg
     return msg.replace(password, "[REDACTED]")
@@ -202,7 +219,6 @@ def _dismiss_cookie_banner(drv) -> None:
 
 
 def _try_selectors_click(drv, selectors: list, timeout_ms: int = 1500) -> bool:
-    """Click the first visible selector. Returns True on success."""
     for sel in selectors:
         try:
             loc = drv.page.locator(sel).first
@@ -219,7 +235,7 @@ def _try_selectors_fill_humanized(drv, selectors: list, text: str) -> bool:
         try:
             loc = drv.page.locator(sel).first
             if loc.is_visible(timeout=1500):
-                drv.type_humanized(sel, text)
+                drv.human_type(sel, text)
                 return True
         except Exception:
             continue
@@ -236,8 +252,10 @@ def _drive_google(drv, email: str, password: str) -> None:
     if not _try_selectors_fill_humanized(drv, _GOOGLE_EMAIL_SELECTORS, email):
         raise RuntimeError("Google email field not fillable")
 
+    # Read-pause before click (simulate human reading the form).
+    drv.human_pause(lo_ms=500, hi_ms=1500)
+
     if not _try_selectors_click(drv, _GOOGLE_EMAIL_NEXT_SELECTORS, timeout_ms=4000):
-        # Fallback: press Enter in the email field
         drv.page.keyboard.press("Enter")
 
     _log("→ waiting for password field")
@@ -249,14 +267,14 @@ def _drive_google(drv, email: str, password: str) -> None:
     _log("→ typing password (humanized)")
     if not _try_selectors_fill_humanized(drv, _GOOGLE_PASSWORD_SELECTORS, password):
         raise RuntimeError("password field not fillable")
+
+    drv.human_pause(lo_ms=800, hi_ms=2000)
+
     if not _try_selectors_click(drv, _GOOGLE_PASSWORD_NEXT_SELECTORS, timeout_ms=4000):
         drv.page.keyboard.press("Enter")
 
     _log("→ password submitted; checking for consent screen")
-    # Give Google a moment to transition to consent OR to kick off the redirect.
     drv.page.wait_for_timeout(2500)
-    # If a consent screen shows up, click it. The kiro:// redirect will fire
-    # regardless — we just have to unblock it.
     _try_selectors_click(drv, _CONSENT_SELECTORS, timeout_ms=3000)
 
 
@@ -264,16 +282,18 @@ def _drive_github(drv, email: str, password: str) -> None:
     _log("→ waiting for GitHub login form")
     drv.wait_for_selector(_GH_EMAIL_SELECTOR, timeout_ms=30_000)
     _log("→ typing email (humanized)")
-    drv.type_humanized(_GH_EMAIL_SELECTOR, email)
+    drv.human_type(_GH_EMAIL_SELECTOR, email)
+    drv.human_pause(lo_ms=300, hi_ms=900)
     _log("→ typing password (humanized)")
-    drv.type_humanized(_GH_PASSWORD_SELECTOR, password)
+    drv.human_type(_GH_PASSWORD_SELECTOR, password)
+    drv.human_pause(lo_ms=500, hi_ms=1500)
     drv.click(_GH_SUBMIT_SELECTOR, timeout_ms=10_000)
     _log("→ sign-in submitted; handling authorize screen if present")
     drv.page.wait_for_timeout(2500)
     try:
         drv.click(_GH_AUTHORIZE_SELECTOR, timeout_ms=3000)
     except Exception:
-        pass  # first-time only
+        pass
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -294,7 +314,6 @@ def _load_existing(path: Path) -> List[Dict[str, Any]]:
 
 
 def _dedupe_key(entry: Dict[str, Any]) -> str:
-    """Match the import-accounts-json dedup strategy: profileArn first, else access token prefix."""
     arn = (entry.get("profileArn") or "").strip()
     if arn:
         seg = arn.rsplit("/", 1)[-1]
@@ -304,7 +323,6 @@ def _dedupe_key(entry: Dict[str, Any]) -> str:
 
 
 def _upsert(entries: List[Dict[str, Any]], new: Dict[str, Any]) -> str:
-    """Insert or replace an entry. Returns 'added' or 'updated'."""
     key = _dedupe_key(new)
     if not key:
         entries.append(new)
@@ -318,14 +336,13 @@ def _upsert(entries: List[Dict[str, Any]], new: Dict[str, Any]) -> str:
 
 
 def _atomic_write(path: Path, entries: List[Dict[str, Any]]) -> None:
-    """Write with 0600 perms atomically (write + rename)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(entries, indent=2) + "\n", encoding="utf-8")
     try:
         os.chmod(tmp, 0o600)
     except Exception:
-        pass  # best-effort on platforms without POSIX perms
+        pass
     tmp.replace(path)
 
 
@@ -337,7 +354,7 @@ def _atomic_write(path: Path, entries: List[Dict[str, Any]]) -> None:
 def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         prog="onboard",
-        description="Full-auto Kiro Desktop OAuth token acquisition (single account).",
+        description="Kiro Desktop OAuth token acquisition (single account, best-effort auto).",
         epilog=(
             "Example:\n"
             "  python onboard.py --email you@gmail.com --password - \\\n"
@@ -347,35 +364,35 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     )
     p.add_argument("--email", required=True, help="account email")
     p.add_argument(
-        "--password",
-        required=True,
+        "--password", required=True,
         help="password (use '-' to read one line from stdin; avoids `ps` exposure)",
     )
     p.add_argument(
-        "--provider",
-        choices=["google", "github"],
-        default="google",
+        "--provider", choices=["google", "github"], default="google",
         help="social IDP (default: google)",
     )
     p.add_argument(
-        "--output",
-        default=str(DEFAULT_OUTPUT),
+        "--output", default=str(DEFAULT_OUTPUT),
         help="output JSON path; appends if file exists (default: ./kiro_tokens.json)",
     )
     p.add_argument(
-        "--profile-id",
-        default=None,
+        "--profile-id", default=None,
         help="override profile id from profiles.json (default: hash of email)",
     )
     p.add_argument(
-        "--headless",
-        action="store_true",
+        "--profile-dir", default=None,
+        help="override Camoufox user_data_dir (default: profiles_data/<account-id>/)",
+    )
+    p.add_argument(
+        "--skip-warmup", action="store_true",
+        help="skip the YouTube/Google/GitHub warmup flow (debugging only; reduces success rate)",
+    )
+    p.add_argument(
+        "--headless", action="store_true",
         help="run Camoufox headless (default: windowed, for debug visibility)",
     )
     p.add_argument(
-        "--timeout-login-s",
-        type=int,
-        default=120,
+        "--timeout-login-s", type=int, default=120,
         help="seconds to wait for the kiro:// redirect (default: 120)",
     )
     return p.parse_args(argv)
@@ -389,26 +406,46 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     output_path = Path(args.output).expanduser().resolve()
+    profile_dir = _derive_profile_dir(args.email, args.profile_dir)
 
     profile = _pick_profile(args.email, args.profile_id)
     _log(
         f"profile={profile.get('id')} platform={profile.get('platform')} "
         f"locale={profile.get('locale')} tz={profile.get('timezone_id')}"
     )
+    _log(f"profile_dir={profile_dir}")
 
     verifier, challenge, state = generate_pkce()
     login_url = build_login_url(args.provider, challenge, state)
     _log(f"login URL built (provider={args.provider}, state={state[:8]}…)")
 
-    # Defer browser_driver import: it pulls in camoufox which may not be
-    # installed in --help / test envs.
     from browser_driver import BrowserDriver, BrowserDriverUnavailableError
+    from warmup import run_warmup, should_warmup, write_marker
 
     screenshot_slug = _safe_slug(args.email)
     screenshot_base = SCREENSHOT_DIR / f"onboard_{screenshot_slug}_{int(time.time())}"
 
+    warmup_needed = (not args.skip_warmup) and should_warmup(profile_dir)
+    if args.skip_warmup:
+        _log("warmup: skipped (--skip-warmup)")
+    elif not warmup_needed:
+        _log("warmup: skipped (profile recently warmed)")
+    else:
+        _log("warmup: profile cold or stale; will warm before login")
+
     try:
-        with BrowserDriver(profile=profile, headless=args.headless) as drv:
+        with BrowserDriver(
+            profile=profile,
+            headless=args.headless,
+            user_data_dir=str(profile_dir),
+        ) as drv:
+            if warmup_needed:
+                completed, attempted = run_warmup(drv, log=_log)
+                if completed > 0:
+                    write_marker(profile_dir)
+                else:
+                    _log("warmup: 0 steps completed; continuing without marker update")
+
             _log("→ opening Kiro /login")
             drv.navigate(login_url, wait_until="domcontentloaded")
             drv.page.wait_for_timeout(800)  # let SPA hydrate
@@ -428,12 +465,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(f"error: {e}", file=sys.stderr)
         return 1
     except Exception as e:
-        # Best-effort screenshot. Never raise during cleanup.
         shot = None
         try:
-            # drv may still be partially alive if we were in the `with`; if
-            # we raised before __enter__ completed, drv is None here. We
-            # guard with `in locals()`.
             if "drv" in locals() and drv is not None:  # type: ignore[name-defined]
                 SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
                 shot = drv.screenshot(str(screenshot_base) + "_fail.png")  # type: ignore[name-defined]
@@ -452,8 +485,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     if returned_state != state:
-        # Don't abort; log loudly. Kiro may sometimes round-trip state through
-        # a URL-encoded transform; mismatch is a warning, not a fatal error.
         _log(f"warn: state mismatch (sent={state[:8]}… got={returned_state[:8]}…)")
 
     _log("→ exchanging code for tokens")

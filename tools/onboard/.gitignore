@@ -5,6 +5,8 @@ __pycache__/
 venv/
 tokens_output/
 screenshots/
+profiles_data/
 *.log
 credentials.txt
 credentials.enc
+kiro_tokens.json

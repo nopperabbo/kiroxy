@@ -1,15 +1,23 @@
 """
-Camoufox (Firefox-based stealth browser) wrapper with humanization helpers.
+Camoufox (Firefox-based stealth browser) wrapper with humanization helpers
+and persistent-profile support.
 
-Kept intentionally thin: one class, sync Playwright API, no asyncio. The
-onboarder is single-account per invocation, so sync is simpler than async
-and matches the brief's batch-mode-is-deferred-to-G.3 stance.
+Kept intentionally thin: one class, sync Playwright API, no asyncio. Single
+account per invocation.
 
-Camoufox rationale (vs Patchright/Chromium): kikirro already used
-Patchright/Chromium against the Kiro WEB portal. The brief pins Camoufox
-here for the DESKTOP auth flow — Camoufox's Firefox fingerprint is distinct
-from kikirro's Chromium fingerprint, so the two tools won't accidentally
-collide if the same account is hit by both.
+Two operating modes:
+
+  * fresh (G.1 default) — user_data_dir is None, we do browser.new_context().
+    Every run starts cold; Google dislikes this.
+
+  * persistent (Phase G.FIX default) — user_data_dir is a real path. Camoufox
+    yields a BrowserContext directly instead of a Browser; we adopt it.
+    Cookies, localStorage, IndexedDB, history persist across runs. This is
+    what lets warmup-built state accrue.
+
+Camoufox's sync API semantics differ between the two modes (Browser vs
+BrowserContext returned from __enter__), so the wrapper hides that with
+a `persistent` boolean. Callers don't care which mode; they get a page.
 
 Profile dict shape (matches kikirro profiles.json entries):
   id, platform, user_agent, sec_ch_ua, sec_ch_ua_platform, sec_ch_ua_mobile,
@@ -40,12 +48,29 @@ class BrowserDriverUnavailableError(RuntimeError):
 class BrowserDriver:
     """Context-managed Camoufox session driving a single page.
 
-    Usage:
+    Usage (fresh):
 
         with BrowserDriver(profile=profile, headless=False) as drv:
             drv.navigate("https://example.com")
             drv.type_humanized('input[name="q"]', "hello")
             drv.click('button[type="submit"]')
+
+    Usage (persistent):
+
+        with BrowserDriver(profile=profile, user_data_dir="./profile") as drv:
+            drv.navigate("https://youtube.com")
+            # session state persists on context exit
+
+    Proxy support:
+
+        with BrowserDriver(profile=profile, proxy={
+            "server": "http://proxy.example:8080",
+            "username": "user", "password": "pass",
+        }) as drv:
+            ...
+
+        geoip defaults to True when a proxy is set, matching Camoufox best
+        practice; pass explicit geoip to override.
     """
 
     def __init__(
@@ -54,6 +79,10 @@ class BrowserDriver:
         headless: bool = False,
         default_step_timeout_ms: int = 30_000,
         default_nav_timeout_ms: int = 60_000,
+        user_data_dir: Optional[str] = None,
+        proxy: Optional[Dict[str, str]] = None,
+        geoip: Optional[Any] = None,
+        disable_coop: bool = True,
     ) -> None:
         if Camoufox is None:
             raise BrowserDriverUnavailableError(
@@ -64,8 +93,17 @@ class BrowserDriver:
         self.headless = headless
         self.default_step_timeout_ms = default_step_timeout_ms
         self.default_nav_timeout_ms = default_nav_timeout_ms
+        self.user_data_dir = user_data_dir
+        self.proxy = proxy
+        # geoip: None → auto (True when proxy set, False otherwise); caller-provided takes precedence
+        if geoip is None:
+            geoip = True if proxy else False
+        self.geoip = geoip
+        self.disable_coop = disable_coop
+        self.persistent = user_data_dir is not None
+
         self._cm = None
-        self._browser = None  # Camoufox context manager yields a Browser
+        self._browser = None
         self._context = None
         self._page = None
         self._url_log: list[tuple[str, str]] = []
@@ -75,46 +113,62 @@ class BrowserDriver:
     # ──────────────────────────────────────────────────────────────────────
 
     def __enter__(self) -> "BrowserDriver":
-        # Camoufox's sync_api.Camoufox(…) returns a context manager that
-        # yields a Page directly (not a Browser). We adopt the yielded page.
-        #
-        # Humanization flag turns on mouse jitter, typing delays, scroll
-        # micro-movements inside Camoufox itself; we still add our own
-        # per-keystroke jitter in type_humanized() for belt-and-braces.
         os_hint_map = {
             "macOS": "macos",
             "Windows": "windows",
             "Linux": "linux",
-            "Chrome OS": "linux",  # Camoufox doesn't model CrOS — closest match
+            "Chrome OS": "linux",
         }
         os_hints = [os_hint_map.get(self.profile.get("platform", "macOS"), "macos")]
 
         viewport = self.profile.get("viewport") or {"width": 1920, "height": 1080}
 
-        self._cm = Camoufox(
+        kwargs: Dict[str, Any] = dict(
             headless=self.headless,
             humanize=True,
             os=os_hints,
             locale=self.profile.get("locale", "en-US"),
-            geoip=False,
+            geoip=self.geoip,
             window=[viewport.get("width", 1920), viewport.get("height", 1080)],
             i_know_what_im_doing=True,
+            disable_coop=self.disable_coop,
         )
-        self._browser = self._cm.__enter__()
-        self._context = self._browser.new_context()
-        self._page = self._context.new_page()
+        if self.proxy:
+            kwargs["proxy"] = self.proxy
+        if self.persistent:
+            # Persistent mode: ensure the dir exists and yield a context directly.
+            Path(self.user_data_dir).mkdir(parents=True, exist_ok=True)
+            kwargs["persistent_context"] = True
+            kwargs["user_data_dir"] = str(self.user_data_dir)
+
+        self._cm = Camoufox(**kwargs)
+        entered = self._cm.__enter__()
+
+        # Camoufox returns:
+        #   - persistent_context=True → a BrowserContext directly
+        #   - persistent_context=False → a Browser
+        # We detect which by duck-typing: BrowserContext has `new_page` but no `new_context`.
+        if self.persistent:
+            self._context = entered
+            self._browser = None
+            # Persistent contexts have a default blank page; reuse if present, else new one.
+            pages = getattr(self._context, "pages", None) or []
+            self._page = pages[0] if pages else self._context.new_page()
+        else:
+            self._browser = entered
+            self._context = self._browser.new_context()
+            self._page = self._context.new_page()
+
         self._page.set_default_timeout(self.default_step_timeout_ms)
         self._page.set_default_navigation_timeout(self.default_nav_timeout_ms)
 
         self._install_url_listeners()
 
-        # Override Accept-Language explicitly; Camoufox's locale argument
-        # controls navigator.language but not always the HTTP header shape.
         try:
             accept_language = self.profile.get("accept_language", "en-US,en;q=0.9")
             self._page.set_extra_http_headers({"Accept-Language": accept_language})
         except Exception:
-            pass  # best-effort — non-fatal
+            pass
 
         return self
 
@@ -179,8 +233,11 @@ class BrowserDriver:
     def wait_for_selector(self, selector: str, timeout_ms: int = 30_000):
         return self.page.wait_for_selector(selector, timeout=timeout_ms)
 
+    def wait(self, ms: int) -> None:
+        self.page.wait_for_timeout(ms)
+
     # ──────────────────────────────────────────────────────────────────────
-    # Humanized input
+    # Humanized input — thin wrappers; full suite lives in human.py
     # ──────────────────────────────────────────────────────────────────────
 
     def type_humanized(
@@ -190,17 +247,73 @@ class BrowserDriver:
         delay_range_ms: tuple = (50, 180),
         pre_click: bool = True,
     ) -> None:
-        """Type text char-by-char with randomized inter-keystroke delay.
+        """DEPRECATED: forwards to human_type for backwards compatibility.
 
-        pre_click=True clicks the field first so focus is certain; turn it
-        off when the field is already focused (e.g. right after Tab).
+        New code should use ``human_type`` which implements burst-pause
+        timing instead of uniform delay. This shim exists because
+        onboard.py G.1 still calls the old name.
         """
+        self.human_type(selector, text, pre_click=pre_click)
+
+    def human_type(
+        self,
+        selector: str,
+        text: str,
+        pre_click: bool = True,
+    ) -> None:
+        """Type text with burst-pause humanization + occasional typo+backspace.
+
+        Timing strategy (see human.py::burst_pause_delays for distribution):
+          - Bursts of 3-5 chars at 40-90ms inter-char.
+          - 250-600ms pause between bursts.
+          - 1-2% typo rate per char, capped at 2 typos per text, with
+            120-300ms pause + backspace + correct keystroke.
+        """
+        from human import burst_pause_delays, inject_typos  # lazy import
+
         if pre_click:
             self.page.click(selector, timeout=self.default_step_timeout_ms)
-        lo, hi = delay_range_ms
+
         locator = self.page.locator(selector).first
-        for ch in text:
-            locator.press_sequentially(ch, delay=random.randint(lo, hi))
+        keys = inject_typos(text)
+        delays = burst_pause_delays(len(keys))
+        for (key, delay_ms) in zip(keys, delays):
+            if key == "\b":
+                locator.press("Backspace")
+            else:
+                locator.press_sequentially(key, delay=delay_ms)
+
+    def human_pause(self, lo_ms: int = 500, hi_ms: int = 2000) -> None:
+        """Random 'reading' pause before submit clicks."""
+        self.page.wait_for_timeout(random.randint(lo_ms, hi_ms))
+
+    def drift_cursor(self, selector: str) -> None:
+        """Move the mouse along a curved path toward the selector's center.
+
+        No-op if the element doesn't exist or has no bounding box. Best-effort
+        cosmetic layer — click() still does its own targeting, we just make
+        the mouse look human before that.
+        """
+        try:
+            from human import drift_points  # lazy import
+        except ImportError:
+            return
+        try:
+            box = self.page.locator(selector).first.bounding_box()
+            if not box:
+                return
+            target_x = box["x"] + box["width"] / 2
+            target_y = box["y"] + box["height"] / 2
+            # Start from current position; Playwright exposes that on mouse
+            # via a hidden attribute, so we fake it: start from a random
+            # offset and steps=n takes care of interpolation inside Playwright.
+            start_x = target_x + random.uniform(-200, 200)
+            start_y = target_y + random.uniform(-150, 150)
+            for px, py in drift_points(start_x, start_y, target_x, target_y):
+                self.page.mouse.move(px, py, steps=1)
+            self.page.wait_for_timeout(random.randint(100, 300))
+        except Exception:
+            pass  # never let mouse drift failures break the flow
 
     def click(self, selector: str, timeout_ms: int = 10_000) -> None:
         self.page.click(selector, timeout=timeout_ms)
