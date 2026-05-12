@@ -2,7 +2,7 @@
 
 Moved from the build brief / caught by anti-scope-creep during MVP.
 
-Last triaged: 2026-05-12 (post-v0.3.0).
+Last triaged: 2026-05-12 (post-Phase I).
 
 ---
 
@@ -48,9 +48,20 @@ Remaining work:
 
 ## Infra / release
 
-- GitHub Actions CI (go test, go vet, gofmt, govulncheck)
-- goreleaser multi-platform binaries
-- Homebrew tap
+- **CLOSED in v0.3.x (Phase I).** GitHub Actions CI (`make gate` +
+  race + coverage on ubuntu-latest + macos-latest Go 1.26.x).
+- **CLOSED in v0.3.x (Phase I).** goreleaser multi-platform binaries
+  (linux/darwin × amd64/arm64 tarballs + SHA-256 checksums, tag-triggered).
+- **NEW (P1, follow-up from Phase I).** Dedicated `Dockerfile.release`
+  that packages the pre-built goreleaser binary, plus a goreleaser
+  `dockers:` block that publishes `ghcr.io/<owner>/kiroxy:{{.Version}}`
+  and `:latest`. The current `Dockerfile` is a from-source multi-stage
+  build and does not fit the release-consume pattern.
+- **NEW (P3, follow-up from Phase I).** Collapse the CI strict lane.
+  The daily `vuln.yml` workflow handles govulncheck separately from
+  `ci.yml`; the opt-in `KIROXY_CI_STRICT=1` path is local-only today.
+  Future iteration: add a `strict` matrix cell to `ci.yml`.
+- Homebrew tap (and the release-workflow glue to publish to it).
 - Docker Hub image + `docker-compose.yml` polish
 - Fly.io / Railway / Render one-click deploy guide
 - HTTPS via Caddy sidecar config

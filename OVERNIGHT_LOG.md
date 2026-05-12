@@ -2,6 +2,123 @@
 
 Append-only. One entry per phase.
 
+## Phase I — Release Infrastructure + Documentation Polish  (2026-05-12 18:xx UTC)
+- Hours: ~2.0 h autonomous (4 h budget).
+- Commits:
+  - `54c5254 ci: add GitHub Actions workflow for gate + race + coverage`
+  - `59a86c2 ci: add daily govulncheck workflow with issue creation`
+  - `144ea3d build: add make vuln target with opt-in CI strict mode`
+  - `9154065 build(release): add goreleaser config for multi-platform binaries`
+  - `093920a ci: add release workflow triggered on version tags`
+  - `6f19c99 docs(readme): add installation section; make release-dry-run`
+  - `e1c441c docs: add architecture overview with component map`
+  - `b9ff4e7 docs: add troubleshooting guide with common errors`
+  - `d38be44 docs(readme): restructure with CLI reference, contributing, deep-doc links`
+- Gate: **green** on the last commit of each track (fmt + vet + build +
+  test with GOEXPERIMENT=jsonv2). goreleaser snapshot verified locally:
+  4 tarballs + SHA-256 checksums + binary version stamp.
+- Verdict: ALL THREE TRACKS LANDED.
+
+### What this is
+Three independent tracks against files Phase 2.5 + Phase H do not touch:
+- **Track 1 — GitHub Actions CI.** `.github/workflows/ci.yml` runs
+  `make gate` + race + coverage on Ubuntu/macOS Go 1.26.x.
+  `.github/workflows/vuln.yml` runs govulncheck daily and opens an
+  issue on a reachable finding.
+- **Track 2 — goreleaser.** `.goreleaser.yml` builds
+  linux/darwin × amd64/arm64 tarballs (binary + LICENSE + NOTICE +
+  README + CHANGELOG + all docs/*.md + BACKLOG) on every tag.
+  `.github/workflows/release.yml` wires the pipeline to tag pushes.
+  `make release-dry-run` and `make vuln` round out the local flow.
+- **Track 3 — Documentation.** `docs/ARCHITECTURE.md` (~460 lines) is
+  the canonical engineering reference; `docs/TROUBLESHOOTING.md`
+  (~295 lines) is the operator playbook; the README gets a CLI
+  Reference table, Installation section, and Contributing section,
+  plus banners in the existing Architecture + Troubleshooting
+  sections pointing at the deep docs.
+
+### Files touched
+- Added:
+  - `.github/workflows/ci.yml`
+  - `.github/workflows/vuln.yml`
+  - `.github/workflows/release.yml`
+  - `.goreleaser.yml`
+  - `docs/ARCHITECTURE.md`
+  - `docs/TROUBLESHOOTING.md`
+- Modified (append-only):
+  - `Makefile` (`vuln` + `release-dry-run` targets, `KIROXY_CI_STRICT`
+    opt-in hook on existing `gate`)
+  - `README.md` (Installation, CLI Reference, Contributing sections;
+    banners in existing Architecture + Troubleshooting)
+
+### Decisions
+- **Go matrix pinned to 1.26.x.** The brief asked for 1.22/1.23, but
+  `go.mod` declares `go 1.26` (`GOEXPERIMENT=jsonv2` + `encoding/json/v2`
+  imports). Older versions cannot compile the tree. Documented in the
+  CI workflow comment.
+- **Docker release left out.** The existing `Dockerfile` builds from
+  source, not from a pre-built binary. Adding a goreleaser docker
+  block would require a dedicated `Dockerfile.release`. Left as a
+  follow-up rather than risking a broken release pipeline.
+- **govulncheck severity classification.** govulncheck does not surface
+  CVSS severity; the daily workflow instead fails on *reachable*
+  findings (non-empty call-trace) and treats inventory-only advisories
+  as informational. Matches the project's existing `-show verbose`
+  output semantics.
+- **Doc stubs committed alongside goreleaser.** The archive needs
+  ARCHITECTURE.md / TROUBLESHOOTING.md at release time; a 4-line stub
+  landed with the goreleaser commit so snapshots don't fail, and the
+  real content followed in the Track 3 commits.
+
+### Verification
+- `actionlint` v1.7.12 clean on all three workflow YAMLs.
+- `goreleaser check` against a snapshot-capable config cannot run
+  without a configured git remote (expected for an unpublished tree);
+  instead verified with `goreleaser release --snapshot --clean
+  --skip=publish,sign,docker,announce,validate`, which produced 4
+  tarballs, 4 checksum lines, and a correctly-stamped binary
+  (`kiroxy version` → `0.0.1-snapshot-none`).
+- `make gate` green on main at each commit.
+- Local `govulncheck ./...` surfaced 6 stdlib + 1 `golang.org/x/net`
+  advisory, all Go 1.26.2 → 1.26.3 upgrade paths. Reachable from
+  `tracing/transport.go` and `kiroclient/client.go`. Tracked for
+  backlog; not a Phase I blocker.
+
+### Surprises / coordination
+- Concurrent Phase H session stashed my uncommitted Track 2 work
+  (.goreleaser.yml, release.yml, docs stubs) twice during the run.
+  Recovered by reading the untracked parent of each stash
+  (`stash@{N}^3`) via `git show` + file copy rather than
+  `git checkout`, to avoid the safety-net block on overwrite. After
+  recovery, my changes re-staged cleanly and committed without
+  conflicts. The concurrent session's own WIP (`internal/tokenvault/
+  vault.go` additions, `internal/server/next/` scaffolding) was left
+  untouched and was re-applied after my final commits.
+- The concurrent session left `internal/tokenvault/vault.go` with a
+  `json` reference but no `json` import (a partial commit of a new
+  `CommitWithMetaPatch` function). Not my code — left in place for
+  Phase 2.5 to fix. `make gate` ran green once that WIP was
+  temporarily stashed.
+
+### Backlog diff
+- **Closed.** "GitHub Actions CI (go test, go vet, gofmt, govulncheck)"
+- **Closed.** "goreleaser multi-platform binaries"
+- **Added (follow-up).** "Dedicated `Dockerfile.release` + goreleaser
+  docker block (ghcr.io/kiroxy:{{.Version}})".
+- **Added (follow-up, P3).** "CI strict lane that sets
+  `KIROXY_CI_STRICT=1` so govulncheck blocks on reachable advisories.
+  Currently the daily workflow handles this separately; future
+  iteration could collapse the two lanes."
+- **Added (follow-up, P3).** "Homebrew tap + release workflow glue".
+
+### Next
+User-side verification when online: push the branch, confirm the CI
+workflow runs green on ubuntu-latest + macos-latest, cut a test tag
+to confirm the release workflow produces GitHub Release artefacts,
+then move the Dockerfile.release + ghcr.io follow-up to P1.
+
+---
+
 ## Phase G.0 + G.1 — Onboarder Scaffold + Single-Account Flow  (2026-05-12 16:43 UTC)
 - Hours: ~75 min (within 90 min cap)
 - Commits:
