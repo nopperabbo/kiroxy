@@ -11,3 +11,6 @@ credentials.txt
 credentials.enc
 kiro_tokens.json
 fingerprint_report.txt
+batch_state.json
+batch_state.json.tmp
+batch_logs/
