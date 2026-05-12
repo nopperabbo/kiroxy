@@ -1,0 +1,119 @@
+name: Vulnerability scan
+
+on:
+  schedule:
+    # Daily at 06:00 UTC. Picks up newly-published Go advisories without
+    # blocking PR velocity.
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: vuln-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    env:
+      GOEXPERIMENT: jsonv2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache: true
+
+      - name: Install govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          echo "$(go env GOBIN):$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Run govulncheck (text, always logs)
+        id: vuln_text
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          govulncheck ./... | tee govulncheck.log
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Run govulncheck (JSON, parsed)
+        id: vuln_json
+        continue-on-error: true
+        run: |
+          govulncheck -json ./... > govulncheck.json
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Classify severity
+        id: classify
+        # govulncheck itself does not tag severity with HIGH/CRITICAL;
+        # we treat any *called* vulnerability (non-empty finding) as
+        # actionable and let the operator triage. Informational LOW/
+        # MEDIUM items appear in the text log regardless.
+        run: |
+          set -euo pipefail
+          # Count unique osv IDs with a non-empty call stack trace.
+          called=0
+          if command -v jq >/dev/null 2>&1 && [ -s govulncheck.json ]; then
+            called=$(jq -rs '
+              [ .[]
+                | select(.finding? and (.finding.trace // [] | length) > 0)
+                | .finding.osv ] | unique | length' govulncheck.json 2>/dev/null || echo 0)
+          fi
+          echo "called=$called" >> "$GITHUB_OUTPUT"
+          echo "called vulnerabilities: $called"
+
+      - name: Upload vuln report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: govulncheck-report
+          path: |
+            govulncheck.log
+            govulncheck.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Prepare issue body
+        if: steps.classify.outputs.called != '0'
+        env:
+          CALLED_COUNT: ${{ steps.classify.outputs.called }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "# govulncheck detected ${CALLED_COUNT} called vulnerability/ies"
+            echo
+            echo "Workflow run: ${RUN_URL}"
+            echo
+            echo '## Text report'
+            echo
+            echo '```'
+            sed -e 's/\x1b\[[0-9;]*m//g' govulncheck.log | head -c 50000
+            echo '```'
+          } > issue-body.md
+
+      - name: Open or update issue
+        if: steps.classify.outputs.called != '0'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "govulncheck: ${{ steps.classify.outputs.called }} called vuln(s) detected"
+          content-filepath: issue-body.md
+          labels: |
+            security
+            automated
+
+      - name: Fail on called vulnerabilities
+        # Only fail the workflow if govulncheck found vulnerabilities in
+        # reachable call paths. Inventory-only (module-level) advisories
+        # appear in the log as informational and do not fail.
+        if: steps.classify.outputs.called != '0'
+        run: |
+          echo "::error::govulncheck found reachable vulnerabilities; see artifact and issue."
+          exit 1
