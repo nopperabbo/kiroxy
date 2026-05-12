@@ -120,3 +120,21 @@ release-dry-run:
 	  exit 1; \
 	}
 	goreleaser release --snapshot --clean --skip=publish,sign,announce,validate
+
+# ---------------------------------------------------------------------------
+# Track 3 — Mansion dashboard (sisyphus)
+# ---------------------------------------------------------------------------
+# Rebuilds the /dashboard-mansion frontend bundle under
+# internal/server/mansion/client and emits into ../dist for go:embed. The
+# dist tree is committed so `go build` works on a fresh clone without Node;
+# this target is for operators iterating on the UI.
+
+.PHONY: dashboard-mansion dashboard-mansion-check
+
+dashboard-mansion:
+	@command -v pnpm >/dev/null 2>&1 || { echo "pnpm not found on PATH (required to build mansion)" >&2; exit 1; }
+	cd internal/server/mansion/client && pnpm install --silent && pnpm build:fast
+
+dashboard-mansion-check:
+	@command -v pnpm >/dev/null 2>&1 || { echo "pnpm not found on PATH" >&2; exit 1; }
+	cd internal/server/mansion/client && pnpm check
