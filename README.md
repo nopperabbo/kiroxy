@@ -2,7 +2,7 @@
 
 A single-user, self-hosted proxy that exposes your Kiro IDE subscription (Amazon Q Developer / AWS CodeWhisperer) as an **Anthropic Messages API** endpoint. Point your Claude Code, Cursor, or any Anthropic-compatible client at kiroxy, and it forwards requests to Kiro using your own credentials.
 
-**Status:** v0.1.0-mvp — personal-use, MIT-licensed. See `BUILD_LOG.md` for the construction log.
+**Status:** v0.3.0 — personal-use, MIT-licensed. See `BUILD_LOG.md` for the construction log, `CHANGELOG.md` for release notes, `docs/ARCHITECTURE.md` for the engineering overview, and `docs/TROUBLESHOOTING.md` for operator diagnostics.
 
 ---
 
@@ -161,6 +161,11 @@ claude
 
 ## Architecture
 
+> **For the full component-by-component overview, see
+> [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).** Read it before
+> modifying anything in `internal/`. The diagram below is the high-level
+> sketch only.
+
 ```
                      KIROXY_API_KEY                                 KIROXY_KIRO_DB_PATH
                           |                                              (or vault)
@@ -231,6 +236,10 @@ Every response carries `X-Request-Id`; clients may set their own via the same he
 
 ## Troubleshooting
 
+> **For the full diagnostics playbook, see
+> [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md).** The sections
+> below cover the handful of errors most operators hit first.
+
 ### `POST /v1/messages -> 401 authentication_error`
 
 You haven't added an account yet. Either set `KIROXY_KIRO_DB_PATH` to your kiro-cli database, or wait for M9's `kiroxy add-account` subcommand.
@@ -270,6 +279,47 @@ make test-race      # race-mode test run
 ```
 
 Pins `GOEXPERIMENT=jsonv2` automatically.
+
+---
+
+## CLI Reference
+
+All kiroxy functionality ships as a single binary. Top-level shortcuts
+(`--version`, `-v`, `--help`, `-h`, `help`) work without a subcommand.
+Subcommand `--help` prints per-command usage.
+
+| Subcommand | One-liner |
+|---|---|
+| `serve` (default) | Run the HTTP proxy. Respects all `KIROXY_*` env vars. |
+| `add-account` | Register a new account via AWS Builder ID device-code OAuth. |
+| `import-accounts` | Bulk-import accounts from a line-delimited triplet file (`email:refresh_token:signature`). |
+| `import-accounts-json` | Import accounts from Desktop-flow JSON (the `tools/onboard/` sidecar emits this format). |
+| `list-accounts` | Print the managed vault's accounts with status, last-used, strikes. |
+| `remove-account <id>` | Delete an account from the vault. |
+| `status` | Pool + request snapshot (mirrors the dashboard JSON state). |
+| `debug-refresh <id>` | Force a refresh against the configured source; print outcome. Useful for diagnosing revoked tokens. |
+| `healthcheck` | In-binary `/healthz` probe. Used by the Docker `HEALTHCHECK` directive. |
+| `opencode-config` | Emit an `opencode.json` provider snippet (7 resolver-verified Claude model IDs). |
+| `version` | Print the `-ldflags -X main.version` stamp. |
+| `help [subcommand]` | Print top-level or per-subcommand usage. |
+
+Examples:
+
+```bash
+# First-time setup
+kiroxy import-accounts-json --file tools/onboard/kiro_tokens.json
+kiroxy list-accounts
+
+# Operational
+kiroxy status                            # pool snapshot
+kiroxy debug-refresh $(kiroxy list-accounts -ids | head -1)
+kiroxy opencode-config -output opencode.snippet.json
+
+# Container-friendly
+kiroxy healthcheck && echo ok
+```
+
+For the full per-subcommand flag list: `kiroxy help <subcommand>`.
 
 ---
 
@@ -324,6 +374,25 @@ docker run --rm \
 - **`KIROXY_BIND` inside the container is `0.0.0.0`** \u2014 the network namespace IS the boundary. Control host-side exposure via `docker run -p` / compose's `ports:` mapping (defaults to `127.0.0.1:8787`).
 - **`docker compose down` keeps the volume**; `docker compose down -v` wipes it (including `tokens.db`). Back up the volume before running `-v`.
 - **Image tags never use `:latest`**; set `IMAGE=foo:bar` on `make docker-build` if you want a custom tag.
+
+---
+
+## Contributing
+
+kiroxy is personal-use software, but PRs that fix bugs, add tests, or
+improve docs are welcome.
+
+- **CI.** The repository ships a [GitHub Actions workflow](./.github/workflows/ci.yml)
+  that runs `make gate` on Ubuntu + macOS on every PR. A separate
+  [govulncheck workflow](./.github/workflows/vuln.yml) runs daily.
+- **Pre-commit.** Run `make gate` locally before pushing. Set
+  `KIROXY_CI_STRICT=1` to also require `govulncheck`.
+- **Releases.** Tag-triggered via the [release workflow](./.github/workflows/release.yml).
+  Local dry-run: `make release-dry-run` (requires goreleaser).
+- **Commit style.** Conventional commits (`feat:`, `fix:`, `docs:`,
+  `ci:`, `build:`, `chore:`). The goreleaser changelog groups by prefix.
+- **Anti-scope-creep.** New features land in `BACKLOG.md` first. Core
+  proxy path stays small.
 
 ---
 
