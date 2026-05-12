@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+tokens_output/
+screenshots/
+*.log
+credentials.txt
+credentials.enc

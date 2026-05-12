@@ -1,0 +1,3 @@
+camoufox>=0.4
+patchright>=1.44
+httpx>=0.27
