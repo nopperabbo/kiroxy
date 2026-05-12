@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"local/kiroxy/internal/tokenvault"
 )
@@ -124,6 +125,7 @@ func runImportAccountsJSON(ctx context.Context, args []string) error {
 			"auth_method":  v.entry.AuthMethod,
 			"profile_arn":  v.entry.ProfileArn,
 			"expires_in":   v.entry.ExpiresIn,
+			"expires_at":   time.Now().Unix() + v.entry.ExpiresIn,
 			"added_at":     v.entry.AddedAt,
 			"id_source":    v.idSource,
 		})

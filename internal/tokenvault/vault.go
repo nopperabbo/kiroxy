@@ -16,6 +16,7 @@ package tokenvault
 import (
 	"context"
 	"database/sql"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -290,6 +291,69 @@ func (v *Vault) Commit(ctx context.Context, provider, connectionID string, reser
 		provider, connectionID, reservedGeneration)
 	if err != nil {
 		return nil, fmt.Errorf("commit tokens: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return v.Get(ctx, provider, connectionID)
+}
+
+// CommitWithMetaPatch is like Commit but also shallow-merges the given
+// metadata patch onto the bundle's existing metadata JSON. Keys in patch
+// overwrite existing keys; keys absent from patch are preserved.
+//
+// Used by the pool refresher (internal/pool/refresh.go) to write the new
+// expires_at + rotated refresh_token without clobbering profile_arn /
+// auth_method / source / provider_sso. On malformed existing metadata,
+// the patch becomes the entire metadata.
+func (v *Vault) CommitWithMetaPatch(ctx context.Context, provider, connectionID string, reservedGeneration int64, tokens Tokens, metaPatch map[string]any) (*Bundle, error) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	tx, err := v.db.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	b, err := v.getBundle(ctx, tx, provider, connectionID)
+	if err != nil {
+		return nil, err
+	}
+	if b.Generation != reservedGeneration {
+		return nil, ErrGenerationStale
+	}
+
+	merged := map[string]any{}
+	if b.Metadata != "" {
+		_ = json.Unmarshal([]byte(b.Metadata), &merged) // tolerate malformed
+	}
+	for k, val := range metaPatch {
+		merged[k] = val
+	}
+	mergedBytes, err := json.Marshal(merged)
+	if err != nil {
+		return nil, fmt.Errorf("marshal merged metadata: %w", err)
+	}
+
+	now := time.Now().UnixMilli()
+	_, err = tx.ExecContext(ctx, `
+		UPDATE token_bundles
+		SET access_token = ?,
+		    refresh_token = ?,
+		    previous_refresh_token = ?,
+		    generation = generation + 1,
+		    updated_at = ?,
+		    source = ?,
+		    metadata = ?,
+		    refresh_in_progress = 0,
+		    refresh_started_at = 0,
+		    refresh_lock_expires_at = 0
+		WHERE provider = ? AND connection_id = ? AND generation = ?`,
+		tokens.AccessToken, tokens.RefreshToken, b.RefreshToken, now, tokens.Source, string(mergedBytes),
+		provider, connectionID, reservedGeneration)
+	if err != nil {
+		return nil, fmt.Errorf("commit tokens with meta: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, err
