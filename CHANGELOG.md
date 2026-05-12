@@ -4,23 +4,28 @@ All notable changes to kiroxy will be documented in this file. Format loosely fo
 
 ## [Unreleased]
 
-
 ### Added (Phase 2.5.1 — pool refresh test coverage)
 
-- 9 new tests close the Phase 2.5 test gap:
-  - `internal/pool/refresh_concurrent_test.go` — 50-goroutine concurrent
-    `GetToken` on expired account; 401 cooldown path; 5xx exponential-backoff
-    retry path. Documents a pre-existing singleflight gap as P1 backlog.
+- 7 new tests close the Phase 2.5 test gap:
+  - `internal/pool/refresh_concurrent_test.go` — concurrent `GetToken`
+    across 50 goroutines (singleflight-adjacent: observes that the vault
+    Reserve lock serializes; RefreshFn called exactly once; documents the
+    real-singleflight gap as BACKLOG P1).
+  - 401 → cooldown: `RefreshFn` returning `auth.ErrRefreshUnauthorized`
+    surfaces up, caller records `FailureQuota` with reason
+    `refresh_rejected`; subsequent `GetToken` sees the cooldown engaged.
+  - 5xx backoff: 2 transient errors then success = 3 RefreshFn calls,
+    wall time within the expected backoff window.
   - `internal/tokenvault/commit_meta_patch_test.go` — CommitWithMetaPatch
-    merges existing metadata, rejects stale-generation commits, tolerates
-    malformed prior metadata.
-  - `internal/server/refresh_e2e_test.go` — full-stack E2E. Seed vault with
-    expired social account, POST /v1/messages, assert refresh fired once,
-    kiroclient Bearer was the NEW access_token, vault generation+1 with
-    renewed metadata.expires_at.
+    merges existing metadata (preserves `profile_arn`/`auth_method`),
+    rejects stale-generation commits, tolerates malformed prior metadata.
+  - `internal/server/refresh_e2e_test.go` — full-stack E2E: seed vault
+    with expired social account, POST /v1/messages, assert the refresh
+    fired once, the downstream kiroclient saw the NEW access_token in
+    its Bearer header, and the vault generation bumped + metadata updated.
 
-- No production code changed; 5 deferred Phase 2.5 tests (plus 2 bonus
-  table-cases) now land.
+- No production code changed. 5 deferred Phase 2.5 tests now landed.
+
 
 ### Added (Phase M — Prometheus metrics endpoint)
 
