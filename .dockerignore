@@ -1,0 +1,60 @@
+# Keep the Docker build context small and secret-free.
+# Anything not listed here ends up in the build context — audit carefully.
+
+# VCS
+.git
+.gitignore
+.gitattributes
+
+# CI/CD (not needed for image build; keeps context lean)
+.github
+
+# Build outputs
+/kiroxy
+/dist/
+*.test
+*.out
+coverage.*
+
+# Secrets & runtime databases — NEVER ship these into an image
+.env
+.env.local
+.env.*
+!.env.example
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Go tooling artefacts
+vendor/
+
+# IDE / OS cruft
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Documentation that isn't needed at runtime (source of truth is the repo).
+# Keep LICENSE + NOTICE so they end up in source for attribution, but the
+# build stage only needs the source tree.
+BUILD_LOG.md
+BUILD_PLAN.md
+BACKLOG.md
+BLOCKED.md
+OVERNIGHT_LOG.md
+SMOKE_TEST.md
+CHANGELOG.md
+README.md
+research/
+_vendors/
+
+# Docker artefacts themselves — no recursive copy.
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Refresh token scratchpads sometimes committed locally; defence-in-depth.
+refresh_tokens.txt
+kiro_tokens.json
