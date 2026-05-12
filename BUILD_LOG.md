@@ -2,6 +2,153 @@
 
 Append-only. One entry per milestone.
 
+## Phase F — opencode Integration  (2026-05-12 07:35 UTC)
+- Hours: ~1.1 (under 75 min budget)
+- Commits:
+  - `1e467e5` feat(cli): add healthcheck subcommand — this commit was
+    authored by the concurrent Phase D agent but *absorbed* Phase F's
+    untracked files (`cmd/kiroxy/opencode_config.go`, `docs/OPENCODE.md`)
+    because they were on disk at the time of Phase D's `git add`. Phase F
+    surface area is wholly additive and the content survived verbatim, so
+    a corrective commit is not needed. No new Phase-F-only commit was
+    produced. Concurrent-agent note retained here per brief's
+    close-out requirement.
+- Tag: **none** (v0.4.0 NOT tagged per brief)
+- Gate: **green** (`go build`, `go vet`, `go test ./...` all pass on
+  18 packages with `GOEXPERIMENT=jsonv2`)
+
+### Pre-flight override applied
+Operator re-opened Phase F with a **model-ID correction override** after
+the initial STEP 0 halt. The correction noted that `kiro/opus-4.7` and
+similar display labels are not valid API IDs and that kirocc's
+`models.Resolve` silently falls back to `claude-sonnet-4.6` for
+unrecognised names. Implementation below follows the corrected policy.
+
+### Librarian research
+- Source: `opencode.ai/docs/config/` + `opencode.ai/docs/providers/`
+- Decision: top-level key is `provider` (**singular**), not `providers`;
+  `npm: "@ai-sdk/anthropic"` selects Anthropic wire; `options.baseURL` +
+  `options.apiKey` are camelCase; `models` is a **map** keyed by model ID
+  (not an array). `{env:VAR}` interpolation works anywhere in string
+  values. Documented in `docs/OPENCODE.md` as a "Gotchas" block.
+
+### Model-ID audit (the hard part)
+Resolver read at `internal/models/models.go:modelMapOrdered`.
+
+Exact-match set (resolver round-trips without fallback):
+
+| Emitted API ID | Kiro upstream | Context |
+|---|---|---|
+| `claude-opus-4-7` | `claude-opus-4.7` | 1M |
+| `claude-opus-4-6` | `claude-opus-4.6` | 1M |
+| `claude-opus-4.5` | `claude-opus-4.5` | 200K |
+| `claude-sonnet-4-6` | `claude-sonnet-4.6` | 200K |
+| `claude-sonnet-4-6[1m]` | `claude-sonnet-4.6-1m` | 1M (thinking) |
+| `claude-sonnet-4.5` | `claude-sonnet-4.5` | 200K |
+| `claude-haiku-4.5` | `claude-haiku-4.5` | 200K |
+
+Dropped from the brief's original 13-model list (would silent-fallback):
+`kiro/auto`, `kiro/sonnet-4`, `kiro/deepseek-3.2`, `kiro/glm-5`,
+`kiro/minimax-m2.1`, `kiro/minimax-m2.5`, `kiro/qwen3-coder-next`.
+Reasoning: resolver has no entry + non-`claude-*` prefix triggers silent
+fallback to `DefaultModel = claude-sonnet-4.6`. Emitting them would pin
+opencode to a label that silently routes everything to Sonnet 4.6.
+
+The emitter's `knownModels` slice (in `cmd/kiroxy/opencode_config.go`)
+is the single source of truth; if `modelMapOrdered` grows a new entry,
+`knownModels` must grow too. A table-driven test can be added later if
+we want to mechanically enforce `knownModels ⊆ modelMapOrdered[_].Anthropic`.
+
+### Delivered
+- `cmd/kiroxy/opencode_config.go` (new, 268 LoC)
+  - Subcommand `kiroxy opencode-config`
+  - Flags: `-base-url`, `-api-key` (defaults `$KIROXY_INBOUND_KEY`, else
+    `changeme`), `-provider-name`, `-models` (comma-separated filter),
+    `-output` (file or stdout)
+  - Emits JSON with stdlib `encoding/json` (not jsonv2 — subcommand has
+    no need for it, and package `main` already mixes both)
+  - stdout is clean JSON (pipeable through `jq`); all guidance goes to
+    stderr
+  - Unknown `-models` entries are dropped with a stderr warning instead
+    of being emitted — prevents the silent-fallback failure mode the
+    operator flagged
+  - `-output` writes at mode `0600` since the file contains the inbound
+    API key
+- `docs/OPENCODE.md` (new, 186 LoC)
+  - Quickstart: start kiroxy → generate snippet → merge into
+    `opencode.json` → restart opencode
+  - Full model-mapping table (API ID ↔ Kiro UI label ↔ upstream Kiro
+    model ↔ context window)
+  - Explicit "Models NOT emitted" section enumerating the 7 silent-
+    fallback labels so contributors know why they're missing
+  - Schema gotchas (`provider` singular, models-is-a-map,
+    `{env:VAR}` interpolation)
+  - Troubleshooting covering the actual failure modes operators hit
+  - Multi-account pool note + flags reference
+- `cmd/kiroxy/main.go` (edit, +3 LoC effective)
+  - `case "opencode-config"` dispatch line
+  - `printHelp()` one-liner listing the subcommand
+  - Error-message subcommand list extended
+
+### Inbound auth case-sensitivity audit
+- Read-only audit of `Authorization` header handling across `internal/`
+  and `cmd/`.
+- Found: `internal/server/auth.go:66` uses `r.Header.Get("Authorization")`
+  (canonical form — Go's `http.Header.Get` normalises both directions).
+  Scheme comparison uses `strings.ToLower(v)` before matching `bearer`.
+- Searched for direct map-index access (`r.Header["..."]`) anywhere in
+  the repo — **zero matches**. No bug exists.
+- **No code change.** No c3 commit. Finding logged here per brief.
+
+### Verification
+```
+GOEXPERIMENT=jsonv2 go build ./...                         → exit 0
+GOEXPERIMENT=jsonv2 go vet ./...                           → exit 0
+GOEXPERIMENT=jsonv2 go test ./...                          → all 18 packages OK
+
+kiroxy opencode-config -api-key test-abc | python -m json.tool
+  → valid JSON, 7 models under provider.kiroxy.models
+kiroxy opencode-config -api-key test-abc -models "claude-opus-4-7,claude-sonnet-4.5"
+  → exactly 2 models emitted
+kiroxy opencode-config -api-key test-abc -models "claude-opus-4-7,kiro/opus-4.7"
+  → stderr: 'warning: --models filter entry "kiro/opus-4.7" is not in the
+     resolver-verified set; omitted'
+  → stdout: exactly 1 model (claude-opus-4-7)
+kiroxy opencode-config -api-key test-abc -output /tmp/phase-f-snippet2.json
+  → stdout empty (0 bytes); file written (914 bytes, 0600); jq clean
+```
+Temp artefacts cleaned (`/tmp/phase-f-*`, `/tmp/kiroxy-phase-f`).
+
+### Surprises
+- Initial STEP 0 precondition check failed (C.2b never ran). Operator
+  override reopened Phase F with a model-ID correction rider. Recorded
+  in `.sisyphus/notes/phase-F-halted-2026-05-12T07-32Z.md`.
+- Concurrent Phase D and G agents committed a burst of 6 commits while
+  this phase was in flight. Phase D's commit `1e467e5` absorbed the
+  Phase F files because they were untracked-on-disk at its `git add`
+  time. Outcome is acceptable (content intact, build green), attribution
+  is slightly muddled. Pattern for future parallel runs: either stage
+  files immediately when writing, or name files under a phase-specific
+  directory that concurrent agents treat as out-of-scope.
+
+### Not done / strict non-goals respected
+- No edit of `~/.config/opencode/opencode.json` (snippet only).
+- No schema validation beyond JSON well-formedness.
+- No auto-discovery of opencode installation.
+- No runtime dependency additions; stdlib only.
+- `v0.4.0` **not** tagged.
+- No `git push`.
+- No test added for the auth audit because no code was changed.
+
+### What unlocks real end-to-end
+opencode → kiroxy → Kiro still needs a working upstream credential
+(Phase C.2 still BLOCKED). The `opencode-config` output + docs are
+valid today; the full loop lights up the moment a fresh Kiro refresh
+token lands.
+
+---
+
+
 ## M10 — Minimal Dashboard  (2026-05-11 20:32 UTC)
 - Hours: 1.5 (on upper budget)
 - Commit: 0d624d1
