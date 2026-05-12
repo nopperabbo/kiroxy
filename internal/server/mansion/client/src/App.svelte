@@ -19,6 +19,8 @@
   import DetailDrawer from "./components/DetailDrawer.svelte";
   import ShortcutSheet from "./components/ShortcutSheet.svelte";
   import Toasts from "./components/Toasts.svelte";
+  import PoolPulse from "./components/PoolPulse.svelte";
+  import ActivityLedger from "./components/ActivityLedger.svelte";
 
   let paletteOpen = $state(false);
   let importOpen = $state(false);
@@ -50,6 +52,30 @@
         paletteOpen = !paletteOpen;
         return;
       }
+      // Esc always works, even while typing in the palette or search.
+      if (e.key === "Escape") {
+        if (paletteOpen) {
+          paletteOpen = false;
+          return;
+        }
+        if (importOpen) {
+          importOpen = false;
+          return;
+        }
+        if (sheetOpen) {
+          sheetOpen = false;
+          return;
+        }
+        if (store.selectedRequestId || store.selectedAccountId) {
+          store.selectRequest(null);
+          store.selectAccount(null);
+          return;
+        }
+        if (inEdit) {
+          (t as HTMLElement).blur();
+        }
+        return;
+      }
       if (inEdit) return;
       if (e.key === "/") {
         e.preventDefault();
@@ -60,14 +86,6 @@
       } else if (e.key === "?") {
         e.preventDefault();
         sheetOpen = !sheetOpen;
-      } else if (e.key === "Escape") {
-        if (paletteOpen) paletteOpen = false;
-        else if (importOpen) importOpen = false;
-        else if (sheetOpen) sheetOpen = false;
-        else if (store.selectedRequestId || store.selectedAccountId) {
-          store.selectRequest(null);
-          store.selectAccount(null);
-        }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -131,8 +149,12 @@
   <Topbar onOpenPalette={() => (paletteOpen = true)} onOpenImport={() => (importOpen = true)} />
 
   <main class="shell__main" id="main">
+    <section class="shell__pulse">
+      <PoolPulse />
+    </section>
     <section class="shell__board">
       <AccountBoard />
+      <ActivityLedger />
     </section>
     <section class="shell__stream">
       <RequestStream />
@@ -160,13 +182,19 @@
     margin-inline: auto;
     padding: var(--sp-5) var(--app-pad) var(--sp-8);
     display: grid;
-    gap: var(--sp-6);
+    gap: var(--sp-5);
     grid-template-columns: minmax(0, 1fr);
+  }
+  .shell__pulse {
+    grid-column: 1 / -1;
   }
   @media (min-width: 1120px) {
     .shell__main {
       grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-      gap: var(--sp-7);
+      gap: var(--sp-5) var(--sp-6);
+    }
+    .shell__pulse {
+      grid-column: 1 / -1;
     }
   }
   .shell__board,

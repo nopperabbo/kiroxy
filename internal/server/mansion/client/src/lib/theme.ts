@@ -18,9 +18,10 @@ export function readScheme(): Scheme {
     const v = localStorage.getItem(KEY);
     if (v === "dark" || v === "light" || v === "system") return v;
   } catch {
-    /* storage may be disabled; fall through to system default */
+    /* storage may be disabled; fall through to operator default */
   }
-  return "system";
+  // Operator Desk is dark-first: first-visit defaults to dark, not OS.
+  return "dark";
 }
 
 export function setScheme(s: Scheme): void {
