@@ -41,7 +41,15 @@ The `onboard.py` script is kept in-tree as **best-effort** automation for accoun
 - **AWS Builder ID device-code OAuth inside `kiroxy add-account`** — **CLOSED in v0.2.0 (Phase B).**
 - **`--json` flag for `list-accounts` and `status`** — machine-readable output. — P3
 - **Interactive `--yes` / `-y` flag on `remove-account`** when/if multi-user lands. — P3
-- **OpenAI-compatible surface** `/v1/chat/completions` + `/v1/models` — P1
+- **OpenAI-compatible surface** `/v1/chat/completions` + `/v1/models` — **CLOSED in Phase J (Unreleased).** Translation shim in `internal/openai` over the existing Anthropic pipeline; see `docs/OPENAI.md`. Follow-ups filed below as P2.
+- **OpenAI surface follow-ups (Phase J → v1.1+)** — P2:
+  - `tool_choice: "required"` and specific function-name forcing (today: 400).
+  - `response_format: json_object` / JSON mode passthrough (today: silently ignored).
+  - `stream_options.include_usage` opt-in (today: usage always included in final chunk; no client has complained but spec-strict clients may).
+  - `/v1/responses` (Assistants-style API surface) — larger scope, separate effort.
+  - `/v1/completions` legacy text endpoint (deprecated upstream; include only if a dependent client requires it).
+  - `/v1/embeddings` — out of scope without an embeddings-capable backend.
+  - https:// image URLs — would require server-side fetch + base64 re-encode; consider if Cursor or Continue start sending them.
 - **Prompt/response caching** (see kirocc `cache_points` / Quorinex `cache_tracker`) — P2
 - **Prometheus metrics exporter** — P2
 - **OTel tracing** (kirocc already has the wiring) — P2

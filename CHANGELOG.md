@@ -4,6 +4,43 @@ All notable changes to kiroxy will be documented in this file. Format loosely fo
 
 ## [Unreleased]
 
+### Added (Phase J — OpenAI-compatible API surface)
+
+- `POST /v1/chat/completions` endpoint: streaming + non-streaming
+  translation shim over the existing Anthropic `/v1/messages` pipeline.
+  OpenAI SDK clients (Cursor, Continue, Cline, aider, raw `openai-python`)
+  work against kiroxy with a one-line base-URL change. Auth reuses the
+  existing Bearer / X-Api-Key. Thinking blocks are dropped (no OpenAI
+  equivalent). Tool calls translate both directions: OpenAI
+  `tools[].function` -> Anthropic `tools`, Anthropic `tool_use` blocks ->
+  OpenAI `tool_calls`. Tool-role OpenAI messages fold into
+  `tool_result` blocks on a synthesized user message (consecutive tool
+  results coalesce into one message). Data-URI images (base64) pass
+  through; https:// URLs are rejected (upstream limitation).
+- `GET /v1/models` endpoint: lists all Kiro models plus the OpenAI
+  alias table, stable sorted, no duplicates.
+- Model alias resolver: `gpt-4o`, `gpt-4o-mini` -> `claude-sonnet-4-6`;
+  `gpt-4-turbo`, `gpt-4`, `o1` -> `claude-opus-4-7`; `gpt-3.5-turbo` ->
+  `claude-haiku-4.5`. `openai/<x>` prefix stripping. Unknown names pass
+  through (`claude-*` IDs already work natively). Response `model`
+  field echoes the caller's original alias verbatim.
+- OpenAI error envelope shape (`{error:{message,type,param,code}}`)
+  mapped from Anthropic error responses; status-to-type mapping
+  (`400->invalid_request_error`, `401/403->authentication_error`,
+  `5xx->api_error`).
+- Streaming translation: Anthropic SSE events -> OpenAI
+  `chat.completion.chunk` frames with terminal `data: [DONE]`. Usage
+  stats included in the final chunk unconditionally. `X-Accel-Buffering:
+  no` set for nginx/proxy transparency.
+- `docs/OPENAI.md` integration guide (Cursor, Continue, Cline, aider,
+  `openai-python` snippets + alias table + feature support matrix).
+- `internal/openai` package (types, translators, helpers, alias
+  resolver) with 43 unit tests + 10 handler integration tests.
+- Not implemented in v1.0 (documented as v1.1 follow-ups):
+  `tool_choice: "required"` / specific-function-name choice,
+  `response_format: json_object`, `stream_options.include_usage`
+  opt-in, `/v1/responses`, `/v1/completions`, `/v1/embeddings`.
+
 ### Added (Phase 2.5 — pool-mode token refresh)
 
 - Proactive token refresh for social-auth accounts in the pool path.
