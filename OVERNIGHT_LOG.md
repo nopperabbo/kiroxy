@@ -2,6 +2,132 @@
 
 Append-only. One entry per phase.
 
+## Phase D — Docker Deployment Path  (2026-05-12 15:15 UTC)
+- Hours: ~1.25
+- Commit: (this one)
+- Tag: (none — user will tag after full Phase D+F+G review)
+- Gate: **green** (`make gate` — 18 packages, all cached or pass)
+- Docker-level verification: **static only** (docker not installed on host; docker-* Make targets fail gracefully with clear errors, which is the designed behaviour for devs without docker)
+- Live smoke of the new subcommand:
+  ```
+  ./kiroxy help                                           → 'healthcheck' listed
+  ./kiroxy healthcheck --url=http://127.0.0.1:1/healthz   → exit 1, 'connection refused' (expected)
+  ./kiroxy serve &                                        → running on :18799
+  ./kiroxy healthcheck --url=http://127.0.0.1:18799/healthz
+                                                           → exit 0 (verifies status=="ok" from /healthz)
+  ```
+
+### Added files
+- `Dockerfile` — two-stage build:
+  - `builder`: `golang:1.26-alpine` with `GOEXPERIMENT=jsonv2`, BuildKit cache
+    mounts on `/go/pkg/mod` + `/root/.cache/go-build`, ldflags inject
+    `main.version` from `--build-arg VERSION`. `-trimpath -s -w` for
+    reproducible, stripped output.
+  - `runtime`: `gcr.io/distroless/static-debian12:nonroot`. No shell, no
+    package manager, UID 65532. Ships exactly one file plus `/data`.
+    OCI labels, `EXPOSE 8787`, in-binary `HEALTHCHECK` via
+    `kiroxy healthcheck`, `VOLUME ["/data"]`.
+- `docker-compose.yml` — hardened single-service compose:
+  - 127.0.0.1:8787 host port mapping by default; `KIROXY_HOST_PORT` env
+    override for operators who front with Caddy/nginx on the Docker network.
+  - `read_only: true`, `cap_drop: [ALL]`, `no-new-privileges:true`,
+    `tmpfs: /tmp:size=16m,mode=1777`, named volume `kiroxy-data:/data`,
+    json-file log rotation (10 MB × 5), `stop_grace_period: 35s`.
+  - Healthcheck re-states the Dockerfile's for visibility.
+- `.dockerignore` — excludes `.env*`, `*.db*`, `refresh_tokens.txt`,
+  `kiro_tokens.json`, `research/`, `_vendors/`, docs that aren't needed
+  at build time, VCS + IDE + OS cruft. Keeps build context ~5 MiB.
+- `cmd/kiroxy/healthcheck.go` — new subcommand. In-process HTTP GET to
+  `/healthz`, decodes `{"status":"ok"}`, exits 0/1. Needed because
+  distroless has no `curl` and no shell for `docker exec`-style probes.
+
+### Modified files
+- `cmd/kiroxy/main.go` — dispatch + help entry for `healthcheck`.
+- `Makefile` — 5 new targets (`docker-build`, `docker-run`,
+  `docker-compose-up`, `docker-compose-down`, `docker-clean`) and two
+  new variables (`IMAGE`, `LATEST`). Each target prechecks for
+  `command -v docker` and prints a readable error when missing, so
+  `make docker-build` on a non-Docker host exits 1 with
+  `"docker not found in PATH"` rather than a cryptic shell failure.
+- `README.md` — new "Run with Docker" section covering quickstart,
+  `docker run` one-liner, security posture table, and 3 gotchas
+  (`KIROXY_BIND=0.0.0.0` inside the container, `down -v` wipes the
+  vault, no `:latest` tag).
+- `.env.example` — documented `KIROXY_HOST_PORT` and `KIROXY_VERSION`
+  overrides that compose reads.
+- `CHANGELOG.md` — [Unreleased] entry enumerating Phase D deliverables.
+
+### Design decisions
+- **Distroless-nonroot, not Alpine, not scratch.** Scratch would work
+  for the static binary, but distroless-static ships `/etc/passwd`,
+  CA certs, tzdata, and a pre-created `nonroot` user — all things we
+  need or will need. `:nonroot` tag is hash-pinnable and gets CVE fixes
+  without tag churn.
+- **`KIROXY_BIND=0.0.0.0` baked into the image**, not the compose file.
+  The container's network namespace IS the boundary; binding to
+  loopback inside the container would make the port unreachable from
+  the host. Operators control real-world exposure via `docker run -p`
+  or compose's `ports:` mapping (which defaults to `127.0.0.1:8787`).
+- **Healthcheck re-uses the kiroxy binary**, not a sidecar. Shipping
+  curl/wget into distroless would double the attack surface of the
+  runtime stage; a ~5 KiB `http.Get` wrapper in the same binary is
+  strictly better.
+- **BuildKit cache mounts**, not `--mount=bind`. Subsequent builds on
+  the same host reuse module and compile caches without leaking into
+  the image layers. First cold build: ~90 s on estimated Apple-Silicon
+  hardware; warm rebuild: <10 s (both estimates — docker not on host
+  for actual measurement).
+- **No CGO**, because kiroxy uses `modernc.org/sqlite` (pure Go).
+  `CGO_ENABLED=0` hard-sets this and keeps the runtime distroless
+  image valid (distroless-static has no libc).
+- **Two image tags per build** (`kiroxy:$VERSION` + `kiroxy:local`) —
+  immutable-version for deploys, stable-alias for local compose.
+  Explicitly NOT tagging `:latest`; :latest is an anti-pattern for
+  reproducibility.
+
+### Security posture audit (self-review against dockerfile-generator skill)
+
+| Check | Status |
+|---|---|
+| Pinned base tags (no `:latest`) | ✅ `golang:1.26-alpine`, `distroless/static-debian12:nonroot` |
+| Non-root runtime user | ✅ `USER nonroot:nonroot` (UID 65532) |
+| Multi-stage build | ✅ builder + runtime |
+| No secrets in ENV or build args | ✅ `VERSION` is the only build-arg; API key comes from compose env |
+| `.dockerignore` excludes `.env`, `*.db`, secrets | ✅ explicit allowlist of `.env.example`, denylist of the rest |
+| Exec-form CMD/ENTRYPOINT | ✅ `["kiroxy"]`, `["serve"]` |
+| Cleaned package caches in same layer | ✅ `apk add --no-cache` |
+| HEALTHCHECK present | ✅ in-binary subcommand |
+| `EXPOSE` documented | ✅ 8787 |
+| OCI labels | ✅ title, description, licenses, source, vendor |
+| Cap-drop ALL + no-new-privileges | ✅ in compose |
+| Read-only root FS | ✅ in compose |
+| Reproducibility (`-trimpath`, `-s -w`) | ✅ in builder RUN |
+
+### Ruled-out alternatives
+- **Alpine runtime** — viable but adds an unneeded libc + busybox; distroless is stricter and the tradeoff isn't worth it for a Go binary.
+- **scratch** — no CA certs, no tzdata, no non-root user by default; would need 3 `COPY --from=builder` lines to bolt those in. Distroless-static already bundles them.
+- **`HEALTHCHECK CMD ["wget", ...]`** — wget doesn't exist in distroless. We'd have had to ship it, re-introducing a shell dependency. In-binary probe is cleaner.
+- **Cgo + mattn/go-sqlite3** — would need a runtime with libc (Alpine at minimum); Phase A already settled on modernc for zero-cgo reasons.
+
+### Not done (explicit)
+- **No `docker build` actually run.** Docker is not installed on this host; docker-build and docker-compose-up targets verify-abort with a clear error, which is their designed behaviour. User on any machine with Docker Desktop can run `make docker-compose-up` from the repo root and observe behaviour matching this log.
+- **No live end-to-end smoke through `/v1/messages` via the container.** End-to-end credential flow was resolved in Phase C.2b (v0.2.2 smoke succeeded); actual container-level smoke deferred to a host with Docker installed.
+- **No multi-platform (ARM + AMD) build.** The Dockerfile is arch-agnostic; actual `buildx --platform linux/amd64,linux/arm64` is a CI concern and deferred.
+
+### Environment cleanliness
+- No server kept running after tests (`pkill -f 'kiroxy serve'`).
+- Test SQLite files at `/tmp/dkgate.db*` removed.
+- `~/.kiroxy/tokens.db` untouched.
+- No git push.
+
+### BACKLOG diff
+- No new items; Phase D closes the long-standing "D1 — Docker?" decision from `BUILD_PLAN.md` as **included**, not deferred.
+
+---
+
+
+
+
 ## Phase C.2 — Triplet Path Acceptance Test  (2026-05-12 14:20 UTC)
 - Hours: ~45 min (within 60 min cap)
 - Commit: (this one)

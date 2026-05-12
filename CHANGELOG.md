@@ -4,7 +4,12 @@ All notable changes to kiroxy will be documented in this file. Format loosely fo
 
 ## [Unreleased]
 
-(no unreleased changes)
+### Added
+- **Docker deployment path (Phase D).** Multi-stage `Dockerfile` (distroless-nonroot runtime, ~30 MiB) + hardened `docker-compose.yml` (read-only root FS, all caps dropped, `no-new-privileges`, named volume at `/data/tokens.db`). Pins `GOEXPERIMENT=jsonv2` in the build stage and injects version via `-ldflags -X main.version=$VERSION`.
+- **`kiroxy healthcheck` subcommand.** In-binary `/healthz` probe used by the container `HEALTHCHECK` directive; distroless has no shell/curl, so the image re-executes itself.
+- **Makefile targets** `docker-build`, `docker-run`, `docker-compose-up`, `docker-compose-down`, `docker-clean`. Each target exits cleanly with a readable error when `docker` is not on PATH.
+- **`.dockerignore`** excluding `.env*`, `*.db*`, `refresh_tokens.txt`, `kiro_tokens.json`, and VCS/build artefacts from the build context.
+- **README "Run with Docker"** section covering quickstart, manual `docker run`, security posture, and the `KIROXY_BIND=0.0.0.0` / volume gotchas.
 
 ## [0.1.0-mvp] — 2026-05-11
 
