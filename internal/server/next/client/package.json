@@ -1,0 +1,25 @@
+{
+  "name": "kiroxy-dashboard-next",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Dashboard Next — experimental Svelte 5 frontend for kiroxy",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "svelte-check --tsconfig ./tsconfig.json && vite build",
+    "build:fast": "vite build",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "5.0.3",
+    "@tsconfig/svelte": "5.0.4",
+    "svelte": "5.15.0",
+    "svelte-check": "4.1.1",
+    "typescript": "5.7.2",
+    "vite": "6.0.7"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

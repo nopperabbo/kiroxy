@@ -1,0 +1,162 @@
+@layer reset, tokens, base, theme, components, utilities;
+
+@import "./tokens.css";
+
+@layer reset {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    min-block-size: 100vh;
+    font-family: var(--font-sans);
+    font-size: var(--fs-base);
+    line-height: var(--lh-normal);
+    color: var(--c-text);
+    background: var(--c-bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-synthesis: none;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  ul,
+  ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  a {
+    color: var(--c-accent);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+  }
+
+  table {
+    border-collapse: collapse;
+    inline-size: 100%;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--c-focus);
+    outline-offset: 2px;
+    border-radius: var(--r-sm);
+  }
+
+  /* Baseline svg behavior */
+  svg {
+    display: inline-block;
+    vertical-align: middle;
+  }
+}
+
+@layer base {
+  /* Typed custom properties for smooth animation of non-standard values. */
+  @property --accent-l {
+    syntax: "<percentage>";
+    inherits: true;
+    initial-value: 72%;
+  }
+
+  @property --tick {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0;
+  }
+
+  kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--c-border-strong);
+    background: var(--c-surface-2);
+    color: var(--c-text-dim);
+    font-size: var(--fs-xs);
+    line-height: 1;
+  }
+
+  /* Reduced motion — absolute respect. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* View-transition defaults. Overridden per-target where meaningful. */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: var(--mo-med);
+    animation-timing-function: var(--ease-std);
+  }
+}
+
+@layer utilities {
+  .sr-only {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "calt" 0;
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dim {
+    color: var(--c-text-dim);
+  }
+
+  .faint {
+    color: var(--c-text-faint);
+  }
+}
