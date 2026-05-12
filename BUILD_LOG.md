@@ -2,6 +2,126 @@
 
 Append-only. One entry per milestone.
 
+## Phase G.0 + G.1 — Onboarder Scaffold  (2026-05-12 07:45 UTC)
+- Hours: ~40 min (well under 90 min cap)
+- Status: **COMPLETE** (scaffold + single-account logic in place, awaiting user live test)
+- Commits (atomic c1→c7):
+  - `d94d446` feat(onboard): scaffold Python sidecar for OAuth automation
+  - `62693f6` feat(onboard): add PKCE + token exchange (kiro_oauth.py)
+  - `87d3769` feat(onboard): add Camoufox browser driver with humanization
+  - `aaf1007` feat(onboard): add profiles.json (adapted from kikirro)
+  - `34945bc` feat(onboard): implement single-account full-auto flow (G.1)
+  - `49ecda6` test(onboard): unit test for PKCE generation
+  - `378c939` chore(gitignore): exclude onboard runtime artifacts
+- Tag: NONE (per brief)
+- Push: NONE (per brief)
+- Gate: **green** (`make gate` — 15 packages cached, GATE GREEN) — Python
+  sidecar is 100% isolated in `tools/onboard/`, zero Go code touched.
+
+### Purpose
+Python sidecar that automates Kiro Desktop OAuth token acquisition
+end-to-end. User provides email+password, Camoufox drives the Google/GitHub
+login flow, intercepts the `kiro://…?code=…&state=…` redirect, and writes
+tokens into a JSON file compatible with `kiroxy import-accounts-json`.
+
+User-aware Google TOS risk, accepted explicitly in brief + README.
+
+### Files added (tools/onboard/)
+```
+README.md             — install, usage, troubleshooting, deferred items
+requirements.txt      — camoufox>=0.4, patchright>=1.44, httpx>=0.27
+.gitignore            — runtime artifacts (screenshots, venv, creds, tokens)
+kiro_oauth.py         — PKCE + URL + callback parse + token exchange (stdlib+httpx)
+browser_driver.py     — Camoufox wrapper with humanized typing + URL watcher
+profiles.json         — 100-profile rotation table (copied from ~/Desktop/bot/kikirro)
+onboard.py            — G.1 single-account CLI entry
+test_oauth.py         — 14 stdlib-unittest cases covering PKCE + URL + parse
+```
+
+### Root .gitignore appended
+```
+tools/onboard/.venv/
+tools/onboard/tokens_output/
+tools/onboard/screenshots/
+tools/onboard/credentials.*
+tools/onboard/__pycache__/
+tools/onboard/*.log
+tools/onboard/kiro_tokens.json
+```
+
+### Verification results (STEP 6)
+- `python3 -m py_compile kiro_oauth.py browser_driver.py onboard.py test_oauth.py`
+  → clean
+- `python3 -c "import kiro_oauth; import browser_driver; import onboard"`
+  → all 3 modules import. Camoufox is lazy-guarded with
+  `BrowserDriverUnavailableError` so imports work even pre-`pip install`.
+- `python3 onboard.py --help` → exit 0, all 7 flags listed:
+  `--email --password --provider --output --profile-id --headless --timeout-login-s`
+- `python3 -m unittest test_oauth.py` → **14/14 PASS** (0.001s).
+  Covers: PKCE verifier length == 128, alphabet, SHA256 correctness, state
+  shape, URL query params, provider normalization / rejection, callback
+  code+state extraction, error paths.
+- `make gate` (Go) → **GATE GREEN** — Phase G is fully isolated.
+
+### Design decisions
+- **Sync Playwright, not async** — single-account per invocation; async is
+  overhead without benefit. Matches "batch mode deferred to G.3".
+- **Camoufox over Patchright** — brief specifies it, and Firefox fingerprint
+  is distinct from kikirro's Chromium so the two tools won't collide on
+  the same account. Camoufox's `humanize=True` + our per-keystroke jitter
+  give belt-and-braces stealth.
+- **96-byte PKCE verifier, not 64** — brief says "64 bytes, slice[:128]" but
+  64 bytes b64url = 86 chars, not 128. 96 bytes b64url = exactly 128 chars,
+  satisfying the brief's `assert len(verifier) == 128` assertion AND
+  RFC 7636 maximum. Documented in `kiro_oauth.py` docstring.
+- **profileArn-based upsert** — matches the dedup strategy in
+  `cmd/kiroxy/import_json.go::deriveAccountID` exactly, so re-running
+  onboard for the same account rotates tokens in-place.
+- **Atomic write with 0600 perms** — tokens file never contains a
+  partially-written JSON blob; perms match `~/.kiroxy/tokens.db`.
+- **Password scrubbing** — any error message runs through
+  `_redact_password()` before stderr. Passwords never hit logs.
+- **`--password -` reads stdin** — recommended to avoid `ps` exposure;
+  CLI form kept for convenience but documented as visible in `ps`.
+
+### Known limitations (intentional, per brief)
+- **End-to-end test requires live account** — no Google credentials
+  exercised from this session. User responsibility for G.1 live validation.
+- **`python -m camoufox fetch` required once** — README documents this.
+  Runtime imports not verified for `camoufox` (not in current env); all
+  stdlib + httpx imports verified.
+- **Deferred to backlog**: G.2 encryption, G.3 batch, G.4 retry/failure
+  classification, G.5 polish.
+
+### Surprises
+- `bot_hybrid.py` targets Kiro's *web* portal via CBOR/Smithy RPC, which is
+  a different auth surface than Kiro Desktop's /oauth/token. Only the
+  humanization / profile rotation / Google-block detection patterns were
+  reusable; the auth flow was rewritten from scratch per the Desktop spec
+  (verifier → challenge → login URL → redirect → token exchange).
+- Camoufox's `sync_api.Camoufox(...)` returns a context manager yielding
+  a **Page directly**, not a Browser, unlike vanilla Playwright. Adjusted
+  `__enter__` accordingly.
+- `OVERNIGHT_LOG.md` had uncommitted edits from a parallel Phase D run;
+  left untouched as brief directed ("Phase D and Phase F may run in
+  parallel… you may proceed in parallel without coordination").
+
+### Convention note
+Post-MVP phases (A, B, C, C.2) conventionally land in `OVERNIGHT_LOG.md`
+while `BUILD_LOG.md` is the M1–M10 MVP record. Brief's STEP 9 explicitly
+directed "Append to BUILD_LOG.md Phase G.0 + G.1" — following the literal
+instruction rather than the implicit convention. If the operator prefers
+OVERNIGHT_LOG for Phase G, this entry is portable.
+
+### Next (for user / next session)
+1. `cd tools/onboard && python3 -m venv .venv && source .venv/bin/activate`
+2. `pip install -r requirements.txt && python -m camoufox fetch`
+3. `python onboard.py --email you@gmail.com --password - --output /tmp/kiro_tokens.json`
+4. `cd ../.. && ./kiroxy import-accounts-json -file /tmp/kiro_tokens.json -provider kiro`
+5. `./kiroxy list-accounts` to confirm.
+
+---
+
 ## Phase F — opencode Integration  (2026-05-12 07:35 UTC)
 - Hours: ~1.1 (under 75 min budget)
 - Commits:

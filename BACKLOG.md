@@ -2,6 +2,16 @@
 
 Moved from the build brief / caught by anti-scope-creep during MVP:
 
+## Phase G — Onboarder follow-ups (post G.0 + G.1)
+
+G.0 scaffold + G.1 single-account flow landed at `d94d446`…`378c939`.
+Remaining work:
+
+- **P2: G.2 — Credential encryption.** Current onboarder ingests `--password` via CLI arg (visible in `ps`) or stdin. Batch mode (G.3) needs persistent credential storage. Options: age (modern, portable, no keyring dependency) or macOS Keychain (OS-integrated; requires `security(1)` shelling). Preferred: age with password-derived keys; fall back to Keychain on macOS if user opts in. Deliverable: `tools/onboard/credentials.enc` generator + decrypter; `onboard.py --credentials-file credentials.enc --email you@…` path that reads the decrypted password for that entry only.
+- **P2: G.3 — Batch mode with concurrency cap.** Accept `--credentials-file` (or plain `--accounts-file email:password`) and run N accounts through onboarder in parallel with a concurrency cap (default 3; Kiro/Google are both rate-sensitive). Atomic writes already in place; needs a lock file or fcntl around the output JSON for concurrent `_upsert`. Reuse profile rotation from `_pick_profile()`.
+- **P2: G.4 — Retry logic + failure classification.** Classify failures: transient (network, timeout, Camoufox crash) → retry with backoff; hard (wrong password, Google block, consent declined) → fail fast + surface. Mirror kikirro's `_classify_error` shape. On classify=hard, add a `failed_accounts.json` sidecar so G.3 batch runs can resume.
+- **P3: G.5 — Polish, progress UI, docs.** tqdm-style progress for batch, per-account status line, README expanded with success/failure rate tips, retry playbook, screenshots walkthrough.
+
 ## Phase 2 (post-v0.1.0)
 
 - **P1 (PROMOTED from P2): Wire pool-mode token refresher for source="import-accounts" accounts.** Current state: `pool.TokenGetter.GetToken()` doesn't read `Bundle.Metadata` nor trigger refresh. Triplet-imported accounts work only while the stored access_token is fresh; they break after ~1h when it expires because the kiroclient used for the pool path has no `WithTokenRefresher` (only `KIROXY_KIRO_DB_PATH` mode does). Scope: extend `pool.TokenGetter` + `main.go` to call `auth.refreshSocialToken` when triplet accounts need rotation; persist rotated refresh_token + access_token back to the vault.
