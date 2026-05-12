@@ -1,0 +1,443 @@
+/* ============================================================================
+ * kiroxy design tokens — CSS custom properties
+ * ----------------------------------------------------------------------------
+ * Source of truth: docs/DESIGN_SYSTEM.md §2 (color), §3 (typography), §4
+ * (spacing), §5 (motion). Mirrored in tokens.ts (typed) and tokens.json
+ * (W3C DTCG format).
+ *
+ * Usage: import this file before any component CSS. Layers are declared
+ * so component styles cascade naturally above tokens without !important.
+ *
+ * Do NOT modify tokens inline in components. If a new token is needed, add
+ * it here (with a rationale comment) and update tokens.ts + tokens.json.
+ * ========================================================================== */
+
+@layer reset, tokens, base, theme, components, utilities;
+
+@layer tokens {
+
+  /* ==========================================================================
+   * 0. CASCADE MODEL
+   * ==========================================================================
+   * `color-scheme: light dark` on :root is required for light-dark() to
+   * resolve. Data-theme attribute override wins.
+   * See DESIGN_SYSTEM.md §2.6.
+   */
+  :root {
+    color-scheme: light dark;
+  }
+
+  :root[data-theme="light"]            { color-scheme: only light; }
+  :root[data-theme="dark"]             { color-scheme: only dark;  }
+  :root[data-theme="dark-dimmed"]      { color-scheme: only dark;  }
+  :root[data-theme="dark-highcontrast"] { color-scheme: only dark; }
+  :root[data-theme="light-highcontrast"] { color-scheme: only light; }
+
+
+  /* ==========================================================================
+   * 1. COLOR — DARK THEME (default)
+   * ==========================================================================
+   * 7-step neutral ramp, hue 285 (Tailwind v4 zinc), cyan-teal accent at
+   * oklch(0.720 0.130 200). See DESIGN_SYSTEM.md §2.2.
+   *
+   * Chroma ceiling: 0.25 (sRGB-safe; Safari/Chrome clip higher values).
+   * See DESIGN_SYSTEM.md §2.7 for gamut-mapping pitfalls.
+   */
+  :root,
+  :root[data-theme="dark"] {
+    /* Neutrals --------------------------------------------------------------- */
+    --color-bg:              oklch(0.145 0.005 285);   /* canvas */
+    --color-surface:         oklch(0.205 0.006 285);   /* cards, table rows, sidebar */
+    --color-elevated:        oklch(0.265 0.007 285);   /* hovered row, popover, modal */
+    --color-border:          oklch(0.340 0.008 285);   /* default border */
+    --color-text-dim:        oklch(0.660 0.015 285);   /* secondary, timestamps */
+    --color-text-default:    oklch(0.830 0.012 285);   /* body */
+    --color-text-bright:     oklch(0.970 0.003 285);   /* headings, emphasis */
+
+    /* Accent — cyan-teal (distinct from Vercel blue / Supabase green) ------ */
+    --color-accent:          oklch(0.720 0.130 200);
+    --color-accent-hover:    oklch(0.780 0.130 200);
+    --color-accent-pressed:  oklch(0.660 0.130 200);
+    --color-accent-subtle:   color-mix(in oklch, var(--color-accent) 14%, transparent);
+    --color-accent-border:   color-mix(in oklch, var(--color-accent) 30%, transparent);
+
+    /* Semantics — all tuned for ≥ 0.5 ΔL against --color-bg ---------------- */
+    --color-success:         oklch(0.720 0.180 145);
+    --color-warning:         oklch(0.800 0.165  85);
+    --color-danger:          oklch(0.680 0.220  25);
+    --color-info:            oklch(0.720 0.130 240);
+
+    --color-success-subtle:  color-mix(in oklch, var(--color-success) 14%, transparent);
+    --color-warning-subtle:  color-mix(in oklch, var(--color-warning) 14%, transparent);
+    --color-danger-subtle:   color-mix(in oklch, var(--color-danger)  14%, transparent);
+    --color-info-subtle:     color-mix(in oklch, var(--color-info)    14%, transparent);
+
+    /* Derived utilities ---------------------------------------------------- */
+    --color-border-subtle:   color-mix(in oklch, var(--color-text-default)  8%, transparent);
+    --color-text-muted:      color-mix(in oklch, var(--color-text-default) 62%, transparent);
+
+    /* Selection / focus ring ----------------------------------------------- */
+    --color-focus-ring:      var(--color-accent);
+    --color-selection-bg:    color-mix(in oklch, var(--color-accent) 28%, transparent);
+    --color-selection-fg:    var(--color-text-bright);
+  }
+
+  /* ==========================================================================
+   * 1b. DARK-DIMMED (GitHub Primer pattern — softer dark for reading sessions)
+   * ==========================================================================
+   * Neutrals lifted from pure black. Accent + semantics inherit from dark.
+   * See DESIGN_SYSTEM.md §2.3.
+   */
+  :root[data-theme="dark-dimmed"] {
+    --color-bg:            oklch(0.195 0.008 285);
+    --color-surface:       oklch(0.255 0.008 285);
+    --color-elevated:      oklch(0.315 0.008 285);
+    --color-border:        oklch(0.380 0.009 285);
+  }
+
+  /* ==========================================================================
+   * 1c. LIGHT THEME (5-step neutral)
+   * ==========================================================================
+   * Dark has more contrast range; light needs fewer stops. Warning hue shifted
+   * to 60 to preserve contrast against the lighter canvas. See §2.4 + §2.7.
+   */
+  :root[data-theme="light"] {
+    --color-bg:              oklch(0.995 0      0  );
+    --color-surface:         oklch(0.975 0.002 285);
+    --color-elevated:        oklch(0.945 0.004 285);
+    --color-border:          oklch(0.895 0.005 285);
+    --color-text-dim:        oklch(0.500 0.015 285);
+    --color-text-default:    oklch(0.180 0.010 285);
+    --color-text-bright:     oklch(0.080 0.005 285);
+
+    --color-accent:          oklch(0.500 0.155 200);
+    --color-accent-hover:    oklch(0.440 0.155 200);
+    --color-accent-pressed:  oklch(0.560 0.155 200);
+    --color-accent-subtle:   color-mix(in oklch, var(--color-accent) 10%, transparent);
+    --color-accent-border:   color-mix(in oklch, var(--color-accent) 25%, transparent);
+
+    --color-success:         oklch(0.500 0.155 145);
+    --color-warning:         oklch(0.540 0.170  60);   /* see §2.7 pitfall — always pair with icon */
+    --color-danger:          oklch(0.520 0.220  25);
+    --color-info:            oklch(0.500 0.180 240);
+
+    --color-success-subtle:  color-mix(in oklch, var(--color-success) 10%, transparent);
+    --color-warning-subtle:  color-mix(in oklch, var(--color-warning) 10%, transparent);
+    --color-danger-subtle:   color-mix(in oklch, var(--color-danger)  10%, transparent);
+    --color-info-subtle:     color-mix(in oklch, var(--color-info)    10%, transparent);
+
+    --color-border-subtle:   color-mix(in oklch, var(--color-text-default)  6%, transparent);
+    --color-text-muted:      color-mix(in oklch, var(--color-text-default) 55%, transparent);
+
+    --color-selection-bg:    color-mix(in oklch, var(--color-accent) 18%, transparent);
+  }
+
+  /* ==========================================================================
+   * 1d. HIGH-CONTRAST THEMES (first-class, Render pattern — §2.5)
+   * ==========================================================================
+   */
+  :root[data-theme="dark-highcontrast"] {
+    --color-bg:           oklch(0.08  0 0);
+    --color-surface:      oklch(0.15  0 0);
+    --color-elevated:     oklch(0.22  0 0);
+    --color-border:       oklch(0.55  0 0);           /* 3× default border luminance */
+    --color-text-dim:     oklch(0.800 0.010 285);
+    --color-text-default: oklch(0.950 0.005 285);
+    --color-text-bright:  oklch(1.000 0     0  );
+    --color-accent:       oklch(0.820 0.150 200);     /* higher L for AAA contrast */
+  }
+
+  :root[data-theme="light-highcontrast"] {
+    --color-bg:           oklch(1.000 0 0);
+    --color-surface:      oklch(0.96  0 0);
+    --color-elevated:     oklch(0.92  0 0);
+    --color-border:       oklch(0.35  0 0);           /* very dark border on white */
+    --color-text-dim:     oklch(0.25  0 0);
+    --color-text-default: oklch(0.10  0 0);
+    --color-text-bright:  oklch(0.00  0 0);
+    --color-accent:       oklch(0.35  0.20 240);      /* deep blue, ≥ 7:1 on white */
+  }
+
+
+  /* ==========================================================================
+   * 2. TYPOGRAPHY — families, scale, weights, line heights
+   * ==========================================================================
+   * Inter Variable + JetBrains Mono Variable, both OFL. Self-hosted WOFF2.
+   * Type scale is 1.200 (minor third), base 14px. NOT fluid — see §3.2.
+   */
+  :root {
+    --font-sans: "InterVariable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    /* Sizes — 1.200 ratio, base 14px */
+    --type-11:  0.6875rem;   /* 11px — micro meta, keycap badges */
+    --type-12:  0.75rem;     /* 12px — metadata, timestamps */
+    --type-13:  0.8125rem;   /* 13px — compact body (Linear 510 weight pattern) */
+    --type-14:  0.875rem;    /* 14px — default body */
+    --type-16:  1rem;        /* 16px — h3 */
+    --type-20:  1.25rem;     /* 20px — h2 */
+    --type-24:  1.5rem;      /* 24px — h1 */
+    --type-32:  2rem;        /* 32px — welcome hero (only site that fluid-clamps) */
+
+    /* Weights */
+    --weight-regular:   400;
+    --weight-solid:     510;  /* Linear's body-text trick */
+    --weight-medium:    560;  /* UI labels, buttons */
+    --weight-semibold:  620;  /* headings */
+
+    /* Line heights */
+    --lh-tight:    1.20;  /* headings */
+    --lh-snug:     1.40;  /* UI default */
+    --lh-normal:   1.55;  /* body prose */
+    --lh-relaxed:  1.70;  /* empty-state prose */
+
+    /* Letter spacing (used sparingly — JetBrains Mono already wide) */
+    --tracking-tight:   -0.01em;
+    --tracking-normal:   0;
+    --tracking-wide:     0.01em;
+    --tracking-keycap:   0.04em;  /* subtle kerning for ⌘K-style badges */
+
+    /* Font-feature defaults for Inter (§3.1) */
+    --ff-inter-default: "cv05", "cv08", "cv11", "ss03";
+    /* Feature-lock for mono (disable ligatures so `/` and `->` don't rearrange) */
+    --ff-mono-paths:    "liga" 0, "calt" 0;
+  }
+
+
+  /* ==========================================================================
+   * 3. SPACING — 4px grid
+   * ==========================================================================
+   * Rhythms: 4, 8, 12, 16, 24, 32, 48, 64 (no 36, no 40 — §4.1).
+   */
+  :root {
+    --space-0:   0;
+    --space-1:   0.25rem;    /*  4px */
+    --space-2:   0.5rem;     /*  8px */
+    --space-3:   0.75rem;    /* 12px */
+    --space-4:   1rem;       /* 16px */
+    --space-6:   1.5rem;     /* 24px */
+    --space-8:   2rem;       /* 32px */
+    --space-12:  3rem;       /* 48px */
+    --space-16:  4rem;       /* 64px */
+  }
+
+
+  /* ==========================================================================
+   * 4. RADII
+   * ==========================================================================
+   * 6px inputs, 8px cards, 10–12px panels, 16px modals. Never uniform.
+   * See REFERENCE_GALLERY.md → Refined-Minimal / Warm-Modern 2026 Aesthetic.
+   */
+  :root {
+    --radius-0:     0;          /* hard edges (keyboard-focus tables) */
+    --radius-2:     2px;        /* tight chips, keycap badges */
+    --radius-4:     4px;        /* compact affordances */
+    --radius-6:     6px;        /* inputs, buttons */
+    --radius-8:     8px;        /* cards, popovers */
+    --radius-12:    12px;       /* panels, drawer rail */
+    --radius-16:    16px;       /* dialogs */
+    --radius-full:  9999px;     /* pills, status dots */
+  }
+
+
+  /* ==========================================================================
+   * 5. SHADOWS — minimal, darker-than-surface (Grafana pattern)
+   * ==========================================================================
+   * Dark-mode shadows must be DARKER than the surface they elevate —
+   * see REFERENCE_GALLERY.md → Grafana.
+   *
+   * Default theme: dark. Light-mode shadow overrides below.
+   */
+  :root {
+    /* Dark-mode shadows (default) */
+    --shadow-subtle:   0 1px 0 0 oklch(0 0 0 / 0.35);
+    --shadow-elevated: 0 2px 8px oklch(0 0 0 / 0.45);
+    --shadow-overlay:  0 8px 24px oklch(0.02 0 0 / 0.70);  /* Grafana's rgb(1,4,9) equivalent */
+    --shadow-focus:    0 0 0 2px color-mix(in oklch, var(--color-accent) 55%, transparent);
+  }
+
+  :root[data-theme="light"] {
+    --shadow-subtle:   0 1px 0 0 oklch(0.40 0 0 / 0.08);
+    --shadow-elevated: 0 2px 8px oklch(0.40 0 0 / 0.10);
+    --shadow-overlay:  0 8px 24px oklch(0.30 0 0 / 0.14);
+    --shadow-focus:    0 0 0 2px color-mix(in oklch, var(--color-accent) 45%, transparent);
+  }
+
+
+  /* ==========================================================================
+   * 6. MOTION — one easing, four durations
+   * ==========================================================================
+   * `cubic-bezier(0.16, 1, 0.3, 1)` is Linear's signature ease-out.
+   * `prefers-reduced-motion: reduce` collapses all durations to 0ms —
+   * see §5.1 and the non-negotiable at the bottom of this file.
+   */
+  :root {
+    /* Easing */
+    --ease-default: cubic-bezier(0.16, 1, 0.3, 1);        /* ease-out, Linear signature */
+    --ease-snap:    cubic-bezier(0.3, 0, 0, 1);            /* sharper in/out for state toggles */
+    --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);    /* subtle overshoot — RESERVED, use sparingly */
+
+    /* Durations */
+    --dur-instant:   0ms;     /* selection highlight, focus ring */
+    --dur-quick:     120ms;   /* hover, popover, tooltip, command palette */
+    --dur-moderate:  200ms;   /* dialog, drawer, row-flash fade start */
+    --dur-slow:      320ms;   /* cross-page view transition */
+    --dur-flash:     600ms;   /* SSE row-update green-border pulse (single-shot) */
+  }
+
+
+  /* ==========================================================================
+   * 7. Z-INDEX SCALE
+   * ==========================================================================
+   * Explicit scale. Never use magic numbers. Never use z-index > --z-max.
+   */
+  :root {
+    --z-base:      0;
+    --z-raised:    10;     /* card hover, row elevation */
+    --z-sticky:    100;    /* sidebar, top breadcrumb if sticky */
+    --z-dropdown:  200;    /* select popout, autocomplete */
+    --z-drawer:    300;    /* right drawer */
+    --z-modal:     400;    /* <dialog> */
+    --z-popover:   500;    /* native [popover] (always above modal if triggered from modal) */
+    --z-toast:     600;    /* sonner stack */
+    --z-tooltip:   700;    /* hover tooltips */
+    --z-palette:   800;    /* command palette — always on top */
+    --z-max:       999;    /* emergency escape hatch; never hard-code above this */
+  }
+
+
+  /* ==========================================================================
+   * 8. LAYOUT TOKENS
+   * ==========================================================================
+   * Opinionated sizes referenced from §4.4 + §4.5.
+   */
+  :root {
+    --layout-sidebar-width:         240px;
+    --layout-sidebar-collapsed:     56px;
+    --layout-breadcrumb-height:     40px;
+    --layout-drawer-width:          400px;
+    --layout-drawer-width-wide:     560px;
+
+    --layout-content-max-prose:     72ch;   /* docs, tooltips, empty-state prose */
+    --layout-modal-width-simple:    480px;
+    --layout-modal-width-wizard:    640px;
+    --layout-modal-width-full:      800px;
+
+    --layout-palette-width:         640px;
+    --layout-palette-top-offset:    20vh;
+
+    /* Container-query breakpoints (component-level) */
+    --cq-narrow:   600px;   /* collapse secondary columns */
+    --cq-medium:   800px;   /* show right drawer as side-by-side */
+
+    /* Viewport breakpoints (global chrome only) */
+    --bp-tablet:   768px;   /* sidebar collapses to icons */
+    --bp-desktop:  1280px;  /* primary design target */
+  }
+
+
+  /* ==========================================================================
+   * 9. DENSITY MODES
+   * ==========================================================================
+   * Two modes via data-density on :root. See §4.2.
+   */
+  :root {
+    /* Comfortable (default) */
+    --density-row-height:       36px;
+    --density-cell-padding-x:   12px;
+    --density-button-height:    32px;
+    --density-input-height:     32px;
+    --density-card-padding:     16px;
+    --density-sidebar-item:     32px;
+  }
+
+  :root[data-density="compact"] {
+    --density-row-height:       28px;
+    --density-cell-padding-x:    8px;
+    --density-button-height:    28px;
+    --density-input-height:     28px;
+    --density-card-padding:     12px;
+    --density-sidebar-item:     28px;
+  }
+
+
+  /* ==========================================================================
+   * 10. COMPONENT-LEVEL TOKEN ALIASES
+   * ==========================================================================
+   * Short, semantic names components should use first. When a component needs
+   * a new token, add it here rather than referencing `--color-border` raw.
+   */
+  :root {
+    /* Focus ring — mandatory on all :focus-visible elements */
+    --ring-width:     2px;
+    --ring-offset:    2px;
+    --ring-color:     var(--color-accent);
+    --ring-color-hc:  oklch(0.95 0.20 200);   /* high-contrast override */
+
+    /* Status-dot canonical sizing */
+    --dot-size:       8px;
+
+    /* Row-flash (SSE updates) — drives the @property animation */
+    --row-flash-color: var(--color-success);
+  }
+
+
+  /* ==========================================================================
+   * 11. P3 WIDE-GAMUT PROGRESSIVE ENHANCEMENT
+   * ==========================================================================
+   * On displays that support P3, bump chroma on the accent + danger so they
+   * visibly pop. See REFERENCE_GALLERY.md → P3 gamut entry.
+   */
+  @media (color-gamut: p3) {
+    :root, :root[data-theme="dark"] {
+      --color-accent:  oklch(0.720 0.170 200);
+      --color-success: oklch(0.720 0.220 145);
+      --color-danger:  oklch(0.680 0.270  25);
+    }
+  }
+
+
+  /* ==========================================================================
+   * 12. @property REGISTRATIONS
+   * ==========================================================================
+   * Typed custom properties enable animation on values the browser otherwise
+   * would not animate. See §5.2 — required for the row-flash pulse.
+   */
+  @property --row-flash-progress {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0;
+  }
+
+  @property --accent-hue {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 200;
+  }
+
+}  /* end @layer tokens */
+
+
+/* ==========================================================================
+ * 13. REDUCED-MOTION OVERRIDE (outside @layer tokens on purpose)
+ * ==========================================================================
+ * Non-negotiable per DESIGN_SYSTEM.md §5.1.
+ * Lives at the bottom so it wins regardless of cascade layer order.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant:   0ms;
+    --dur-quick:     0ms;
+    --dur-moderate:  0ms;
+    --dur-slow:      0ms;
+    --dur-flash:     0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
