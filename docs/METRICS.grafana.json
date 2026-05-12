@@ -1,0 +1,227 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Starter dashboard for kiroxy /metrics. Assumes a Prometheus datasource named 'Prometheus'.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": { "defaults": { "custom": {}, "unit": "short" } },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "graphMode": "area", "colorMode": "value", "textMode": "auto" },
+      "title": "Uptime",
+      "type": "stat",
+      "targets": [
+        { "expr": "kiroxy_uptime_seconds", "refId": "A" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 16, "x": 8, "y": 0 },
+      "id": 2,
+      "title": "Request rate by status class",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(kiroxy_requests_total[5m])) by (status)",
+          "legendFormat": "{{status}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 6 },
+      "id": 3,
+      "title": "Error rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(kiroxy_requests_total{status=~\"4..|5..\"}[5m])) / clamp_min(sum(rate(kiroxy_requests_total[5m])), 1)",
+          "legendFormat": "error rate",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 } }
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 6 },
+      "id": 4,
+      "title": "Error kinds (typed)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(kiroxy_request_errors_total[5m])) by (kind)",
+          "legendFormat": "{{kind}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 6 },
+      "id": 5,
+      "title": "Upstream TTFB p95 by model",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(kiroxy_upstream_ttfb_seconds_bucket[5m])) by (le, model))",
+          "legendFormat": "{{model}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "id": 6,
+      "title": "Request latency p50 / p95 / p99 (streaming)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(rate(kiroxy_request_duration_seconds_bucket{stream=\"true\"}[5m])) by (le))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(kiroxy_request_duration_seconds_bucket{stream=\"true\"}[5m])) by (le))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(kiroxy_request_duration_seconds_bucket{stream=\"true\"}[5m])) by (le))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "id": 7,
+      "title": "Pool health (stacked)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "kiroxy_accounts_available", "legendFormat": "available", "refId": "A" },
+        { "expr": "kiroxy_accounts_cooldown", "legendFormat": "cooldown", "refId": "B" },
+        { "expr": "kiroxy_accounts_failed", "legendFormat": "failed", "refId": "C" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "stacking": { "mode": "normal", "group": "A" } }
+        }
+      }
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 20 },
+      "id": 8,
+      "title": "Refresh attempts by kind x result",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(kiroxy_refresh_attempts_total[5m])) by (kind, result)",
+          "legendFormat": "{{kind}} / {{result}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 20 },
+      "id": 9,
+      "title": "Cooldown reasons",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(kiroxy_account_cooldowns_total[5m])) by (reason)",
+          "legendFormat": "{{reason}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 26 },
+      "id": 10,
+      "title": "Input tokens per request (p95)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(kiroxy_tokens_input_bucket[5m])) by (le, model))",
+          "legendFormat": "{{model}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 26 },
+      "id": 11,
+      "title": "Output tokens per request (p95)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(kiroxy_tokens_output_bucket[5m])) by (le, model))",
+          "legendFormat": "{{model}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "gridPos": { "h": 6, "w": 24, "x": 0, "y": 32 },
+      "id": 12,
+      "title": "Vault generation (cumulative refresh activity)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "kiroxy_vault_generation",
+          "legendFormat": "generation sum",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["kiroxy", "prometheus"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "kiroxy",
+  "uid": "kiroxy-metrics",
+  "version": 1,
+  "weekStart": ""
+}

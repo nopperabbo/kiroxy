@@ -4,6 +4,43 @@ All notable changes to kiroxy will be documented in this file. Format loosely fo
 
 ## [Unreleased]
 
+### Added (Phase M — Prometheus metrics endpoint)
+
+- `GET /metrics` exposition endpoint in the Prometheus text format. Turn
+  kiroxy into a first-class Prometheus target with zero config on
+  localhost; on non-loopback the endpoint requires `KIROXY_API_KEY` or
+  explicit opt-in via `KIROXY_METRICS_PUBLIC=1`.
+- `internal/metrics/` package with a single process-wide `Registry` and
+  a nil-safe `*Sink` call-site handle. Adds
+  `github.com/prometheus/client_golang v1.23.2` as the only new
+  dependency. Standard Go + process collectors are registered out of
+  the box (goroutines, heap, GC, FDs).
+- Request lifecycle counters in `messages.Service`:
+  `kiroxy_requests_total` (labels: model, status class, stream),
+  `kiroxy_request_errors_total` (kind=upstream|auth|proxy|invalid_request),
+  `kiroxy_request_duration_seconds` (histogram by model + stream),
+  `kiroxy_upstream_ttfb_seconds` (pre-body first-byte timing, emitted
+  once even across the invalid-state retry path),
+  `kiroxy_tokens_input` / `kiroxy_tokens_output` (histograms).
+- Pool health gauges via `pool.RegisterPoolGauges`:
+  `kiroxy_accounts_available`, `kiroxy_accounts_cooldown`,
+  `kiroxy_accounts_failed`. Snapshots happen on Prometheus scrape (no
+  background poller). Plus `kiroxy_account_cooldowns_total{reason}`
+  counter on transition into cooldown.
+- `kiroxy_refresh_attempts_total{kind,result}` counter in the pool
+  refresh path, covering proactive vs reactive triggers and
+  success/fail_401/fail_transient/fail_other outcomes.
+- `kiroxy_vault_generation` gauge: sum of bundle generations, exposed
+  via `tokenvault.RegisterVaultGauges`. Monotonic-ish proxy for refresh
+  activity.
+- `kiroxy_uptime_seconds` gauge.
+- `docs/METRICS.md` — scrape setup, full catalog with cardinality
+  bounds, useful PromQL queries, security notes.
+- `docs/METRICS.grafana.json` — starter dashboard (12 panels: request
+  rate, error rate, typed errors, latency percentiles, TTFB, token
+  histograms, pool stacked, refresh attempts, cooldown reasons,
+  generation gauge, uptime).
+
 ### Added (Phase J — OpenAI-compatible API surface)
 
 - `POST /v1/chat/completions` endpoint: streaming + non-streaming
