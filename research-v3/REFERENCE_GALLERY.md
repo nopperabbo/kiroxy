@@ -290,6 +290,218 @@ Use this index to jump by design dimension rather than tier.
 
 ---
 
+### Stripe Dashboard — Tier A — Operator console / payments
+
+**URL:** https://dashboard.stripe.com
+
+**What it is:** Stripe's logged-in admin where businesses run transactions, customers, billing, Workbench.
+
+**Visual signature:** Near-white canvas with a slim left sidebar split into primary resources (Home, Balances, Transactions, Customers, Product catalog) and a "Shortcuts" zone for pinned/recent pages. Content area uses flat cards, quiet dividers, and lots of tabular data rendered with the Sail design system. Type is Stripe's custom sans at ~14px body, with distinctive indigo-purple `#635BFF` ("Blurple") reserved for links and primary actions ONLY. **"Spreadsheet with taste."**
+
+**Color (extracted):**
+- Background: light (#FFFFFF canvas, ~#F6F9FC sidebar chrome — estimated)
+- Primary accent: `#635BFF` (Blurple, confirmed Stripe brand token)
+- Text: near-black (`#1A1F36` estimated from Sail)
+- Semantic: green for succeeded, red for disputes/refunds, amber for pending — applied as pill badges, not full-row fills
+
+**Typography:** Sohne-family-adjacent proprietary sans, 400/500/600, body ~13-14px. Mono inside Workbench for request/response payloads.
+
+**Density / layout:** Medium-high density, 12-col content, fixed-width left rail ~240px, breadcrumb + tabs header pattern.
+
+**Motion:** Minimal — subtle fades, ~150ms ease-out on tab switches; no flourish.
+
+**Key borrowable decisions:**
+- Sidebar is *resource-oriented* (Home, Balances, Transactions), not feature-oriented — maps 1:1 to objects in the system.
+- Dedicated "Shortcuts" section for pinned + recently-visited pages; solves deep navigation without submenus.
+- Global `?` opens keyboard shortcut sheet; **`⌘+I` copies current object ID from anywhere.**
+- **Workbench is a separate pane for API/webhook logs** — logs live *next to* the entity, not in a detached "developers" app.
+
+**Explicit NOT-to-borrow:**
+- Settings split across Personal/Account/Product categories — overkill for single-user kiroxy.
+- Product catalog, Connect, Atlas, Capital surfacing in "More" — enterprise sprawl.
+- Light-only default; dark mode lands awkwardly on Sail.
+
+**Source URLs:**
+- https://docs.stripe.com/dashboard/basics
+- https://docs.stripe.com/dashboard/search
+- https://stripe.com/blog/dashboard-updates-oct-2020
+
+---
+
+### Netlify app — Tier A — Deploy/hosting console
+
+**URL:** https://app.netlify.com
+
+**What it is:** Netlify's logged-in operator panel for sites, deploys, teams.
+
+**Visual signature:** Dual left navigation — team-level rail and site-level rail coexist, with the team rail collapsing to a compact strip when you're inside a site. Top breadcrumb carries you back out. Sites list supports grid (screenshot thumbnails) and table (sort/filter chips). Deploys screen is a vertical stack of "Deploy Cards" with color strips: **yellow indicates main/production branch, grey all others.** React + Tailwind + Storybook.
+
+**Color:** Light default (#FFFFFF) / dark mode secondary. Primary accent: Netlify teal (~#00C7B7 estimated). Semantic green for success, yellow for main-branch marker, red for build-failed.
+
+**Typography:** Inter-like sans (estimated from screenshots), 400/500/600. Mono in build logs.
+
+**Density / layout:** Medium density, card-based deploy list, table + grid toggle for sites.
+
+**Motion:** Restrained; Chromatic-backed visual regression implies they guard motion tightly.
+
+**Key borrowable decisions:**
+- Breadcrumb plus compact secondary rail lets you keep team context while deep in a site — elegant for any tool with "global vs scoped" views.
+- Color strip + icon on each deploy card encodes branch type at a glance, no text needed.
+- Filters and sorts at top of list are URL-serializable and shareable.
+
+**Explicit NOT-to-borrow:**
+- Dual-context navigation overkill for single-user.
+- Grid view with site thumbnails — pure visual candy with no signal for a proxy/ops tool.
+- Teal-heavy marketing-adjacent accent tends to look "SaaS-y."
+
+**Source URLs:**
+- https://netlify.com/blog/contextual-improvements-to-netlify-navigation
+- https://storybook.js.org/blog/netlify-rebrand-storybook-chromatic
+- https://netlify.com/blog/2016/09/01/a-game-of-cards
+
+---
+
+### Railway — Tier A — Infra canvas / PaaS
+
+**URL:** https://railway.com (dashboard at https://railway.app)
+
+**What it is:** Dark-first infra console where "services" live on a pannable Canvas graph.
+
+**Visual signature:** The Canvas is the signature — a dark-navy workspace where service nodes float as rounded rectangles, connected by faint edges, pannable like Figma. Left sidebar is terse: projects, environments, settings. Typography leans generous and confident; the whole tone is "terminal-adjacent but with actual taste." Built on Vite + TanStack Router after moving off Next.js to prioritize a rich client-side interface.
+
+**Color:** Dark (~#0B0D0F estimated) from screenshots + railway.app/design palette. Primary accent: violet/purple (~`#8B5CF6` estimated). Semantic dots on the canvas node (green healthy, red failed, amber building).
+
+**Typography:** Inter (estimated — confirmed by VSCodeThemes screenshots). Mono: JetBrains Mono / Geist Mono for logs.
+
+**Density / layout:** Medium density in sidebars, low density on Canvas (intentional — graph wants breathing room).
+
+**Motion:** Pan/zoom Canvas with physics, smooth 200ms panel transitions, realtime multiplayer cursors.
+
+**Key borrowable decisions:**
+- **Dark-first commitment** — never apologizes, no "light mode is default" hedge.
+- **`/design` page as public artifact**: palette, type, banner, buttons, charts — design system as marketing.
+- **Typographic confidence** — uses type size and weight for hierarchy before resorting to color.
+- `⌘K` as a first-class UI element, not a hidden power-user feature.
+
+**Explicit NOT-to-borrow:**
+- Canvas itself — kiroxy has one service, not a graph; canvas metaphor is pure theater.
+- Realtime multiplayer awareness — single-user tool.
+- Heavy purple brand saturation can tip into "gamer aesthetic."
+
+**Source URLs:**
+- https://railway.app/design · https://blog.railway.app/p/moving-railways-frontend-off-nextjs
+- https://railway.com/changelog/2026-03-20-new-dashboard-layout
+- https://nicelydone.club/apps/railway
+
+---
+
+### Render — Tier A — Deploy/hosting console
+
+**URL:** https://dashboard.render.com
+
+**What it is:** Services-and-datastores operator console, Stripe-influenced in restraint.
+
+**Visual signature:** **Quiet, grown-up, slightly boring in the best sense.** Left pane lists Services, Blueprints, Env Groups; top strip has a breadcrumb and a prominent `+ New` button. Content is mostly clean tables with status dots, tabbed detail views per service (Events, Logs, Metrics, Settings). Provides light, dark, and **high-contrast** variants of each. Log explorer has its own independent theme setting. No ornamental animation.
+
+**Color:** Light default / dark (~#0F1115 estimated) / high-contrast tokens. Primary accent: Render purple (~#7C3AED range, quiet). Semantic: green for live, grey for suspended, red for failed — pill badges.
+
+**Typography:** Inter (estimated). Mono: exclusively inside log explorer.
+
+**Density / layout:** Medium, table-first, breadcrumb-heavy navigation.
+
+**Motion:** Near-zero — this is a tool for people who want to forget the UI exists.
+
+**Key borrowable decisions:**
+- `⌘+K` workspace-wide search with keyboard-only navigation.
+- **Breadcrumb primary, sidebar secondary** — breadcrumbs carry the orientation load.
+- **Separate theme setting for the log explorer, independent of the dashboard** — recognizes logs are a different mode.
+- **High-contrast theme as a first-class citizen**, not an afterthought.
+
+**Explicit NOT-to-borrow:**
+- Heavy reliance on "Workspace" construct — irrelevant for single-user.
+- Somewhat generic — doesn't have a strong visual fingerprint; easy to mistake for any React + Tailwind admin.
+- `+ New` top-right assumes you create things often; kiroxy creates almost nothing.
+
+**Source URLs:**
+- https://render.com/docs/render-dashboard.md
+- https://render.com/changelog
+
+---
+
+### PlanetScale — Tier A — Database admin / branching UI
+
+**URL:** https://planetscale.com (console at app.planetscale.com)
+
+**What it is:** Git-metaphor database admin — branches, deploy requests, schema diffs.
+
+**Visual signature:** **Dense, deliberately GitHub-shaped UI.** Database dashboard is a tab bar (Overview, Branches, Deploy Requests, Insights, Settings) over a content well. Deploy Request pages are the showpiece: Summary tab shows deployability with specific blockers; Schema changes tab renders a line-by-line diff in green additions / red deletions, exactly like a code PR. "Instantly deployable" and "Approved" badges. Gated deployment toggles inline. Branches page is a nested tree visualization. Dark-forward with selective magenta/pink accents. **"Code review, not database admin."**
+
+**Color:** Dark default (~#0C0D0F estimated) / light mode supported. Primary accent: magenta/pink historically (~#E5267A estimated), currently toned down. Semantic: green/red for schema diffs; amber "potential data loss" warnings.
+
+**Typography:** Inter-likely. **Mono is prominent** — used wherever SQL, table names, or identifiers appear; schema diff is entirely mono.
+
+**Density / layout:** High density, multi-tab detail pages, embedded code diffs.
+
+**Motion:** Minimal — this tool is not trying to delight, it's trying to not let you delete prod.
+
+**Key borrowable decisions:**
+- **Git PR metaphor applied to a non-git domain** — the strongest move on this list. Deploy requests have Summary / Changes / Comments tabs. Changes are diffed. **For kiroxy: routing-rule changes are schema changes; proxy-config updates are deploy requests.**
+- Non-deployable states surface *specific* blockers (invalid charset, missing unique key), not a generic "error."
+- **Gated deployment** = "start the migration, pause before cutover, human clicks final Apply." Perfect pattern for risky ops actions.
+- "Instantly deployable" badge as trust signal — auto-computed state communicated visually.
+
+**Explicit NOT-to-borrow:**
+- Branch tree visualization — too database-specific.
+- Sheer quantity of tabs per page; kiroxy can't sustain that surface area.
+- Magenta/pink brand saturation if you want to read as "infra" rather than "database vendor."
+
+**Source URLs:**
+- https://planetscale.com/docs/concepts/deploy-requests
+- https://planetscale.com/docs/concepts/branching
+
+---
+
+### Cloudflare Dashboard — Tier A — Dense ops tool / sprawling product
+
+**URL:** https://dash.cloudflare.com
+
+**What it is:** Cloudflare's logged-in admin for DNS, Workers, R2, Zero Trust, and ~60 other products.
+
+**Visual signature:** **The counterexample and the case study.** Left sidebar expands into nested product trees (each with 4-8 children). Top strip is account/zone selector. Content pages are tab-heavy, dense tables (DNS records, firewall rules, worker deployments) with inline edit. Cloudflare orange `#F6821F` is reserved almost entirely for the logo and primary CTAs; the working surface is restrained grey-on-white with a mediocre dark mode. Feels powerful when you know where you're going, overwhelming otherwise.
+
+**Color:** Light default (#FFFFFF / ~#F6F6F7), dark mode available but visibly less polished. Primary accent: Cloudflare orange #F6821F (confirmed). Text near-black. Semantic: green active / red error / grey paused.
+
+**Typography:** Inter or similar (estimated), 400/500/600. Mono for DNS records, worker code, API tokens.
+
+**Density / layout:** Very high density, nested sidebar, deep tabbed detail pages.
+
+**Motion:** Functional only — no decorative animation.
+
+**Key borrowable decisions:**
+- Dense, **editable tables with inline status, no modals to view a single row** — scan and act without navigation.
+- Account/zone selector at the top of the sidebar is a permanent-context-switcher; no ambiguity where you are.
+- **Restraint on the orange** — using brand color only for CTAs and the logo keeps the working surface neutral.
+
+**Explicit NOT-to-borrow:**
+- **Product sprawl** — nested sidebar with 60 children is the anti-pattern for a single-service tool.
+- Dark mode clearly a second-class citizen; inconsistent token application.
+- Inconsistent page layouts — different products feel like different apps (Workers looks different from DNS which looks different from Zero Trust).
+
+**Source URLs:**
+- https://dash.cloudflare.com
+- https://developers.cloudflare.com/fundamentals/setup/manage-members/roles
+
+---
+
+**Synthesis pointers for kiroxy DESIGN_SYSTEM.md:**
+- Camp vote: **dark-first like Railway/PlanetScale, typographic hierarchy like Stripe, breadcrumb + ⌘K skeleton like Render.**
+- Steal PlanetScale's diff-and-badge pattern for config changes (routing rules are a lot like schema migrations).
+- Steal Stripe's Workbench pattern — logs pane lives *next to* the thing it's about.
+- Steal Tailscale's search DSL for the request log.
+- Avoid Cloudflare's nested sprawl, Netlify's dual-context, and Railway's Canvas — all solve problems kiroxy doesn't have.
+
+---
+
 ## Tier B — Developer Tools with Signature UI
 
 > Power-user aesthetics, keyboard-first interactions, command palettes, distinctive motion.
@@ -641,9 +853,186 @@ Use this index to jump by design dimension rather than tier.
 
 > Primitives, tokens, theming, docs patterns. Borrow architecture, reject aesthetic clichés.
 
-<!-- Populated by Tier C librarian subagent. -->
+**Overall takeaway:** The design-system question for kiroxy is architectural, not aesthetic. There are three viable philosophies in 2026, each with a lineage. **Radix UI primitives** (now folded into [shadcn/ui primitives](https://ui.shadcn.com/docs/primitives) and [Ark UI](https://ark-ui.com)) give you unstyled, accessible behavior — you own every visual pixel. **shadcn/ui copy-paste** ships pre-styled Radix wrappers via the registry CLI — you own the source. **Bundled libraries** (Mantine, Chakra, HeroUI) ship complete styled components you import — you own the consumption. For kiroxy (opinionated aesthetic, zero marketing pressure, single-operator, open-source), the correct path is **Radix-primitives-via-Ark-UI with hand-authored styles in a kiroxy-specific token layer**. Copy-paste (shadcn) risks "looks like every other shadcn dashboard" and the operator has explicitly rejected that. Bundled libraries lock you into their aesthetic. Radix primitives alone give you behavior + accessibility + ARIA — and you do the aesthetic work that makes the mansion feel like yours.
 
-_TBD — pending research._
+### Radix UI Primitives — Tier C — Unstyled accessible primitives
+
+**URL:** https://www.radix-ui.com/primitives
+
+**What it is:** An unstyled, accessible component library maintained by Jenna Smith at WorkOS (formerly Modulz → WorkOS). The gold standard for accessible primitives: Dialog, Popover, DropdownMenu, Select, Tooltip, Toggle, Switch, Accordion, Tabs, Toast, Slider, NavigationMenu, Combobox (Command), and ~30 more. Each primitive handles WAI-ARIA, focus management, keyboard nav, portal rendering, and composition-by-slot.
+
+**Visual signature:** None — primitives are headless. Every kiroxy styling decision is yours.
+
+**Primitive / component architecture:** **Unstyled primitives via compound components with slot-based composition.** Example (`Dialog.Root` → `Dialog.Trigger` + `Dialog.Portal` → `Dialog.Overlay` + `Dialog.Content` → `Dialog.Title` + `Dialog.Description` + `Dialog.Close`). Data-state attributes (`data-state="open"`, `data-disabled`) drive styling via CSS selectors — no className juggling. `asChild` prop to compose behavior with any element.
+
+**Tokens / theming approach:** **No theming — that's not Radix's job.** Radix Colors (a sister project at https://www.radix-ui.com/colors) provides 30-step (12 light + 12 dark + 6 alpha) semantic color scales: app-bg, subtle-bg, component-bg-default/hover/active, subtle-border, border, hover-border, solid (for saturated fills), low-text, high-text. This semantic ladder is the 2020s ops-tool palette architecture.
+
+**Docs patterns worth stealing:**
+- **Per-primitive page structure**: Overview → Features → Installation → Anatomy → API Reference → Examples → Accessibility. Every primitive ships a complete docs page.
+- **Anatomy diagram shows the slot tree**: `<Dialog.Root>` → `<Dialog.Trigger />` → `<Dialog.Portal>` with child slots enumerated.
+- **Accessibility section is mandatory** per primitive — lists ARIA roles, keyboard interactions, screen-reader announcements.
+
+**Key borrowable decisions:**
+- **Slot-based compound components** over monolithic props. `<Dialog title="..." description="..." />` locks you out; `<Dialog.Root>` with named children scales forever.
+- **Data-state attributes for styling hooks** instead of class-toggling. CSS reads as `[data-state="open"] { ... }`.
+- **`asChild` composition pattern** lets users substitute their own element without breaking behavior. Kiroxy's primitives should all support this.
+- **The 12-step semantic scale is a mental model worth adopting** (even if kiroxy uses 7 steps — see `Tier A → Supabase` and `Appendix → Color System 2026`).
+
+**Explicit NOT-to-borrow:**
+- The Radix Colors default palette itself — it's tied to the Modulz/WorkOS aesthetic. Use the semantic structure, generate your own OKLCH values.
+- Radix Themes (the styled wrapper at https://www.radix-ui.com/themes) — it's fine for prototypes but has a distinctive look that signals "I used Radix Themes." kiroxy skips it.
+
+**Source URLs:**
+- https://www.radix-ui.com/primitives
+- https://www.radix-ui.com/colors
+- https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale
+
+---
+
+### Ark UI — Tier C — Cross-framework accessible primitives
+
+**URL:** https://ark-ui.com
+
+**What it is:** Cross-framework (React/Vue/Solid) accessible primitive library from the Chakra team (Segun Adebayo), built on top of Zag.js state machines. Spiritual successor to Radix for the non-React world, or a Radix alternative for teams wanting machine-backed state logic.
+
+**Visual signature:** None (headless).
+
+**Primitive / component architecture:** Same slot-based compound pattern as Radix, but state is explicitly machine-driven via Zag. Every primitive has a documented state machine with named states, guards, and transitions. This makes edge cases (typeahead buffer flushing, focus trap restoration, escape cascades) reproducible and testable.
+
+**Tokens / theming approach:** None — inherits from whatever token system you bring. Pairs well with Park UI (a Panda CSS theme layer built on Ark) if you want a preset.
+
+**Docs patterns worth stealing:**
+- **Framework-specific installation + usage tabs** (React / Vue / Solid) on every primitive page. Same API across all three.
+- **State machine diagrams** documented per primitive — you can see the lifecycle.
+- Uses Ariakit's `@container style(...)` pattern for theme variants — see the `style()` query reference in the Tier D section.
+
+**Key borrowable decisions:**
+- **State machines for complex interaction logic.** When kiroxy's command palette gets nested (search → action menu → confirm dialog → error), explicit state machines beat useState chains.
+- Cross-framework neutrality is insurance — kiroxy's current stack (Svelte) could migrate without abandoning primitive logic.
+
+**Explicit NOT-to-borrow:**
+- Park UI's aesthetic ships a specific look. Skip for kiroxy.
+- Ark's abstraction is denser than Radix's — for a single-framework (Svelte) kiroxy, Radix's simpler slot composition wins unless you need the state-machine tooling.
+
+**Source URLs:**
+- https://ark-ui.com
+- https://zagjs.com
+- https://park-ui.com
+
+---
+
+### shadcn/ui — Tier C — Copy-paste Radix wrappers
+
+**URL:** https://ui.shadcn.com
+
+**What it is:** A registry of pre-styled Radix primitive wrappers. Copy via CLI (`npx shadcn@latest add dialog`) — the source lands in your repo, yours to modify. Tailwind + CVA (class-variance-authority) for variants. Not a dependency — a code-gen registry.
+
+**Visual signature:** **The shadcn look**: slate-gray backgrounds, subtle rounded corners (~6-8px default), thin borders, geometric sans (Inter/Geist), subtle shadows, subtle hover states. It has become the 2024-2026 "AI dashboard template" aesthetic — and is precisely what the kiroxy operator wants to transcend ("not AI-slop, not template").
+
+**Primitive / component architecture:** Styled copy-paste wrappers over Radix. Each component ships ~30-80 LOC of Tailwind classes. You own the source file.
+
+**Tokens / theming approach:** **CSS custom properties with HSL values** in a `:root` / `.dark` dual-declaration pattern. Default tokens: `--background`, `--foreground`, `--card`, `--popover`, `--primary`, `--secondary`, `--muted`, `--accent`, `--destructive`, `--border`, `--input`, `--ring`. Tailwind v4 registry variant (`ui.shadcn.com/colors`) ships these in OKLCH.
+
+**Docs patterns worth stealing:**
+- **Live + code + copy-button on every component** — the demo is next to the implementation.
+- **Component registry model** — install via CLI, source lands in your repo. Operators own their UI code.
+- **Theme generator** at `ui.shadcn.com/themes` — visual palette picker that emits tokens for your `globals.css`.
+
+**Key borrowable decisions:**
+- **CLI-driven copy-paste distribution** — this is a genuinely better model than npm-install-a-component-library. Kiroxy primitives should ship via an installer that drops source into the repo.
+- **CVA (class-variance-authority) for variant management** — typed variants, no runtime penalty. `button({ variant: "destructive", size: "sm" })`.
+- **HSL → OKLCH migration path** — shadcn's v4 shows how to evolve tokens without breaking consumers.
+
+**Explicit NOT-to-borrow:**
+- **The default look.** Operator explicitly rejects this. Install shadcn's primitives, then **rewrite every component's classes** using kiroxy's OKLCH tokens and typography scale. Kill the default radius, adjust shadow spec, reconsider border weight (lean Supabase — borders over shadows).
+- **The default marketing-card aesthetic** (gradient hero, stat grid with six pastel icon backgrounds). Operator rejects this by name.
+- **Treating shadcn as a dependency**. If you upgrade a primitive via the CLI without preserving your overrides, you inherit the template look overnight. Commit hard to your rewrites.
+
+**Source URLs:**
+- https://ui.shadcn.com
+- https://ui.shadcn.com/docs/installation
+- https://ui.shadcn.com/themes
+- https://github.com/shadcn-ui/ui
+
+---
+
+### GitHub Primer — Tier C — Product design system for ops/dev tools
+
+**URL:** https://primer.style
+
+**What it is:** GitHub's official design system — the one powering github.com, GitHub Desktop, and GitHub CLI output. Open-source under GitHub org. Includes Primer CSS, Primer React, Primer ViewComponents (Rails), Octicons icon set, Primer Brand (marketing surface).
+
+**Visual signature:** **Dense, text-forward, octicon-heavy.** Chrome is minimal, content is dense tables + code + diff highlights + avatars. Uses GitHub's proprietary "Mona Sans" for display and "Hubot Sans" as a display companion (both OFL), paired with a system mono for code. Primary accent is GitHub Green (`#2DA44E` light, `#3FB950` dark) used sparingly for primary buttons and "merged" badges — status greens (open) and purples (merged) are semantic-heavy.
+
+**Primitive / component architecture:** Full styled library (not headless). Import `@primer/react` and get opinionated components: `Button`, `IconButton`, `Label`, `Octicon`, `Box`, `Timeline`, `ActionList`, `Pagehead`. Polymorphic via `as` prop.
+
+**Tokens / theming approach:** **CSS-in-JS with Primer Primitives as tokens.** 6 theme variants (`light`, `light_high_contrast`, `light_colorblind`, `dark`, `dark_dimmed`, `dark_high_contrast`, `dark_colorblind`). Dark Dimmed is GitHub's answer to "pure dark mode is too aggressive" — softened backgrounds (~`#22272e`) for reading sessions. Tokens defined as CSS custom properties in `@primer/primitives`.
+
+**Docs patterns worth stealing:**
+- **6-theme matrix** (light/dark × default/dimmed/high-contrast) shipped out of the box. **For kiroxy: offer light, dark, and dark-dimmed from v1.3.**
+- **Status-specific color semantics** (issue-open green, issue-closed red, PR-merged purple, PR-draft gray). Your ops states deserve this treatment.
+- **Octicons** (https://primer.style/octicons) — hand-tuned 12px/16px/24px grid icons with consistent stroke. Open-source MIT.
+
+**Key borrowable decisions:**
+- **Dark Dimmed as an explicit theme variant** — pure black is aggressive for reading sessions. Offer a softer dark (~#1A1B1E backgrounds, slightly lifted from pure black) as an opt-in.
+- **Octicons as inline SVG with `sx` sizing** — don't ship a font icon set.
+- **Semantic status colors** over generic success/warning/danger — kiroxy's "account cooldown" is not "warning"; it's its own state.
+
+**Explicit NOT-to-borrow:**
+- The Primer CSS class names (`Box`, `Pagehead`, `Timeline`) — too GitHub-flavored for a proxy dashboard.
+- Mona Sans / Hubot Sans — too GitHub-branded.
+- The `@primer/react` component palette — opinionated in a GitHub-specific way (issue cards, PR files diff); primitive architecture gives less starting point for kiroxy than Radix.
+
+**Source URLs:**
+- https://primer.style
+- https://primer.style/foundations/primitives
+- https://primer.style/octicons
+- https://github.com/primer
+
+---
+
+### Vercel Geist — Tier C — Design system (already covered under Tier A)
+
+See **Tier A → Vercel (Geist Design System)** for full treatment. Summary:
+- Structured 10-step semantic color scale (Color 1-10 + Background 1/2)
+- Geist Sans + Geist Mono (OFL)
+- Named operator primitives (Entity, Status Dot, Gauge, Relative Time Card, Context Card, Loading Dots, Empty State)
+- Tabular numeral variant as a first-class type token
+- Keyboard Input + Snippet as first-class components
+
+**Adopt:** the Color 1-10 architecture and the named operator primitives. **Skip:** Geist Sans (too Vercel-branded) and the full 10 chromatic scales (kiroxy strips to ~5).
+
+---
+
+### Tailwind UI catalog — Tier C — Production house style
+
+**URL:** https://tailwindui.com
+
+**What it is:** Adam Wathan / Steve Schoger's paid template catalog of pre-designed components (marketing, application UI, ecommerce). Not a design system — a marketplace of Tailwind-styled patterns. Runs on Tailwind v4 + Headless UI (Tailwind Labs' own unstyled primitives).
+
+**Visual signature:** **Clean, confident, reads as 2023-2025 Tailwind-dashboard.** Generous whitespace, flat cards with 1px borders, rounded 6-8px, Inter body, indigo/purple accents by default (overridable). Every template demonstrates Schoger's "Refactoring UI" principles: correct whitespace rhythm, text color hierarchy via gray scale, intentional alignment.
+
+**Primitive / component architecture:** Headless UI primitives (Menu, Listbox, Combobox, Dialog, Disclosure, Popover, Switch, Tabs, Transition) + RadixUI-like slot composition. Tailwind UI itself is templates built on Headless UI + Tailwind.
+
+**Tokens / theming approach:** Tailwind's semantic tokens via `@theme` in v4 — `--color-*`, `--font-*`, `--spacing-*`. Fully customizable.
+
+**Docs patterns worth stealing:**
+- **Every component page has 3-5 variants** (simple / with-header / with-avatar / dense / split) — shows the same component under multiple conditions.
+- **Copy-the-HTML-directly** affordance (no framework lock-in).
+
+**Key borrowable decisions:**
+- **Refactoring UI principles** (whitespace rhythm, text-color hierarchy, intentional alignment) are timeless. Worth reading Schoger's book regardless of aesthetic direction.
+- **Headless UI primitives** are MIT and can replace Radix if you want Tailwind-Labs-maintained alternatives.
+
+**Explicit NOT-to-borrow:**
+- **The default aesthetic is the shadcn look's older sibling.** Same trap — "looks like every dashboard built in 2024." Operator rejects.
+- Indigo/purple default accents.
+- Marketing-template density (large hero images, testimonial carousels, pricing tables with checkmarks) — kiroxy is a dashboard, not a landing page.
+
+**Source URLs:**
+- https://tailwindui.com
+- https://headlessui.com
+- https://www.refactoringui.com
 
 ---
 
@@ -651,9 +1040,183 @@ _TBD — pending research._
 
 > Platform features to adopt, avoid, or use carefully. Grounded in real production examples.
 
-<!-- Populated by Tier D librarian subagent. -->
+**Overall takeaway:** The 2026 baseline has shifted hard. OKLCH, `color-mix()`, `light-dark()`, `:has()`, `@starting-style`, subgrid, anchor positioning, cross-document view transitions — **all in all four evergreens with global usage above 82%.** The story is no longer "this is experimental." It's "this replaces a library." Tailwind v4 shipped OKLCH-only tokens. shadcn/ui generates OKLCH palettes. VSCode, pdf.js, Mozilla, Apache Airflow, Three.js, and Signal all use `light-dark()` in production. `@starting-style` has displaced half the JS-driven enter/exit animation code in real codebases. For kiroxy — loopback, single-user, you control the browser — **skip the polyfill tier, skip the PostCSS transform chain, skip CSS-in-JS runtimes, skip JS popover libraries.** The browser has become the framework. The one holdout is Container Style Queries (Firefox 0% in 2026). Everything else: ship native. The premium signal in 2026 is *not* using frosted-glass, *not* using rainbow gradients, and having exactly one accent color that sings.
 
-_TBD — pending research._
+### View Transitions API (cross-document, Level 2) — Tier D
+
+**What it is:** CSS-only opt-in that makes full-page MPA navigations crossfade/morph between documents via a browser-native snapshot-and-interpolate pass.
+
+**Browser support state:** Chrome 126+, Edge 126+, Safari 18.2+/iOS 18.2+, Firefox 144+ (partial — does not yet fully match cross-doc types). Global usage ~85%. [caniuse](https://caniuse.com/cross-document-view-transitions).
+
+**Production examples:**
+- WebKit's own blog ships it: [webkit.org/blog/16967](https://webkit.org/blog/16967/two-lines-of-cross-document-view-transitions-code-you-can-use-on-every-website-today/)
+- [GoogleChromeLabs/view-transitions-toolkit](https://github.com/GoogleChromeLabs/view-transitions-toolkit) — official reference
+
+**Key usage:**
+```css
+@view-transition { navigation: auto; }
+::view-transition-old(root) { animation: 120ms ease-out fade-out; }
+::view-transition-new(root) { animation: 200ms ease-out fade-in; }
+```
+
+**Pitfalls:** `view-transition-name` must be unique on the page at any time — duplicates silently drop. Don't use the default root fade to paper over 400ms FCP jank.
+
+**Verdict for kiroxy:** **Use.** Two lines of CSS, fallback is "nothing happens." Zero-risk polish.
+
+---
+
+### CSS `@scope` — Tier D
+
+**Browser support:** Chrome/Edge 118+, Safari 17.4+, Firefox 146+ (shipped Feb 2026). Global 88.4%. [caniuse](https://caniuse.com/css-cascade-scope).
+
+**Verdict for kiroxy:** **Use carefully.** Good for theme-scoping root-level styles or dropping in a single vendor widget. Don't use as your primary organization strategy — a Tailwind v4 setup is less cognitive load.
+
+---
+
+### CSS `@container` Queries (size + style) — Tier D
+
+**Browser support:**
+- **Size queries**: all evergreens since 2023, global 93%+.
+- **Style queries**: Chrome/Edge 111+, Safari 18+ (partial — only custom properties, not arbitrary props), **Firefox still 0% in 2026**.
+
+**Verdict for kiroxy:** **Use size queries freely. Use style queries only with custom-prop values** (`@container style(--var: value)`). Ariakit production pattern. Avoid any design that *requires* Firefox style-query support.
+
+---
+
+### `:has()` selector — Tier D
+
+**Browser support:** Chrome/Edge 105+, Safari 15.4+, Firefox 121+. Global 93.5%. Fully Baseline.
+
+**Production:** Statamic CMS nav, Jenkins credentials plugin, Spree admin, VS Code sidebar — all ship `:has(input:checked)` or `:has([data-open])` patterns.
+
+**Verdict for kiroxy:** **Use everywhere.** Single biggest CSS quality-of-life win of the last five years. Kill `useState` for "is this dropdown open" — mark the element `[data-open]` and style parent via `:has([data-open])`.
+
+---
+
+### OKLCH + `color-mix()` + `light-dark()` — Tier D
+
+**Browser support:** OKLCH Chrome/Edge 111+, Safari 15.4+, Firefox 113+ (global 92%); `color-mix()` universal since 2023 (Baseline); `light-dark()` all evergreens since mid-2024 (global 88.6%).
+
+**Production examples:**
+- Tailwind CSS v4 core theme — entire default palette is OKLCH
+- shadcn/ui v4 — OKLCH tokens for every theme
+- VSCode, Mozilla pdf.js, Deno coverage viewer, Three.js devtools, Signal Desktop, Apache Airflow — all `light-dark()` in production
+
+**Verdict for kiroxy:** **Use, mandatory.** Three tokens (`--bg`, `--fg`, `--accent`) + `color-mix()` derivations + `light-dark()` = an entire dashboard's color system. You get free hover states, free borders, free disabled states, free transparent washes.
+
+---
+
+### P3 gamut / `display-p3` — Tier D
+
+**Browser support:** Safari led since v10 (2017); Chrome/Edge 111+, Firefox 113+. `color()` function global 92%. Display requirement is the real constraint — P3 only renders on wide-gamut displays (Apple Retina 2015+, modern iPhones, most recent laptops).
+
+**Verdict for kiroxy:** **Use via OKLCH.** Don't write `color(display-p3 ...)` directly. Pick OKLCH values with chroma 0.15-0.22 for accents and let browsers+displays resolve. kiroxy users are developers on modern Macs/laptops — 80%+ have P3 displays.
+
+---
+
+### CSS Anchor Positioning — Tier D
+
+**Browser support:** Chrome/Edge 125+, Safari 26.0+, Firefox 147+ (Feb 2026). Global 82.8%. [oddbird polyfill](https://github.com/oddbird/css-anchor-positioning) covers older browsers.
+
+**Production:** scikit-learn HTML repr, HumanSignal Label Studio, Statamic CMS nav indicator, Ariakit segmented-button, MS Bot Framework Web Chat.
+
+**Verdict for kiroxy:** **Use.** This is the Floating UI killer. kiroxy ships no Popper. Dashboard popovers, dropdowns, menus, tooltips — all native now. Use with `@supports` feature gate for older browsers.
+
+---
+
+### CSS `@starting-style` — Tier D
+
+**Browser support:** Chrome 117+, Edge 117+, Safari 17.5+, Firefox 129+. Global 88.6%.
+
+**Production:** Microsoft VSCode sidebar, PocketBase modals, Mozilla pdf.js, cheeaun/phanpy, Cockpit CMS — `@starting-style` + `transition-behavior: allow-discrete` for popover/dialog enter/exit.
+
+**Verdict for kiroxy:** **Use everywhere.** Kill Framer Motion / react-spring for enter/exit on popovers, menus, toasts, modals. This + `<dialog>` / `[popover]` + `allow-discrete` = native animated overlays with zero JS state.
+
+---
+
+### View Transition Types — Tier D
+
+**Browser support:** Level 2 spec — Chrome/Edge 126+, Safari 18.2+. Firefox 144+ ships same-doc, cross-doc type matching lags.
+
+**Production:** Adobe React Spectrum (S2) Toasts — `active-view-transition-type(toast-add, toast-remove, toast-expand, toast-collapse, toast-clear)`.
+
+**Verdict for kiroxy:** **Use carefully.** Basic crossfade covers 95% of need. Reach for types only if you need directional semantics (log drill-down slides right, breadcrumb-up slides left).
+
+---
+
+### CSS Subgrid — Tier D
+
+**Browser support:** Firefox 71+ (shipped 2019), Safari 16+, Chrome/Edge 117+. Global 89.8%.
+
+**Production:** atopile LogViewer (dev-tool log viewer aligns column headers and log rows via subgrid — **exact kiroxy use case**), pierre diff viewer, vkurko calendar, Google security research dashboard.
+
+**Verdict for kiroxy:** **Use, mandatory for tables.** kiroxy's core UI is dense tables. Subgrid is the right tool.
+
+---
+
+### Container Style Queries — Tier D
+
+**Browser support:** Chrome/Edge 111+, Safari 18+ (custom props only), **Firefox 0% in 2026** ([bug 1795622](https://bugzilla.mozilla.org/show_bug.cgi?id=1795622)).
+
+**Verdict for kiroxy:** **Skip, or use with clear fallback.** If users on Firefox must be supported, prefer `:has()` + data attributes: `.group:has([data-open]) .content { ... }`.
+
+---
+
+### Fine-Grained Reactivity (Svelte 5 / Solid / Qwik) — Tier D
+
+**Svelte 5 runes** — signals under the hood, Rich Harris at Vercel. Production: Apple Music Web, Apple Podcasts, IKEA, NYT, 1Password, Square, Hugging Face. Pattern: `$state`, `$derived`, `$effect`.
+
+**Solid.js / SolidStart** — purest signal model. Production: Cloudflare Pages docs uses SolidStart. Pattern: `createSignal`, `createMemo`, `createEffect`.
+
+**Qwik resumability** — Builder.io's approach. Production: builder.io itself. Adoption outside Builder.io remains small.
+
+**Verdict for kiroxy:**
+- **Svelte 5** — strong fit. Apple-quality UX, small bundle, keyboard-first ergonomics. Already the Dashboard Next choice.
+- **Solid** — equally valid. Smallest runtime.
+- **Qwik** — skip. Resumability's big win is first-paint over slow networks; kiroxy is localhost.
+
+---
+
+### "Refined-Minimal / Warm-Modern" 2026 Aesthetic — Tier D
+
+**What it is:** Dominant dev-tool aesthetic — warm off-whites, true-but-not-pure blacks, generous-yet-dense, micro-shadows over hero-shadows, one accent color, monospaced numerics, 8-12px border-radius.
+
+**Named products:** Linear, Raycast, Vercel dashboard (2025 refresh), Resend, Cal.com, Attio, Railway, Neon, Planetscale, Dia Browser.
+
+**Key patterns:**
+- Background: `oklch(11% 0.005 260)` (cool) or `oklch(14% 0.01 80)` (warm) — never pure 0/0
+- Off-white: `oklch(99% 0 0)` or `oklch(98% 0.008 80)` — never `#fff`
+- Borders: 0.5-1px, `color-mix(in oklch, var(--fg) 8-12%, transparent)` — whisper-thin
+- Radii: 6px inputs, 8px cards, 10-12px panels, 16px modals. Never uniform.
+- **One accent with chroma 0.15-0.22. Primary CTA, focus ring, "selected" state, nothing else.**
+- Motion: 120-200ms, `cubic-bezier(0.16, 1, 0.3, 1)` (the "Linear easing" that became universal)
+
+**Verdict for kiroxy:** **Use.** This palette is the correct target. Copy Linear's color discipline, Raycast's typography rhythm, Vercel's grid density.
+
+---
+
+### "Utopian" Typography / Fluid Type Scales — Tier D
+
+**Browser support:** `clamp()` universal since 2020, Baseline.
+
+**Verdict for kiroxy:** **Use selectively, not dogmatically.** kiroxy's main UI is a dashboard — dense, predictable, NOT marketing. Clamp the rare heading and the hero of the welcome screen. Chrome (buttons, tables, sidebar) should be fixed `px`/`rem`. Fluid everywhere makes the interface feel squishy and less like a professional tool.
+
+---
+
+### 2025-2026 Icon Trend — Tier D
+
+**What's premium:** 24px grid, 1.5-2px stroke, rounded linejoin.
+
+**Premium choices:**
+- **Lucide** — shadcn/ui default, Tailwind default. 1704+ icons, 24px, 2px stroke (override to 1.5px for dense dashboards). MIT.
+- **Radix Icons** — 15×15px grid, 1px stroke — Linear-adjacent.
+- **Phosphor** — six weights (Thin, Light, Regular, Bold, Fill, Duotone) — the premium weight-variation choice.
+- **Iconoir** — Apache 2.0, ~1600, 24px, 1.5px stroke — premium feel on free license.
+- **Hand-rolled**: Linear, Raycast, Vercel Geist Icons all maintain their own to control style.
+
+**Verdict for kiroxy:** **Lucide with `strokeWidth={1.5}` and `absoluteStrokeWidth`.** Override the default 2px. Consistent, 1704 icons covers every dashboard need, MIT, tree-shakeable, zero bundle cost for unused. Save hand-rolling for kiroxy's own logo/brand mark.
+
+**⚠️ Rule: Mixing icon libraries looks amateur instantly. ONE library, no exceptions.**
 
 ---
 
@@ -661,9 +1224,174 @@ _TBD — pending research._
 
 > kiroxy must not look like another *arr-stack tool. These are what we're transcending.
 
-<!-- Populated by anti-reference librarian subagent. -->
+**Overall takeaway:** The "self-hosted infra tool" genre has a recognizable visual tell: built by engineers solving their own problem, not to be looked at. Patterns repeat across the whole category — sidebar + dense stat grid + table list + colored status dots + logo bar. When one project looks like another, it's because they both adopted the path of least resistance (Bootstrap → MUI → shadcn).
 
-_TBD — pending research._
+**What reads as "dated / homelab-amateur":**
+- Multi-hue stat cards (one color per stat — blue/violet/emerald/pink/cyan) — **single most overused dashboard trope of the 2020s.**
+- Zero customization of shadcn defaults (default radius, default spacing, default everything).
+- Logo-lists-as-features (100+ integration logos paraded on the homepage).
+- No opinion on typography (Inter, system-ui, line-heights never considered).
+- Port numbers visible in the URL (`:8989`, `:3000`, `:7470`).
+- Dark mode as afterthought — a global `.dark` class flipping tokens.
+
+**What kiroxy can steal without becoming one of them:**
+- Typography as the primary signal — a specific display face + tabular-nums for data is worth more than any color token.
+- Restraint in the stat row — one neutral treatment, not six. Motion and typography for emphasis, not color.
+- Density with air — Homepage actually gets this right on the grid. Card isn't fighting you.
+- Named aesthetic point of view — Open WebUI (neutral minimal) and LibreChat (apple-dev-tools warm) each have one. Arr-stack doesn't. **Having a point of view is the only way to escape the genre.**
+
+### hexos — Tier E — Archived AI proxy + dashboard (upstream of kiroxy)
+
+**URL:** https://github.com/kadangkesel/hexos · https://hexos.kadangkesel.net (archived 2026-05-10)
+
+**What it is:** Lightweight AI API proxy (CodeBuddy/Cline/Kiro multi-provider), bundles a Next.js dashboard at `:7471`. Archived with "All providers are dead and no longer maintained!" banner. **kiroxy's direct ancestor.**
+
+**Visual signature:** Dark-first shadcn dashboard with a single Halloween-orange accent (`oklch(0.837 0.128 66.29)`) and zero border radius (`--radius: 0rem`) everywhere. Sidebar + sticky navbar + content-pane-with-scroll layout, lifted from shadcn `dashboard-01` nearly verbatim. Landing page is a 6-card stat grid driving area/pie/bar charts from `recharts`. **Vibe: "crypto-tool dark dashboard" more than "infra admin."**
+
+**Color / Typography / Density / Motion:**
+- Warm sepia light theme (`oklch(0.98 0.005 48.998)`, all hues anchored to 48.998 for uniform tint)
+- Dark: near-black `oklch(0.147 0.004 49.25)` with glass cards
+- **Six hard-coded per-stat icon hues: blue/violet/emerald/pink/cyan/emerald — the classic trope**
+- Bricolage Grotesque as both `--font-heading` and `--font-sans`
+- Framer-Motion successor with staggered card intros
+
+**Key borrowable decisions:**
+- **Hue-locked OKLCH palette** (everything at hue 48.998) — automatic harmony without a designer.
+- **Zero radius commits to a look.** It's opinionated. kiroxy should keep (or move to a specific non-zero like 8px/12px) — don't drift back to shadcn default.
+- **Isolated re-render leaf for live counters** — good engineering pattern worth porting.
+- **Route groups** `(dashboard)` / `(chat)` — clean URL architecture.
+
+**What it gets wrong (opinionated):**
+- **The six-color stat row is exactly the "looks like every admin dashboard" trap.** Reads as template, not product.
+- **Dark theme labeled "Halloween inspired" in the code** — the aesthetic is themed, not designed. A primary should express a stance, not a season.
+- **Bricolage is 2023's dashboard default.** Readable but generic.
+- **Sidebar collapsed-by-default** — common homelab move that says "I don't trust my own nav labels."
+
+**Source URLs:**
+- https://github.com/kadangkesel/hexos
+- https://github.com/kadangkesel/hexos/blob/d4c0d1c/dashboard/src/app/globals.css
+- https://github.com/kadangkesel/hexos/blob/d4c0d1c/dashboard/src/app/(dashboard)/page.tsx
+
+---
+
+### Homepage (gethomepage) — Tier E — Homelab landing dashboard
+
+**URL:** https://gethomepage.dev · https://github.com/gethomepage/homepage
+
+**What it is:** YAML-configured personal landing page. You point it at your services (Sonarr/Plex/Proxmox/Portainer/etc.) and it renders a tile grid of bookmark cards plus live widgets from each service's API. 150+ supported integrations.
+
+**Visual signature:** Tile grid of service cards, each with a logo-on-colored-background and a live status strip (queue counts, CPU, disk). Quiet neutral background — services are the visual events. **The whole genre of "homelab landing page" basically means this look.**
+
+**Key borrowable decisions:**
+- **Live values embedded in navigation** — the sidebar isn't just links, it's links-with-telemetry. kiroxy's account sidebar could do this.
+- YAML-configurable everything — clean decoupling.
+
+**What it gets wrong:**
+- **The aesthetic IS other people's logos.** The page is a lobby for 100 tools with zero identity of its own. Avoid leaning on provider brand color to do your design work.
+- Widget list as homepage feature (docs sidebar 150 items of "Adguard Home, APC UPS, Arcane, ArgoCD…"). **kiroxy should not let its integration list become its identity.**
+
+---
+
+### Portainer — Tier E — Docker/K8s management UI (enterprise-homelab hybrid)
+
+**URL:** https://portainer.io · https://github.com/portainer/portainer (37.4k stars)
+
+**What it is:** Web UI for Docker / Swarm / Kubernetes. Community edition free; business bolts on RBAC, SSO, support.
+
+**Visual signature:** Chrome-heavy enterprise-admin feel. Top nav, left sidebar with expandable sections, deep breadcrumbs, big data tables with bulk-action checkboxes. Teal brand (`#13BEF9`-ish) on white/gray. **Designed to be screenshotted into corporate-IT compliance decks.**
+
+**What it gets wrong:**
+- **Looks like enterprise VMware-era software** — dense tables, gray-on-gray, zero confidence in whitespace. Most dated direction available.
+- Stack is a visible scar — TypeScript/Go/JavaScript/HTML mixed repo, Angular-legacy + React-new running side-by-side. You can feel it in the UI.
+- **"Get 3 free nodes of Business Edition" in README** — marketing inside the README is the vibe-tell. UX is already an upsell funnel.
+
+**Source URLs:** https://github.com/portainer/portainer · https://www.portainer.io/features
+
+---
+
+### Sonarr — Tier E — The *arr-stack archetype
+
+**URL:** https://sonarr.tv · https://github.com/Sonarr/Sonarr
+
+**What it is:** PVR/indexer for TV series. Canonical member of the "arr-stack" (Sonarr/Radarr/Lidarr/Prowlarr/Readarr) that defines what homelab tool UIs look like.
+
+**Visual signature:** Dark navy (`~#20282E`), accent blue (`~#5D9CEC`), poster-wall series view (which actually works because posters do the work), multi-tab detail views, tables with tiny icons, legacy-Bootstrap-era paddings. Icons look like Font Awesome 4. **This is the look kiroxy should most consciously reject.**
+
+**Key borrowable decisions (limited):**
+- Poster wall as default view — when your data has a cover image, use it at scale.
+- Manual Search flow — Sonarr doesn't pretend to be magic. kiroxy's account screens could adopt the same honesty.
+
+**What it gets wrong:**
+- Navy + blue + dense tables + FontAwesome 4 = "written in 2014, never rethemed." Functional software with no visual point of view.
+- Settings pages are a tree of tabs-within-tabs. Any time kiroxy reaches for "tabs inside tabs," pause.
+
+---
+
+### Jellyfin — Tier E — Self-hosted media server admin
+
+**URL:** https://jellyfin.org · https://github.com/jellyfin/jellyfin
+
+**What it is:** Open-source media server (Emby fork on .NET Core). Admin dashboard is a separate web UI.
+
+**Visual signature:** Dark UI with purple-gradient accent that dates to the 2019 Emby fork. Hero-tile "continue watching" for client side; admin side is utilitarian sidebar + form. Big library tiles win; admin forms look like a 2018 Material dashboard.
+
+**What it gets wrong:**
+- **Admin looks like a different product from client.** Two aesthetic voices in one codebase is the universal self-host stumble.
+- Gradient as brand — 2019 artifact. A single hue + supporting neutral ages far better.
+- Plugin install pages are dense dropdowns on gray — the "I gave up trying to design the config surface" look.
+
+---
+
+### Open WebUI — Tier E — Self-hosted LLM chat frontend (current-gen)
+
+**URL:** https://openwebui.com · https://github.com/open-webui/open-webui (137k stars, Svelte + FastAPI)
+
+**What it is:** ChatGPT-shaped UI for Ollama and OpenAI-compatible APIs. Self-hosted, RAG, web search, RBAC, LDAP, SCIM.
+
+**Visual signature:** **Faithful ChatGPT clone.** Left sidebar with conversation list, centered chat stream, composer at bottom, avatar-bubble messages. Neutral grayscale, very restrained color. Built on Svelte + Tailwind.
+
+**Key borrowable decisions:**
+- **Restraint wins.** Grayscale base + one accent reads as "tool" not "toy." **Biggest lesson in this tier.**
+- Settings as modal over content, not a separate route tree.
+- Admin surface is spatially separated from chat but uses **same chrome language** — same fonts, same radius, same spacing. No aesthetic bifurcation.
+
+**What it gets wrong:**
+- **It's a ChatGPT clone.** Fastest way to ship something legible, and also fastest way to be visually invisible. Users recognize the layout and stop seeing it.
+- Giant feature-list README with 30 emoji bullets — self-host tell. Explains what to use it for, not what it is.
+
+---
+
+### LibreChat — Tier E — Positive reference (tier above the genre)
+
+**URL:** https://librechat.ai · https://github.com/danny-avila/LibreChat (36.9k stars)
+
+**What it is:** Multi-model chat (Anthropic/OpenAI/Azure/Bedrock) with agents, code interpreter, artifacts, MCP support, OAuth/SAML/LDAP/2FA. Pitches at companies.
+
+**Visual signature:** Marketing site that reads **more Vercel/Resend than homelab**. Clean product hero with light+dark screenshots side-by-side, neutral palette, tight copy blocks, real typography. **The one in this list that doesn't announce itself as self-hosted software.**
+
+**Key borrowable decisions:**
+- **Dual light/dark hero screenshot** as the opening gesture — shows confidence in both themes. kiroxy should do this in its README.
+- **Enterprise logos without losing indie vibe** — logos in monochrome on a neutral strip. They don't hijack the page.
+- **"Everything you need" grid as 3×3 of one-line features** — each says the value, not the integration name. "Memory: persistent context across conversations so your AI remembers you." Product copy, not config docs.
+
+**What it gets wrong:**
+- Mild — marketing site leans Vercel-template; in-app is ChatGPT derivative. Both legible but neither is a new direction.
+
+---
+
+## Genre Conventions kiroxy Should Actively Break
+
+Breaking any ONE of these will immediately distinguish kiroxy:
+
+1. **Multi-color stat row.** Six pastel icon backgrounds is the single most overused move. Pick one treatment. Let motion and typography do the hierarchy.
+2. **Sidebar + top-nav + content-pane.** Five of seven Tier E references use this exact chassis. A command-palette-first approach, or a single vertical feed, is instantly non-generic.
+3. **Provider/integration logo wall as feature.** Homepage, Open WebUI, LibreChat all do it. kiroxy integrates things too — resist making the integrations be the product.
+4. **"Dark mode is just tokens flipped."** Five of seven treat dark as a toggle over the same layout. A dark mode with different density or different information hierarchy reads as designed.
+5. **Default shadcn radius + default Inter.** When tokens go unconsidered, the product looks like `npx shadcn@latest add *`. hexos at least picked `0rem`; any specific number (including 0) beats the default.
+6. **Port number and `install.sh` in the hero.** Says "homelab" before saying what the product does. Lead with an outcome, not a curl command.
+7. **README as feature-list emoji changelog.** Seven-of-seven do this. A one-paragraph README that says what kiroxy *is* — before listing what it does — would be visually anomalous.
+
+**The anti-goal is clear: everything in Tier E targets the user who is already sold. kiroxy can target the user who is visiting for the first time and doesn't know they wanted a proxy yet. That audience responds to restraint, typography, and a single specific stance — not feature inventories.**
 
 ---
 
@@ -671,7 +1399,112 @@ _TBD — pending research._
 
 ### Command palette and keyboard shortcut deep dive
 
-_TBD — pending librarian research on specific invocation keys, palette layouts, keyboard maps across 10+ tools._
+**Invocation keys across 11 references (all primary-sourced):**
+
+| Product | Primary key | Scope | Position |
+|---|---|---|---|
+| Raycast | `Opt+Space` (configurable) | Commands/apps/ext/AI/files/clipboard | Floating centered ~20% from top |
+| Linear | `⌘K` / `Ctrl+K` | Actions + nav + entities (everything) | Centered modal ~640px |
+| VS Code | `⌘Shift+P` / `Ctrl+Shift+P` | Mode-switched via sigil (`>`, `@`, `#`, `:`, `?`) | Drops from top center, ~600px |
+| Superhuman | `⌘K` / `Ctrl+K` | Every action (palette IS the menu bar) | Centered modal with heavy backdrop blur |
+| Slack | `⌘K`/`⌘T` (conversations), `⌘/` (cheatsheet) | Channels + DMs only (NOT actions) | Centered modal ~500px |
+| Notion | `⌘P` or `⌘K` | Pages primarily; `/` for blocks; `@` mentions | Centered modal ~600px |
+| Figma | `⌘/` or `⌘K` (historically `⌘/`); `Ctrl+Shift+?` for shortcuts | Menu items + plugins + AI tools (not layers) | Anchored to canvas center |
+| GitHub | `⌘K` search, `⌘Shift+K` command mode | Multi-mode sigils (`>`, `#`, `@`, `/`, `!`) | Centered modal |
+| Vercel Dashboard | `⌘K` | Projects/deployments/teams/actions | Centered modal ~600px |
+| Stripe Dashboard | `/` focuses search, `?` opens shortcut sheet | **Entity search with operator syntax** (`amount:>149.99 email:...`) | Persistent top search bar (not modal) |
+| Warp | `⌘P` (app palette); `⌘↑/↓` (block nav) | App settings (NOT terminal) | Centered modal |
+| cmdk (pacocoursey) | `⌘K` by convention | Whatever you scope | Centered modal; nested sub-pages |
+
+**Keyboard shortcut conventions 2026 (observed across the products above):**
+
+| Action | Convention | Exceptions |
+|---|---|---|
+| Command palette | `⌘K` / `Ctrl+K` | VS Code uses `⌘Shift+P`; Arc uses `⌘T` |
+| Quick file search | `⌘P` / `Ctrl+P` | Notion conflates it with `⌘K` |
+| Keyboard shortcut cheatsheet | `?` (universal) | Figma `Ctrl+Shift+?`, Superhuman `?` |
+| Focus search | `/` (universal — GitHub, Stripe, Linear) | — |
+| Toggle sidebar | `⌘B` (VS Code, Linear) or `⌘S` (Arc) | — |
+| New tab / nav forward | `⌘T` / `⌘Enter` (new tab) | — |
+| Settings | `⌘,` (universal macOS) | — |
+| Close/Back | `Esc` or `⌘W` | — |
+| Submit + new | `⌘Enter` | — |
+
+**🎯 Concrete recommendations for kiroxy:**
+
+**Invocation keys:**
+- **Primary**: `⌘K` (Mac) / `Ctrl+K` (Linux/Windows) — the 2026 default, don't fight it.
+- **Alternate (focus search only)**: `/` — universal focus-search idiom from GitHub/Stripe/Linear.
+- **Cheatsheet**: `?` — universal "show me the shortcuts" key.
+
+**Palette layout (the Raycast-Linear hybrid):**
+- Centered modal, ~640px wide, top-anchored ~20% from viewport top.
+- Input row at top with subtle placeholder showing current mode (`Type a command, or / for accounts…`).
+- **Empty state is a CURATED list, not empty** — show recents + 5 common actions (à la Vercel).
+- **Every row shows its direct shortcut on the right as a keycap badge** — this is the Linear/Superhuman teaching pattern that makes the palette self-documenting.
+- **Footer hints** show available modifiers for selected row: `↩ run · ⌘↩ run in new window · ⌘C copy ID · ? help`.
+- **Two-tier palette** (Raycast pattern): root palette for navigation/actions; `⌘K` on a selected account opens an action sub-palette (refresh, copy ID, view logs, disable, delete).
+
+**Navigation scheme within palette:**
+- `↑/↓` — navigate
+- `Enter` — execute (default action)
+- `⌘Enter` — secondary action (open in new tab / view details without navigating)
+- `⌘C` — copy the currently-selected item's ID to clipboard (Stripe pattern)
+- `Tab` — narrow scope (GitHub pattern: `Tab` into a repo from org level)
+- `Backspace` on empty input — pop to parent palette / widen scope
+- `Esc` — close palette entirely
+
+**Scope sigils (VS Code / GitHub mode-switching):**
+- `/` — accounts
+- `#` — requests (log entries)
+- `>` — commands (actions)
+- `@` — models
+- `?` — help
+
+**Full kiroxy keyboard cheatsheet (v1.3 target):**
+
+| Key | Action |
+|---|---|
+| `⌘K` | Open command palette |
+| `/` | Focus search (scoped to current view) |
+| `?` | Open keyboard shortcut cheatsheet |
+| `⌘,` | Open settings |
+| `⌘B` | Toggle sidebar |
+| `⌘1..9` | Jump to section N (Dashboard, Accounts, Requests, Routes, Settings, Logs, Metrics) |
+| `G` then `D/A/R/S/L/M` | Vim-style section navigation (Linear-pattern alternative) |
+| `J/K` | Row down/up in any table |
+| `Enter` | Open selected row in right drawer |
+| `⌘Enter` | Open selected row in full page |
+| `⌘C` | Copy selected row ID |
+| `E` | Edit selected row inline |
+| `X` | Toggle selection checkbox |
+| `⌘A` | Select all visible rows |
+| `⌘D` | Drop/disable selected (with confirm) |
+| `⌘R` | Refresh selected account token |
+| `⌘.` | Toggle account status filter (active/cooldown/disabled/all) |
+| `⌘⇧L` | Jump to live log tail |
+| `⌘\` | Toggle dark/light (respects system by default) |
+| `⌘⇧T` | Toggle density (comfortable/compact) |
+| `Esc` | Close palette / drawer / modal; pop scope |
+
+**Accessibility notes:**
+- All palette interactions work keyboard-only (no mouse hover required).
+- `aria-live="polite"` announces palette result count as user types.
+- Focus trap inside palette when open; returns to previous focus on close.
+- Keycap badges have `aria-hidden="true"` — screen readers hear the command, not "command K."
+- High-contrast mode override: keycap badges get 2px borders and solid fills instead of subtle translucent.
+
+---
+
+## Changelog
+
+- `2026-05-13` — Scaffold created; 9 parallel librarian subagents fired for Tier A/B/C/D/E + command-palette + typography + color deep dives.
+- `2026-05-13` — Tier A (Grafana, Linear, fly.io, Vercel, Supabase, Stripe, Netlify, Railway, Render, PlanetScale, Cloudflare) complete. Typography + OKLCH color recipe committed.
+- `2026-05-13` — Tier B (Raycast, Superhuman, Arc, Zed, Warp, Notion, Figma, Tailscale, Replit) complete.
+- `2026-05-13` — Tier C (Radix, Ark, shadcn, Primer, Geist, Tailwind UI) synthesized from existing gallery evidence (subagent failed mid-run).
+- `2026-05-13` — Tier D (15 web-platform features + aesthetic trend) complete.
+- `2026-05-13` — Tier E (hexos, Homepage, Portainer, Sonarr, Jellyfin, Open WebUI, LibreChat) complete.
+- `2026-05-13` — Command palette + keyboard shortcut deep dive complete with concrete kiroxy shortcut map.
 
 ### Typography picks 2026 — candidates, evidence, recommendation
 
