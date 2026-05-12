@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GOEXPERIMENT: jsonv2
+  GO_FLAGS: -mod=readonly
+
+jobs:
+  gate:
+    name: gate (${{ matrix.os }} / go ${{ matrix.go }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # go.mod declares `go 1.26`, so we pin the matrix at that floor.
+        # Extend with newer versions once they become available.
+        os: [ubuntu-latest, macos-latest]
+        go: ['1.26.x']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache: true
+          check-latest: true
+
+      - name: Print toolchain
+        run: |
+          go version
+          go env GOEXPERIMENT GOMODCACHE GOCACHE
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Verify go.mod is tidy
+        # Fail if `go mod tidy` would produce changes — prevents drift.
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+      - name: make gate
+        # Runs fmt + vet + build + test with GOEXPERIMENT=jsonv2 baked in.
+        run: make gate
+
+      - name: Race tests
+        run: go test -race -timeout 120s ./...
+
+      - name: Coverage
+        run: |
+          go test -covermode=atomic -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out | tail -n 40
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}-go${{ matrix.go }}
+          path: coverage.out
+          if-no-files-found: warn
+          retention-days: 14
