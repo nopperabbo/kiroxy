@@ -66,7 +66,9 @@ class BrowserDriver:
         self.default_nav_timeout_ms = default_nav_timeout_ms
         self._cm = None
         self._browser = None  # Camoufox context manager yields a Browser
+        self._context = None
         self._page = None
+        self._url_log: list[tuple[str, str]] = []
 
     # ──────────────────────────────────────────────────────────────────────
     # Lifecycle
@@ -94,14 +96,17 @@ class BrowserDriver:
             humanize=True,
             os=os_hints,
             locale=self.profile.get("locale", "en-US"),
-            # Camoufox supports per-profile timezone / geo / screen; we pass
-            # what we have and let it derive the rest from the fingerprint.
-            geoip=False,  # do NOT pin to caller's IP; keep fingerprint decoupled
+            geoip=False,
             window=[viewport.get("width", 1920), viewport.get("height", 1080)],
+            i_know_what_im_doing=True,
         )
-        self._page = self._cm.__enter__()
+        self._browser = self._cm.__enter__()
+        self._context = self._browser.new_context()
+        self._page = self._context.new_page()
         self._page.set_default_timeout(self.default_step_timeout_ms)
         self._page.set_default_navigation_timeout(self.default_nav_timeout_ms)
+
+        self._install_url_listeners()
 
         # Override Accept-Language explicitly; Camoufox's locale argument
         # controls navigator.language but not always the HTTP header shape.
@@ -113,11 +118,48 @@ class BrowserDriver:
 
         return self
 
+    def _install_url_listeners(self) -> None:
+        """Attach URL listeners immediately after page creation.
+
+        Must run BEFORE any navigation so kiro:// redirects that fire during
+        the Google OAuth flow don't get missed. Captured URLs sit in
+        self._url_log until wait_for_navigation_matching drains them.
+        """
+        def _log_url(url: str, source: str) -> None:
+            if url:
+                self._url_log.append((source, url))
+
+        def _on_frame_nav(frame) -> None:
+            try:
+                if frame.parent_frame is None:
+                    _log_url(frame.url, "framenav")
+            except Exception:
+                pass
+
+        def _on_request(request) -> None:
+            try:
+                _log_url(request.url, "request")
+            except Exception:
+                pass
+
+        def _on_response(response) -> None:
+            try:
+                if 300 <= response.status < 400:
+                    loc = response.headers.get("location", "") or ""
+                    _log_url(loc, "redirect")
+            except Exception:
+                pass
+
+        self._context.on("request", _on_request)
+        self._context.on("response", _on_response)
+        self._page.on("framenavigated", _on_frame_nav)
+
     def __exit__(self, exc_type, exc, tb) -> None:
         with contextlib.suppress(Exception):
             if self._cm is not None:
                 self._cm.__exit__(exc_type, exc, tb)
         self._page = None
+        self._context = None
         self._browser = None
         self._cm = None
 
@@ -173,42 +215,32 @@ class BrowserDriver:
         timeout_s: int = 120,
         poll_interval_s: float = 0.25,
     ) -> str:
-        """Poll page.url until predicate(url) is True, up to timeout_s.
+        """Drain persistent URL log until predicate matches.
 
-        Used to catch the kiro:// redirect — Playwright's built-in
-        expect_navigation won't fire for non-http schemes because the
-        browser cancels the nav. We sample both the live URL and
-        the last-seen framenavigated target.
+        Listeners are installed at __enter__ time (see _install_url_listeners),
+        so URLs captured during the Google OAuth flow are already in
+        self._url_log by the time this is called. We check both the historical
+        log and the live page.url on each poll iteration.
         """
+        scanned_idx = 0
         deadline = time.monotonic() + timeout_s
-        seen_urls: list[str] = []
+        while time.monotonic() < deadline:
+            while scanned_idx < len(self._url_log):
+                _src, url = self._url_log[scanned_idx]
+                scanned_idx += 1
+                if predicate(url):
+                    return url
+            current = self.page.url or ""
+            if predicate(current):
+                return current
+            time.sleep(poll_interval_s)
 
-        def _on_frame_nav(frame):
-            try:
-                u = frame.url
-            except Exception:
-                return
-            if u:
-                seen_urls.append(u)
-
-        # framenavigated fires even when the navigation is ultimately
-        # cancelled (e.g. non-http scheme) — exactly what we need.
-        self.page.on("framenavigated", _on_frame_nav)
-        try:
-            while time.monotonic() < deadline:
-                current = self.page.url or ""
-                if predicate(current):
-                    return current
-                for u in reversed(seen_urls):
-                    if predicate(u):
-                        return u
-                time.sleep(poll_interval_s)
-            raise TimeoutError(f"timed out after {timeout_s}s waiting for navigation")
-        finally:
-            # Playwright's event emitters don't expose 'off' for callbacks
-            # declared inline; we leak this until context teardown. That's
-            # fine — driver is single-use, GC'd on __exit__.
-            pass
+        recent = "\n".join(f"  [{s}] {u[:140]}" for s, u in self._url_log[-15:])
+        raise TimeoutError(
+            f"timed out after {timeout_s}s waiting for navigation.\n"
+            f"Last 15 URLs captured by listeners:\n{recent or '  (none)'}\n"
+            f"Current page.url: {self.page.url or '(empty)'}"
+        )
 
     # ──────────────────────────────────────────────────────────────────────
     # Debug
