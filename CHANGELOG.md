@@ -4,6 +4,24 @@ All notable changes to kiroxy will be documented in this file. Format loosely fo
 
 ## [Unreleased]
 
+
+### Added (Phase 2.5.1 — pool refresh test coverage)
+
+- 9 new tests close the Phase 2.5 test gap:
+  - `internal/pool/refresh_concurrent_test.go` — 50-goroutine concurrent
+    `GetToken` on expired account; 401 cooldown path; 5xx exponential-backoff
+    retry path. Documents a pre-existing singleflight gap as P1 backlog.
+  - `internal/tokenvault/commit_meta_patch_test.go` — CommitWithMetaPatch
+    merges existing metadata, rejects stale-generation commits, tolerates
+    malformed prior metadata.
+  - `internal/server/refresh_e2e_test.go` — full-stack E2E. Seed vault with
+    expired social account, POST /v1/messages, assert refresh fired once,
+    kiroclient Bearer was the NEW access_token, vault generation+1 with
+    renewed metadata.expires_at.
+
+- No production code changed; 5 deferred Phase 2.5 tests (plus 2 bonus
+  table-cases) now land.
+
 ### Added (Phase M — Prometheus metrics endpoint)
 
 - `GET /metrics` exposition endpoint in the Prometheus text format. Turn
