@@ -104,3 +104,19 @@ vuln:
 	  echo "  install with:  go install golang.org/x/vuln/cmd/govulncheck@latest"; \
 	  echo "  then ensure \$$(go env GOBIN) or \$$(go env GOPATH)/bin is on PATH."; \
 	fi
+
+# ---------------------------------------------------------------------------
+# Release tooling (goreleaser)
+# ---------------------------------------------------------------------------
+# `release-dry-run` exercises the release pipeline locally without publishing
+# anything (no git tag required, no GitHub token needed, no images pushed).
+# Useful before tagging to confirm archives build on both platforms.
+
+release-dry-run:
+	@command -v goreleaser >/dev/null 2>&1 || { \
+	  echo "goreleaser not found on PATH." >&2; \
+	  echo "  install with:  brew install goreleaser   (macOS)" >&2; \
+	  echo "           or:   go install github.com/goreleaser/goreleaser/v2@latest" >&2; \
+	  exit 1; \
+	}
+	goreleaser release --snapshot --clean --skip=publish,sign,announce,validate

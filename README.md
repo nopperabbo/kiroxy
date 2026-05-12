@@ -6,6 +6,49 @@ A single-user, self-hosted proxy that exposes your Kiro IDE subscription (Amazon
 
 ---
 
+## Installation
+
+Three ways to get kiroxy running.
+
+### 1. Download a pre-built binary (recommended for end users)
+
+Pre-built binaries for Linux and macOS (amd64 + arm64) are attached to every
+[GitHub Release](../../releases/latest). Each archive ships the binary
+plus `LICENSE`, `NOTICE`, `README.md`, `CHANGELOG.md`, `docs/ARCHITECTURE.md`,
+`docs/TROUBLESHOOTING.md`, and `docs/OPENCODE.md`. A SHA-256 checksums file
+(`kiroxy_<version>_checksums.txt`) is attached to verify download integrity.
+
+```bash
+# Pick the matching Os_Arch — Linux_amd64, Linux_arm64, Darwin_amd64, Darwin_arm64.
+VERSION=0.3.0
+OS_ARCH=Linux_amd64   # or Darwin_arm64, etc.
+
+curl -sSL -o kiroxy.tar.gz \
+  "https://github.com/OWNER/REPO/releases/download/v${VERSION}/kiroxy_${VERSION}_${OS_ARCH}.tar.gz"
+curl -sSL -o checksums.txt \
+  "https://github.com/OWNER/REPO/releases/download/v${VERSION}/kiroxy_${VERSION}_checksums.txt"
+
+# Verify the archive matches the published checksum.
+grep " kiroxy_${VERSION}_${OS_ARCH}.tar.gz$" checksums.txt | shasum -a 256 -c -
+
+tar -xzf kiroxy.tar.gz
+./kiroxy version
+```
+
+### 2. Run from Docker
+
+Covered in the [Run with Docker](#run-with-docker) section below. `gcr.io`
+or `ghcr.io` image hosting is on the roadmap; for now, build locally with
+`make docker-build`.
+
+### 3. Build from source
+
+Covered in the [Five-minute quickstart](#five-minute-quickstart) below.
+`make build` pins `GOEXPERIMENT=jsonv2` and stamps `main.version` from
+`git describe`.
+
+---
+
 ## Five-minute quickstart
 
 ### 1. Prereqs
