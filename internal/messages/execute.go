@@ -9,12 +9,14 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"local/kiroxy/internal/anthropic"
 	"local/kiroxy/internal/auth"
 	"local/kiroxy/internal/httpx"
 	"local/kiroxy/internal/kiroproto"
 	"local/kiroxy/internal/logging"
+	"local/kiroxy/internal/metrics"
 )
 
 // invocation bundles everything callAndHandle needs for one upstream attempt.
@@ -28,6 +30,7 @@ type invocation struct {
 	contextWindowSize int
 	thinking          bool
 	toolNameMap       map[string]string
+	metrics           *requestMetrics
 }
 
 // callAndHandle performs one upstream call for the invocation and streams or
@@ -37,12 +40,18 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 	_, short := logging.TraceIDs(ctx)
 	capture := newUpstreamAttemptCapture(ctx, s.captureEnabled, inv.payload, inv.model, inv.thinking, inv.req.Stream, attempt)
 
+	upstreamStart := time.Now()
 	apiResp, err := s.client.GenerateAssistantResponse(ctx, inv.creds.AccessToken, inv.payload, inv.creds.Region)
 	if err != nil {
 		logUpstreamError(ctx, short, err)
+		inv.metrics.errKind(metrics.RequestKindUpstream)
 		httpx.WriteError(w, http.StatusBadGateway, errTypeAPI, "upstream API error")
 		return ""
 	}
+	// Observe time-to-first-byte (header + TCP round-trip only, not body);
+	// apiResp returns as soon as status+headers are in, so this captures
+	// exactly what we want. Only emitted on the first successful attempt.
+	inv.metrics.observeTTFB(upstreamStart)
 	body := apiResp.Body
 	defer func() { _ = body.Close() }()
 	if capture != nil {
@@ -51,9 +60,9 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 
 	var reason string
 	if inv.req.Stream {
-		reason = s.handleStreamingResponse(ctx, w, apiResp, inv.responseModel, inv.contextWindowSize, inv.req.StopSequences, inv.req.MaxTokens, apiResp.PromptTokens, capture, inv.toolNameMap)
+		reason = s.handleStreamingResponse(ctx, w, apiResp, inv.responseModel, inv.contextWindowSize, inv.req.StopSequences, inv.req.MaxTokens, apiResp.PromptTokens, capture, inv.toolNameMap, inv.metrics)
 	} else {
-		reason = s.handleNonStreamingResponse(ctx, w, apiResp, inv.responseModel, inv.contextWindowSize, inv.req.StopSequences, inv.req.MaxTokens, apiResp.PromptTokens, capture, inv.toolNameMap)
+		reason = s.handleNonStreamingResponse(ctx, w, apiResp, inv.responseModel, inv.contextWindowSize, inv.req.StopSequences, inv.req.MaxTokens, apiResp.PromptTokens, capture, inv.toolNameMap, inv.metrics)
 	}
 	if reason == retryReasonEmptyVisibleEndTurn {
 		capture.logCapture(ctx, reason)
@@ -87,11 +96,13 @@ func (s *Service) executeWithRetry(ctx context.Context, w http.ResponseWriter, i
 	if reason2 == retryReasonEmptyVisibleEndTurn {
 		slog.ErrorContext(ctx, "retry also returned empty visible end_turn",
 			"trace_id", short, "reason", reason2)
+		inv.metrics.errKind(metrics.RequestKindUpstream)
 		httpx.WriteError(w, http.StatusBadGateway, errTypeAPI, "upstream returned empty response")
 		return
 	}
 	// Retry ended with a different (final) error — report it as invalid state.
 	slog.ErrorContext(ctx, "retry failed",
 		"trace_id", short, "first_reason", reason, "second_reason", reason2)
+	inv.metrics.errKind(metrics.RequestKindUpstream)
 	httpx.WriteError(w, http.StatusBadRequest, errTypeInvalidRequest, "invalid state: "+reason2)
 }

@@ -10,6 +10,7 @@ import (
 
 	"local/kiroxy/internal/auth"
 	"local/kiroxy/internal/kiroclient"
+	"local/kiroxy/internal/metrics"
 )
 
 // TokenGetter loads valid upstream credentials for a request.
@@ -22,6 +23,10 @@ type Service struct {
 	auth           TokenGetter
 	client         kiroclient.Client
 	captureEnabled bool
+
+	// metrics is the nil-safe metric sink. A nil value disables emission
+	// on every instrumentation call; see internal/metrics.Sink.
+	metrics *metrics.Sink
 }
 
 // Option configures a Service.

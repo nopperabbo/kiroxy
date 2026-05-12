@@ -21,7 +21,7 @@ import (
 
 const retryReasonEmptyVisibleEndTurn = "empty_visible_end_turn"
 
-func (s *Service) handleStreamingResponse(ctx context.Context, w http.ResponseWriter, apiResp *kiroclient.Response, model string, contextWindowSize int, stopSequences []string, maxTokens int, preCountedInputTokens int, capture *upstreamAttemptCapture, toolNameMap map[string]string) string {
+func (s *Service) handleStreamingResponse(ctx context.Context, w http.ResponseWriter, apiResp *kiroclient.Response, model string, contextWindowSize int, stopSequences []string, maxTokens int, preCountedInputTokens int, capture *upstreamAttemptCapture, toolNameMap map[string]string, rm *requestMetrics) string {
 	traceID, short := logging.TraceIDs(ctx)
 
 	gw := NewGateWriter(w)
@@ -120,12 +120,13 @@ func (s *Service) handleStreamingResponse(ctx context.Context, w http.ResponseWr
 			"headers", logging.SafeHeaders{H: gw.Header()},
 		)
 		inputTokens, outputTokens := sw.Usage()
+		rm.setTokens(inputTokens, outputTokens)
 		logResponseStats(ctx, short, inputTokens, outputTokens, sw.HasContextUsage(), sw.ContextUsagePercentage(), contextWindowSize)
 	}
 	return ""
 }
 
-func (s *Service) handleNonStreamingResponse(ctx context.Context, w http.ResponseWriter, apiResp *kiroclient.Response, model string, contextWindowSize int, stopSequences []string, maxTokens int, preCountedInputTokens int, capture *upstreamAttemptCapture, toolNameMap map[string]string) string {
+func (s *Service) handleNonStreamingResponse(ctx context.Context, w http.ResponseWriter, apiResp *kiroclient.Response, model string, contextWindowSize int, stopSequences []string, maxTokens int, preCountedInputTokens int, capture *upstreamAttemptCapture, toolNameMap map[string]string, rm *requestMetrics) string {
 	traceID, short := logging.TraceIDs(ctx)
 	acc := respconv.NewNonStreamingAccumulator(contextWindowSize, stopSequences, maxTokens, preCountedInputTokens)
 	acc.SetToolNameMap(toolNameMap)
@@ -195,6 +196,7 @@ func (s *Service) handleNonStreamingResponse(ctx context.Context, w http.Respons
 	}
 	_, _ = w.Write([]byte("\n"))
 
+	rm.setTokens(stats.InputTokens, stats.OutputTokens)
 	logResponseStats(ctx, short, stats.InputTokens, stats.OutputTokens, stats.HasContextUsage, stats.ContextUsagePercentage, contextWindowSize)
 	return ""
 }

@@ -14,6 +14,7 @@ import (
 	"local/kiroxy/internal/auth"
 	"local/kiroxy/internal/httpx"
 	"local/kiroxy/internal/logging"
+	"local/kiroxy/internal/metrics"
 	"local/kiroxy/internal/models"
 	"local/kiroxy/internal/reqconv"
 	"local/kiroxy/internal/toolsearch"
@@ -25,15 +26,25 @@ func (s *Service) HandleMessages(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	traceID, short := logging.TraceIDs(ctx)
 
+	// Metrics scaffolding: wrap the writer so the final status code can be
+	// recovered in the deferred finalize, and start a tracker whose lifetime
+	// matches the handler. Both are zero-cost when no metrics sink is wired.
+	lw := &statusCapturingWriter{ResponseWriter: w}
+	w = lw
+	rm := s.newRequestMetrics()
+	defer func() { rm.finalize(lw.currentStatus()) }()
+
 	req, err := parseAndValidateRequest(ctx, w, r)
 	if err != nil {
 		slog.WarnContext(ctx, "invalid request", "trace_id", short, "err", err)
+		rm.errKind(metrics.RequestKindInvalidRequest)
 		httpx.WriteError(w, http.StatusBadRequest, errTypeInvalidRequest, err.Error())
 		return
 	}
 
 	ccSessionID := r.Header.Get(headerCCSessionID)
 	if ccSessionID == "" {
+		rm.errKind(metrics.RequestKindInvalidRequest)
 		httpx.WriteError(w, http.StatusBadRequest, errTypeInvalidRequest, "missing "+headerCCSessionID+" header")
 		return
 	}
@@ -49,6 +60,7 @@ func (s *Service) HandleMessages(w http.ResponseWriter, r *http.Request) {
 	creds, err := s.auth.GetToken(ctx)
 	if err != nil {
 		slog.ErrorContext(ctx, "auth error", "trace_id", short, "err", err)
+		rm.errKind(metrics.RequestKindAuth)
 		httpx.WriteError(w, http.StatusUnauthorized, ErrTypeAuthentication, "authentication failed")
 		return
 	}
@@ -57,6 +69,7 @@ func (s *Service) HandleMessages(w http.ResponseWriter, r *http.Request) {
 	if req.IsThinkingEnabled() {
 		thinking = true
 	}
+	rm.setModel(anthropicModel, req.Stream)
 
 	s.logRequest(ctx, short, ccSessionID, kiroModel, contextWindowSize, req, thinking)
 
@@ -85,6 +98,7 @@ func (s *Service) HandleMessages(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.WarnContext(ctx, "payload build error", "trace_id", short, "err", err)
+		rm.errKind(metrics.RequestKindProxy)
 		httpx.WriteError(w, http.StatusBadRequest, errTypeInvalidRequest, err.Error())
 		return
 	}
@@ -98,6 +112,7 @@ func (s *Service) HandleMessages(w http.ResponseWriter, r *http.Request) {
 		contextWindowSize: contextWindowSize,
 		thinking:          thinking,
 		toolNameMap:       nameMap.ReverseMap(),
+		metrics:           rm,
 	})
 }
 
