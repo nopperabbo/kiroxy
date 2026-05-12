@@ -388,6 +388,14 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="skip the YouTube/Google/GitHub warmup flow (debugging only; reduces success rate)",
     )
     p.add_argument(
+        "--proxy", default=None,
+        help=(
+            "residential proxy URL (http/https/socks5 with optional user:pass); "
+            "overrides KIROXY_ONBOARD_PROXY env var. Unset = direct connection "
+            "(Google success rate may drop; see README)."
+        ),
+    )
+    p.add_argument(
         "--headless", action="store_true",
         help="run Camoufox headless (default: windowed, for debug visibility)",
     )
@@ -407,6 +415,37 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     output_path = Path(args.output).expanduser().resolve()
     profile_dir = _derive_profile_dir(args.email, args.profile_dir)
+
+    # Resolve and validate residential proxy (CLI flag > env > none).
+    from proxy_support import resolve_proxy, validate_egress, ProxyConfigError
+
+    proxy_dict: Optional[Dict[str, str]] = None
+    proxy_geoip: Optional[Any] = None
+    try:
+        proxy_cfg = resolve_proxy(args.proxy)
+    except ProxyConfigError as e:
+        print(f"error: invalid proxy: {e}", file=sys.stderr)
+        return 1
+
+    if proxy_cfg is None:
+        _log(
+            "warn: residential proxy unset "
+            "(KIROXY_ONBOARD_PROXY or --proxy); "
+            "Google success rate may drop to <40%"
+        )
+    else:
+        _log(f"proxy: {proxy_cfg.server} (validating egress…)")
+        ok, detail = validate_egress(proxy_cfg)
+        if not ok:
+            print(
+                f"error: proxy egress validation failed: {detail}\n"
+                f"  proxy: {proxy_cfg.server}",
+                file=sys.stderr,
+            )
+            return 1
+        _log(f"proxy: ok (egress IP {detail})")
+        proxy_dict = proxy_cfg.as_camoufox_dict()
+        proxy_geoip = detail  # let Camoufox derive tz/locale from this IP
 
     profile = _pick_profile(args.email, args.profile_id)
     _log(
@@ -438,6 +477,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             profile=profile,
             headless=args.headless,
             user_data_dir=str(profile_dir),
+            proxy=proxy_dict,
+            geoip=proxy_geoip,
         ) as drv:
             if warmup_needed:
                 completed, attempted = run_warmup(drv, log=_log)
