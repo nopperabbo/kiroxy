@@ -1,3 +1,25 @@
-camoufox>=0.4
-patchright>=1.44
-httpx>=0.27
+# Kiroxy Onboarder — Python deps
+# All versions pinned exactly for reproducibility.
+# Update protocol:
+#   1) bump here (one line at a time, ideally)
+#   2) run `python3 -m unittest discover -s . -p "test_*.py"` — must stay 85/85
+#   3) exercise TESTING.md manual test 3 (manual Google sign-in) against
+#      the bumped stack before committing.
+
+# Camoufox: Firefox-based stealth browser. ``[geoip]`` extra pulls the
+# MaxMind DB so geoip=<ip> resolves timezone/locale without a network call.
+camoufox[geoip]==0.4.11
+
+# Patchright: Chromium-based stealth. Not currently used by onboarder
+# (we're on Camoufox), but kept pinned so `fingerprint_check.py`
+# extensions can adopt it without a version hunt later.
+patchright==1.59.1
+
+# httpx: used by kiro_oauth.exchange_code (/oauth/token) and
+# proxy_support.validate_egress (egress IP probe).
+httpx==0.28.1
+
+# Optional: needed only if KIROXY_ONBOARD_PROXY uses socks5://…
+# Not installed by default to keep the lean case lean. Uncomment or
+# install manually:
+#   pip install 'httpx[socks]'
