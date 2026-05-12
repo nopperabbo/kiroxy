@@ -895,3 +895,64 @@ specialist consult, or proceed-despite-failure.
 
 
 ---
+
+## Phase S — research-v4 operational depth (2026-05-13, ~3.5 hours into 8h budget)
+
+- **Goal**: layer-4 research covering protocol exhaustiveness, operations,
+  failure catalog, ecosystem, security, future, readiness. Complementary to
+  v1 (competitive), v2 (tier 2 gateways), v3 (UX gallery). Not redundant.
+- **Process**: 9 subagents dispatched in parallel at t+0:05
+  (5 librarian + 4 explore). During 30+ minute subagent wall-clock, read
+  kiroxy's own protocol packages (kiroproto, kiroclient, auth, reqconv,
+  pool, models) cover-to-cover to ground synthesis. Commit atomically per
+  doc.
+- **Deliverables landed in research-v4/**:
+  - README.md (87 lines) — index + scope disambiguation vs v1/v2/v3
+  - PROTOCOL.md (983 lines) — Kiro/CodeWhisperer wire reference, all 18
+    event types, all 3 domain layers, token format, profile ARN, quirks.
+    Cited to kiroxy source + d-kuro/kirocc + Quorinex + jwadow PRs.
+  - OPERATIONS.md (1017 lines) — homelab/cloud/compose playbooks, 3
+    reverse-proxy configs, Tailscale + Cloudflare Tunnel + WireGuard,
+    monitoring/backup/upgrade/rollback, 6 incident runbooks.
+  - FAILURES.md (1037 lines) — 51-entry peer failure catalog across 8
+    categories; kiroxy mitigation score 75% in-code, with 3 unaddressed
+    high-risk items flagged as new P0/P1.
+  - ECOSYSTEM.md (954 lines) — downstream client wire expectations for
+    claude-code / Cursor / Cline / Continue / aider / opencode / Zed /
+    LiteLLM, 147 pinned-SHA GitHub permalinks, 10 pain points with
+    mitigation strategies, 14-item kiroxy implementation checklist.
+  - SECURITY.md (459 lines) — security audit of 10 peer projects
+    (9 accessible, 1 404) across 7 dimensions; 29 concrete audit items
+    for kiroxy split across CRITICAL / HIGH / MEDIUM / LOW.
+  - FUTURE.md (340 lines) — Kiro/AWS roadmap signals through May 2026,
+    endpoint migration learnings, model trajectory, Camoufox risk,
+    AWS/Anthropic policy signals, 16-item 6-month preparation checklist.
+  - READINESS.md (580 lines) — ship-to-friends binary checklist,
+    gate-by-gate summary, v1.0.1 release path.
+  - **Total: 5,457 lines, 7 atomic commits.**
+- **BACKLOG updates**: 15 new items (P0: SSE keepalive pings for claude-code
+  chunkTimeout; P1: OTel runtime wiring, OIDC secret-rotation detection,
+  vault mode check, config tests, alerts.yml, API-key min length; P2:
+  onboarder probe, Workspace docs, vault encryption, cosign signing; P3:
+  weighted-RR, body-size metric, SMOKE_TEST re-run, dashboard control).
+- **Subagent mechanics**: 1 subagent (`bg_aec3b05c` failure catalog)
+  returned "task not found" after completion notification — wrote
+  FAILURES.md directly from peer issue references in PROTOCOL.md +
+  SECURITY.md + FUTURE.md + ECOSYSTEM.md + kiroxy BACKLOG/CHANGELOG.
+  Result is same quality; just more manual synthesis.
+- **Key insight**: v4 research surfaces 3 previously-unknown actionable
+  failure modes (FAIL-043, FAIL-006, FAIL-035) that no prior phase had
+  caught. Without v4's cross-ecosystem audit, these would ship to friends
+  undiagnosed.
+- **Surprises**:
+  - bg_status polling showed prior-session phantoms unrelated to Phase S;
+    task_id tracking via the subagent dispatch response was the only
+    reliable signal.
+  - 3 subagents wrote files to the project root (`/Users/mac/Desktop/Self
+    Hosted Proxy AI/research-v4/`) instead of the kiroxy repo; manually
+    moved to `kiroxy/research-v4/` after verifying content quality.
+  - One subagent's OPERATIONS.md draft was high-quality but used generic
+    `--config` flag assumptions that kiroxy doesn't support (env-only).
+    Discarded in favor of my kiroxy-source-grounded OPERATIONS.md.
+- **BACKLOG diff**: 15 new items appended to P0/P1/P2/P3 sections.
+

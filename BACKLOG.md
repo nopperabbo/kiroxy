@@ -16,6 +16,24 @@ Last triaged: 2026-05-12 (post-Phase I).
 - **CLOSED: Workspace profileArn collision in dedupe key (BUG 4)** (2026-05-13 Phase G.BATCH). Google Workspace accounts within the same Kiro org share a `profileArn`, so the prior cascade silently overwrote earlier imports (10 operators → 1 vault entry). Resolution in `tools/onboard/onboard.py::_dedupe_key` + `tools/onboard/kiro_oauth.py::jwt_sub_or_email` + `cmd/kiroxy/import_json.go::deriveAccountID` as a 4-layer cascade (email → JWT claim → profileArn → token prefix). Schema gains an `email` field (via `--email` CLI flag). Legacy JSON files without `email` continue to import via fallback layers; operators on pre-v1.0.1 Workspace vaults should `rm tokens.db` and re-import. Collision detection at import time prevents silent overwrites of different tokens under the same id (requires `-allow-overwrite` to rotate in place). 16 new Go tests + 68 new Python tests cover the cascade, collision, state, and classification paths. LoC landed: ~1800 across 4 commits (c1–c5 of the Phase G.BATCH overnight run).
 - **KIROXY_UPSTREAM_URL env var** — Phase L mock_kiro cannot be integration-tested through kiroxy without this. Simple baseURL override already exists at `kiroclient.WithBaseURL(...)`; just needs env plumbing in `internal/config/config.go`. LoC: 10-20.
 
+## P0/P1 surfaced by Phase S research (research-v4/, 2026-05-13)
+
+- **P0: SSE keepalive pings during slow thinking blocks** (FAIL-043 in research-v4/FAILURES.md). claude-code + opencode `chunkTimeout` abort streams when Kiro takes >30s to emit first delta (common with Opus 4.7 adaptive-thinking). Fix: emit `event: ping` or `: keepalive\n\n` every 15s from `internal/respconv/streaming.go`. LoC: ~10.
+- **P1: Wire OpenTelemetry tracing at runtime** (READINESS.md §3.2). `internal/tracing/` package is fully implemented (OTLP HTTP exporter, W3C propagators) but `tracing.Init` is never called from `cmd/kiroxy/main.go`. Gate behind `KIROXY_OTEL_ENABLED=1`. LoC: ~20.
+- **P1: Detect OIDC client-secret rotation** (FAIL-006). Kiro CLI rotates the OIDC device-registration client secret periodically; proxies reading stale SQLite see 401s with no signal to operator. Log a targeted warning when N consecutive IDC refresh 401s hit the same `clientId`. LoC: ~15.
+- **P1: Boot-time vault file mode check** (FAIL-035). kiroxy sets 0600 on create but never re-checks. Backups or `cp -p` missing can drift to 0644. Log warning at boot if not 0600. LoC: ~5.
+- **P1: Add tests for `internal/config`** (READINESS.md §6). Zero tests today; env parsing is safety-critical (`KIROXY_PORT` validation, default resolution, `KIROXY_SHUTDOWN_TIMEOUT` type coercion). LoC: ~100 test coverage.
+- **P1: Ship starter `docs/alerts.yml`** (READINESS.md §2.3). Prometheus alert rules for PoolDepleted, HighErrorRate, RefreshFailing, UpstreamLatencyHigh. 30 min of work.
+- **P1: Minimum KIROXY_API_KEY length enforcement** (SECURITY.md §4.2). Currently accepts any non-empty string. Reject < 16 chars at startup with a WARN. LoC: ~10.
+- **P2: Selector probe for onboarder** (FAIL-051). Pre-run sanity check of Kiro UI elements so onboarder fails fast when Kiro changes the auth flow.
+- **P2: Workspace dedupe documentation** (FAIL-008 mitigated, but operators need to know). README + OPERATIONS.md note: "if you're in a Workspace org, use `--email` explicitly".
+- **P2: Optional vault at-rest encryption** (SECURITY.md §4.1 / §10 item 10). User-supplied passphrase, argon2id + XChaCha20-Poly1305 or libsodium SecretBox. Not v1.0.1; target v1.1.
+- **P2: Cosign keyless signatures on releases** (SECURITY.md §4.7). Today checksums only; integrity ≠ authenticity. Target v1.1.
+- **P3: Weighted round-robin pool alternative to LRU** (FAIL-029). Only needed if usage grows; LRU's imbalance is negligible for personal use.
+- **P3: Request body size metric / warning** (FAIL-016). Operator visibility into payloads approaching Kiro's server-side limit.
+- **P3: Re-run SMOKE_TEST.md or prepend superseded banner** (READINESS.md §5). Current v0.2.1 FAIL report misleads first-time readers.
+- **P3: Wire `DashboardControlProvider` actions** (READINESS.md §1.5). Currently defined but unwired; dashboards read-only. v1.1 target.
+
 ## Phase G — Onboarder follow-ups (post G.0 + G.1 + G.FIX)
 
 G.0 scaffold + G.1 single-account flow landed in v0.3.0.
