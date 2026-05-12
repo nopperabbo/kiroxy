@@ -314,6 +314,29 @@ def _load_existing(path: Path) -> List[Dict[str, Any]]:
 
 
 def _dedupe_key(entry: Dict[str, Any]) -> str:
+    """Return a stable per-account key.
+
+    Priority (matches Go deriveAccountID cascade):
+      1. entry.email (normalized lowercase)
+      2. JWT 'email' or 'sub' claim on the access token (defensive fallback;
+         today's Kiro tokens are opaque, so this layer is inert but kept
+         for parity with the Go side and future token-shape changes)
+      3. last segment of entry.profileArn
+      4. first 12 chars of entry.accessToken
+
+    Why this order: Google Workspace accounts share a profileArn across
+    users in the same org, so profileArn alone cannot distinguish users.
+    Email is authoritative because it comes from the operator's CLI
+    invocation. Legacy JSON files without 'email' still dedupe sensibly
+    via the fallback layers.
+    """
+    email = (entry.get("email") or "").strip().lower()
+    if email:
+        return f"email:{email}"
+    from kiro_oauth import jwt_sub_or_email  # local import to avoid bootstrap cycle
+    claim = jwt_sub_or_email((entry.get("accessToken") or "").strip())
+    if claim:
+        return f"jwt:{claim.lower()}"
     arn = (entry.get("profileArn") or "").strip()
     if arn:
         seg = arn.rsplit("/", 1)[-1]

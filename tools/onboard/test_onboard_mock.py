@@ -98,5 +98,94 @@ class TestMockKiroRoundTrip(unittest.TestCase):
                     kiro_oauth.exchange_code("WRONG_CODE", "dummy")
 
 
+import onboard  # noqa: E402 — intentional late import; module imports heavy browser deps
+
+
+class TestDedupeKey(unittest.TestCase):
+    """BUG 4: dedupe by email, not profileArn.
+
+    Workspace accounts within the same Kiro org share a profileArn, so the
+    legacy profileArn-only key silently collapsed N users into 1 vault
+    entry. New cascade: email → JWT claim → profileArn → token prefix.
+    """
+
+    def test_email_wins_over_profile_arn(self):
+        e = {
+            "email": "alice@dineu.tech",
+            "profileArn": "arn:aws:codewhisperer:us-east-1:x/SHARED",
+            "accessToken": "aoa-opaque-alice",
+        }
+        self.assertEqual(onboard._dedupe_key(e), "email:alice@dineu.tech")
+
+    def test_email_is_case_insensitive(self):
+        e = {"email": "Alice@Dineu.Tech", "profileArn": "arn:x/P"}
+        self.assertEqual(onboard._dedupe_key(e), "email:alice@dineu.tech")
+
+    def test_email_is_whitespace_trimmed(self):
+        e = {"email": "  bob@dineu.tech  "}
+        self.assertEqual(onboard._dedupe_key(e), "email:bob@dineu.tech")
+
+    def test_workspace_same_profile_arn_two_emails_are_distinct(self):
+        """Regression for BUG 4: two users, same profileArn, must get distinct keys."""
+        shared_arn = "arn:aws:codewhisperer:us-east-1:111222/WORKSPACE_SHARED"
+        e1 = {"email": "user1@dineu.tech", "profileArn": shared_arn}
+        e2 = {"email": "user2@dineu.tech", "profileArn": shared_arn}
+        self.assertNotEqual(onboard._dedupe_key(e1), onboard._dedupe_key(e2))
+
+    def test_falls_back_to_profile_arn_without_email(self):
+        # Legacy JSON file that predates BUG 4 fix.
+        e = {"profileArn": "arn:aws:codewhisperer:us-east-1:x/LEGACY"}
+        self.assertEqual(onboard._dedupe_key(e), "arn:LEGACY")
+
+    def test_falls_back_to_token_prefix_without_email_or_arn(self):
+        e = {"accessToken": "aoa-token-abcdefghij-more"}
+        self.assertEqual(onboard._dedupe_key(e), "at:aoa-token-ab")
+
+    def test_empty_entry_returns_empty_key(self):
+        self.assertEqual(onboard._dedupe_key({}), "")
+
+
+class TestUpsert(unittest.TestCase):
+    def test_upsert_by_email_rotates_in_place(self):
+        entries = [{
+            "email": "alice@dineu.tech",
+            "accessToken": "aoa-old",
+            "refreshToken": "aor-old",
+            "profileArn": "arn:aws:codewhisperer:us-east-1:x/SHARED",
+        }]
+        new = {
+            "email": "alice@dineu.tech",
+            "accessToken": "aoa-new",
+            "refreshToken": "aor-new",
+            "profileArn": "arn:aws:codewhisperer:us-east-1:x/SHARED",
+        }
+        action = onboard._upsert(entries, new)
+        self.assertEqual(action, "updated")
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["accessToken"], "aoa-new")
+
+    def test_upsert_two_workspace_users_land_as_two_entries(self):
+        """BUG 4 regression: two Workspace users must NOT collapse into one entry."""
+        shared_arn = "arn:aws:codewhisperer:us-east-1:x/WORKSPACE_SHARED"
+        entries: list = []
+        action1 = onboard._upsert(entries, {
+            "email": "user1@dineu.tech",
+            "accessToken": "aoa-one",
+            "refreshToken": "aor-one",
+            "profileArn": shared_arn,
+        })
+        action2 = onboard._upsert(entries, {
+            "email": "user2@dineu.tech",
+            "accessToken": "aoa-two",
+            "refreshToken": "aor-two",
+            "profileArn": shared_arn,
+        })
+        self.assertEqual(action1, "added")
+        self.assertEqual(action2, "added")
+        self.assertEqual(len(entries), 2)
+        emails = sorted(e["email"] for e in entries)
+        self.assertEqual(emails, ["user1@dineu.tech", "user2@dineu.tech"])
+
+
 if __name__ == "__main__":
     unittest.main()
