@@ -294,9 +294,346 @@ Use this index to jump by design dimension rather than tier.
 
 > Power-user aesthetics, keyboard-first interactions, command palettes, distinctive motion.
 
-<!-- Populated by Tier B librarian subagents. -->
+**Overall takeaway:** Across these nine products, the signature move is the same in spirit but radically different in execution — each has taken a different aesthetic stance on "the operator deserves a tool that rewards expertise." Raycast weaponizes macOS vibrancy and keeps accent-red below 10% of any view. Superhuman treats `⌘K` as a training wheel that self-deprecates (every row shows the direct shortcut, so after 3-4 uses muscle memory replaces the palette). Arc bet the whole product on a sidebar + a command bar that replaces the URL bar. Zed treats the theme system as a public API, not a skin. Warp solved a decade-old terminal problem with one invention — the Block — and built everything around it. Notion teaches hierarchy is a *data model*, not decoration. Figma's UI3 is the cautionary tale about floating panels (they publicly reverted to docked). Tailscale shows restraint is the aesthetic — search DSL over drop-downs. Replit demonstrates the Kanban task board as an operational view. For kiroxy, the borrowable pattern: pick ONE signature mechanic (blocks? command-bar-as-URL? accent used only at 5%?) and let the rest orbit around it. The trap: thinking "command palette + dark mode + monospace numerals" is enough. Each of these products has one **irreducible idea** that everything else supports.
 
-_TBD — pending research._
+### Raycast — Tier B — macOS-native launcher / command palette
+
+**URL:** https://raycast.com
+
+**What it is:** A Spotlight replacement for macOS — floating 750px-wide window summoned by `Opt+Space`, wraps a plugin SDK, grown into productivity surface (AI chat, clipboard history, window management, notes).
+
+**Visual signature:** A small floating rounded-rectangle window (continuous corners, `.ultraThinMaterial` / `NSVisualEffectView` blur) that sits over whatever you were doing — never full-screen. Dark-only interior with a 4-step surface ladder (`#1C1C1E → #242424 → #2C2C2E → #3C3C3C`), hairline borders, and a signature red-orange accent (`#FF6363`) that never appears on more than ~5-10% of any view. Keycap hints (⌘1, ⌘K) live on the right edge of every row in muted rounded rectangles — **the UI itself teaches its own shortcuts**. Brand's three diagonal red stripes are used once per marketing page, max.
+
+**Color / Typography / Density / Motion:**
+- **Color:** Dark-only (`#0d0d0d → #1111 → #1C1C1E → #242424 → #2C2C2E` elevated overlay), Raycast Red (`#FF6363` / `#FF4D4D`) as sole accent, category accents for extension icons only. Elevation through surface luminance steps, NOT drop shadows.
+- **Typography:** Inter with `font-feature-settings: "calt", "kern", "liga", "ss03"` — `ss03` alternate "g" is a brand tell. Primary labels 14-15px medium; metadata 11-12px regular muted. SF Symbols for iconography.
+- **Density:** ~36-40px row height, ~12px horizontal padding. Fits 7-8 result rows without scrolling.
+- **Motion:** Window fades in with tiny scale-up (spring). Row selection instant. List re-sorts on filter with crossfade, not slide.
+
+**Signature interactions:**
+- `Opt+Space` summons from anywhere in macOS — the hotkey is sacred.
+- Every action row shows its shortcut as a keycap on the right (`⌘1` for first result, `⌘K` for action menu).
+- **Two-tier palette**: navigation palette (`Opt+Space`) + action palette (`⌘K` on selected item). Avoids command-list bloat.
+- Extension commands and app-launcher results share the same list — no mode switching.
+- Window is NEVER resizable — fixed floating surface.
+
+**Key borrowable decisions:**
+- **Accent rarity.** Red on ~5% of any view. Signal, not decoration. THIS is what makes it feel premium.
+- **Elevation through surface color, not shadows.** 4-step ladder + 1px hairline borders. Crisp in dark mode.
+- **Keycap hints embedded in every row.** UI is its own documentation — no separate "shortcuts help" modal needed.
+- **Two-tier palette pattern** (navigation + action).
+- **Fixed window size.** Removes "what size should this be" cognitive tax. Ops tools rarely need full-screen.
+
+**Explicit NOT-to-borrow:**
+- Native macOS vibrancy doesn't translate to a web dashboard; `backdrop-filter` impostors chug at scale and look cheap.
+- Small floating window is wrong for ops — kiroxy needs dense tables that want full viewport.
+- Raycast's marketing 64px display type + 96px section rhythm is consumer SaaS spacing, not ops-tool density.
+
+**Source URLs:**
+- https://raycast.com · https://developers.raycast.com
+- https://seedflip.co/blog/raycast-design-system-dark-ui (surface ladder + accent %)
+- https://www.dembrandt.com/explorer/raycast · https://getdesign.md/design-md/raycast/preview
+
+---
+
+### Superhuman — Tier B — command palette as training system
+
+**URL:** https://superhuman.com
+
+**What it is:** Email client whose entire product thesis is "speed is the feature." Onboarded via a mandatory 30-min human-led training; every action has a keyboard shortcut; `⌘K` is both the universal palette and the **shortcut-teaching mechanism**.
+
+**Visual signature:** Three-pane layout (folders / list / reading), dense rows, elegant display type on marketing but **the command palette specifically uses a monospaced font** to "evoke the feeling of directing a powerful machine" (their words). Palette takes over the center at invocation — visually imposing, not a subtle dropdown.
+
+**Color / Typography / Density / Motion:**
+- **Color:** Light-mode-first (surprisingly). Near-pure white, deep gray text, one blue accent for links, purple/violet for reminders. Signal colors are tiny colored dots, never fills.
+- **Typography:** Sans UI, but **palette uses mono** — deliberate "now you're driving the machine" signal.
+- **Density:** Readable-not-punishing — 14-15px labels, 12px metadata muted.
+- **Motion:** Absent where it would delay. Palette appears instantly. "Done" confirmations = green flash, not toast.
+
+**Signature interactions:**
+- `⌘K` opens the palette from ANYWHERE, including inside the compose editor (they override default text-editor `⌘K → insert-link` to keep palette sacred).
+- Every palette row shows its shortcut on the right — **explicit pedagogy**: the palette is designed to make itself obsolete for you.
+- Vim-inspired nav: `J/K` next/prev, `E` archive, `R` reply, `F` forward, `C` compose, `Z` undo, `/` search, `G` + letter for folders.
+- Splits = `⌘K → Create Split` (VIP contacts, team domain, unread). Essentially saved filter views as first-class UI.
+- Vocabulary as design: "Mark Done" instead of "Archive." The words you pick in the palette shape how users feel.
+
+**Key borrowable decisions:**
+- **Command palette as training wheel.** Every row shows its shortcut. After N uses, muscle memory forms and palette becomes vestigial. **Single highest-leverage pattern in the entire dossier.**
+- **Monospace font INSIDE the palette specifically.** Visual signal: "you're driving the machine now."
+- **Palette is central, not peripheral.** Center of viewport, large area. Not a dropdown, not a top-right search.
+- **Vocabulary as design.** Pick kiroxy's verbs carefully ("Kill connection" vs. "Close", "Drain" vs. "Stop").
+- **Every action, no exceptions.** If mouse can do it, `⌘K` must do it. No second-tier palette.
+
+**Explicit NOT-to-borrow:**
+- Mandatory 30-min human onboarding — not replicable at single-user self-hosted scale.
+- Light-mode-first — wrong for an ops tool operators stare at for hours.
+- Consumer-email restraint (white, airy, therapeutic) undersells kiroxy's power-tool stance.
+
+**Source URLs:**
+- https://superhuman.com · https://blog.superhuman.com/how-to-build-a-remarkable-command-palette/
+- https://download.superhuman.com/Superhuman%20Keyboard%20Shortcuts.pdf
+
+---
+
+### Arc — Tier B — command bar replaces URL bar, sidebar replaces tabs
+
+**URL:** https://arc.net
+
+**What it is:** A Chromium browser from The Browser Company that made two bets: (1) the URL bar should be replaced by a centered command bar, (2) horizontal tabs should be replaced by a vertical sidebar with Spaces. (Note: company pivoted to Dia; Arc in maintenance but UI language is still the reference.)
+
+**Visual signature:** Chrome-less content area with a vertical sidebar on the left (collapsible via `⌘S`) containing pinned tabs, folders, and today's tabs in three horizontal zones. **The sidebar itself can be themed per Space** — switching Spaces swipes the whole sidebar contents. No URL bar at the top of the window — `⌘T` summons a centered command bar overlaid on the current page. Tabs auto-archive after 12 hours.
+
+**Color / Typography / Density / Motion:**
+- **Color:** Per-Space theming. Each Space has its own palette that tints the sidebar. Content area stays neutral.
+- **Typography:** System UI font (SF on macOS). Distinctiveness is spatial, not typographic.
+- **Density:** Sidebar rows ~28-32px. Three zones (pinned, folders, today's) share row style with visual separators.
+- **Motion:** Spring-based transitions everywhere. Space switching = sidebar slide. "Little Arc" mini-window has a distinctive bounce-open. This is Arc's whimsy — motion does more work than color.
+
+**Signature interactions:**
+- `⌘T` opens the Command Bar — universal entry: new tab, search, switch to open tab, run extension, navigate, create Space, open Notion doc. NO traditional address bar.
+- `⌘S` toggles sidebar entirely. Arc "seems to really want you to close your sidebar" (Verge).
+- `⌘Option N` opens "Little Arc" — frameless mini-window for quick lookups, doesn't pollute main sidebar. **A weight-class below a new tab.**
+- `⌘Option ←/→` switches Spaces; `Ctrl+1/2/3` jumps to Space N.
+- `⌘1..9` jumps to pinned tab N.
+- Drag tab to middle of content = instant Split View (up to 4-way).
+
+**Key borrowable decisions:**
+- **Command bar replaces primary navigation.** Arc's move: delete the URL bar entirely, make `⌘T` the front door. For kiroxy: **what if there's no top nav at all — just a palette front door?**
+- **Tiered window weight-classes.** Full window vs Little Arc vs Split View — each a different intensity for a different task. For kiroxy: full dashboard vs "peek at connection X" inspector vs side-by-side diff of two requests.
+- **Auto-archive as default.** Tabs vanish after 12h. For ops: old sessions, idle connections, closed tunnels — archive automatically.
+- **Per-workspace color theming.** For kiroxy: dev/staging/prod environments each with a signature tint. "Am I looking at prod?" becomes pre-attentive.
+- **Sidebar as stacked zones with separators**, not a flat list.
+
+**Explicit NOT-to-borrow:**
+- Whimsy (bouncy springs, frosted colored sidebars, playful empty states) reads as consumer — dated for a post-2025 ops tool that should feel surgical.
+- Arc's "Boost" (user-injected CSS/JS on any website) — scope creep.
+- Little Arc's lack of forward button and single-tab constraint is a novelty that confuses users.
+
+**Source URLs:**
+- https://arc.net · https://start.arc.net/command-bar-actions
+- https://start.arc.net/master-multitasking
+- https://www.theverge.com/23462235/arc-web-browser-review
+
+---
+
+### Zed — Tier B — dark-first native editor, themes as public API
+
+**URL:** https://zed.dev
+
+**What it is:** Code editor written from scratch in Rust on a custom GPU-accelerated framework (GPUI), dark-first, Vim-compatible, collaborative. Built by ex-Atom/Tree-sitter founders. Homepage itself showcases the UI.
+
+**Visual signature:** Dense three-pane IDE layout (project tree / editor / panels), chrome almost absent — no heavy frames, thin 1px separators, tabs are minimal text-only. Default font is **Lilex** (`.ZedMono`) — programming ligature font with distinct geometric feel. **Themes are first-class**: app ships with Ayu, Gruvbox, One family, all defined in structured JSON following a published schema (`zed.dev/schema/themes/v0.2.0.json`).
+
+**Color / Typography / Density / Motion:**
+- **Color:** Dark-first with 3 theme families (Ayu/Gruvbox/One), light + dark variants. Theme JSON exposes ~50+ semantic tokens per language capture. Marketing: near-pure black (`#0a0a0a`) with one warm red highlight (`~#D64545`).
+- **Typography:** Lilex (programming ligatures, humanist geometry) for editor. UI labels system sans.
+- **Density:** High. Small tab labels, thin scrollbars, minimal panel padding. Line-height ~1.4.
+- **Motion:** Fanatical about input latency. GPU-smooth scrolling. No decorative animations. Pane splits animate ~120ms. **Motion as a performance advertisement** — every animation must justify its frame budget.
+
+**Signature interactions:**
+- `⌘Shift P` command palette (VS Code muscle memory). Commands namespaced: `editor: toggle format on save`, `theme selector: toggle` — **namespace is searchable and acts as categorization**.
+- `⌘Alt ,` opens settings **as JSON** directly — config-as-code by default, not a GUI.
+- `⌘P` file quick-open, `⌘Shift F` project search.
+- Themes hot-reload — edit JSON, save, window restyles instantly.
+- Vim mode is first-class, modal editing with text objects and marks.
+
+**Key borrowable decisions:**
+- **Themes as structured JSON schema with a published spec.** Operators can remix/fork; product treats theming as an API, not a setting. **For kiroxy: publish a theme schema, ship 2-3 defaults, let people write their own.**
+- **Config-as-code by default.** `⌘Alt ,` opens raw JSON with autocomplete. No settings GUI for 90% of knobs. Dev-tool operators expect this.
+- **Dense chrome, generous content.** Thin 1px separators, text-only tabs. The content (logs/requests/tables) gets the pixels.
+- **Namespaced command palette.** `editor:`, `workspace:`, `theme:`. Searchable even when you forget the exact command.
+- **Theme Builder.** Zed's `/theme-builder` previews every surface as you tweak. **Even a stripped-down kiroxy theme editor (tokens live-preview on current view) is a massive signal of respect for the operator.**
+
+**Explicit NOT-to-borrow:**
+- GPUI / native GPU rendering — kiroxy is a web dashboard. Borrow the *ethos* (every animation must justify itself) without the tech stack.
+- "Paper-white on black" marketing + big serif-adjacent display = consumer-tech; works for Zed because they sell to individuals.
+- Multibuffer UI — unique but confuses first-timers. For kiroxy, don't invent novel multi-pane metaphors.
+
+**Source URLs:**
+- https://zed.dev · https://docs.zed.dev/configuration/themes
+- https://zed.dev/docs/extensions/themes · https://zed.dev/schema/themes/v0.2.0.json
+- https://zed.dev/theme-builder
+- https://github.com/zed-industries/zed/tree/main/assets/themes
+
+---
+
+### Warp — Tier B — the Block as the signature primitive
+
+**URL:** https://warp.dev
+
+**What it is:** Rust-built modern terminal (now open-source Apr 2026) whose core invention is the **Block** — every command + its output is grouped into a scrollable, filterable, copyable, shareable unit. AI agents layer on top, but the Block is load-bearing.
+
+**Visual signature:** Looks like a terminal at first glance but is profoundly different on second look — each command is wrapped in a visually separated Block (left-edge accent bar, rounded container, timestamp, exit-code badge). **Scroll through Blocks with `⌘↑/↓` as if they were messages in a chat.** Cmd-click to attach a Block as context to an AI prompt. Dark-first, warm-off-black background, pink/magenta brand accent. **Feels like Slack + iTerm had a baby.**
+
+**Color / Typography / Density / Motion:**
+- **Color:** Dark warm (~`#161618`), monospace body, muted block separators, one signature pink-magenta accent (`~#E84393`) for agent affordances. Exit codes colorized (green zero, red non-zero) on block header.
+- **Typography:** Monospace terminal surface; UI chrome sans-serif. Block headers use smaller muted label.
+- **Density:** Blocks have visible padding (8-12px internal) — costs vertical vs classic scrollback, but tradeoff is navigability.
+- **Motion:** Blocks fade inline as commands execute. Ghost-text italic preview for AI suggestions — accept with `Tab`. Minimal otherwise.
+
+**Signature interactions:**
+- `⌘P` (macOS) / `Ctrl+Shift+P` — Command Palette for the whole Warp app (settings, navigation, toggles). Separate from the terminal.
+- `Ctrl+R` — Search across command history AND saved Workflows (goes beyond `history | grep`).
+- `⌘D` split panes; `Opt+⌘I` sync input across multiple panes (magical for multi-server ops).
+- `⌘↑/↓` — Attach previous block as context to AI query / clear attached blocks. **Block is first-class AI context.**
+- `⌘⏎` — with text "Send to agent"; with error block selected, "Attach 'npm install' output as context."
+- **Block permalinks** — every Block generates a shareable URL (command+output).
+- Workflows — parameterized saved commands in the palette; user-authored runbooks living in the terminal.
+
+**Key borrowable decisions:**
+- **Invent one primitive that replaces a commodity.** Block replaced scrollback. **For kiroxy: what's the one primitive that replaces "the connections table"? A Request Block (request + response + timing + upstream logs, cmd-clickable, shareable)?** Highest-leverage idea.
+- **Every unit is shareable via permalink.** Every request/connection/error row should have a shareable link — teammate debugging goes 10x faster.
+- **Contextual palette hints at the input.** Warp's prompt line shows inline: `⌘↩ for new agent`, `⌘↑ attach 'npm install' output`. UI surfaces what you can do with current state. **For kiroxy: when a user has a connection selected, show inline `⌘K actions / ⌘D drop / ⌘L logs`.**
+- **Separate Command Palette (`⌘P`) from context-driven action hints.** Warp doesn't make `⌘P` do everything.
+- **Ghost-text autocomplete.** Non-intrusive; you can keep typing over it.
+
+**Explicit NOT-to-borrow:**
+- Pink-magenta accent — Warp brand. Don't copy.
+- Block-level padding costs vertical real estate — fine for terminals, bad for dense dashboards with tables of connections. Use blocks for the *hero* surface only (request inspector), keep tables dense.
+- Conversation chip + follow-up arrow UX specific to multi-turn AI. kiroxy doesn't need an LLM chat surface.
+
+**Source URLs:**
+- https://warp.dev · https://warp.dev/modern-terminal · https://warp.dev/all-features
+- https://docs.warp.dev/agent-platform/local-agents/interacting-with-agents/terminal-and-agent-modes/
+
+---
+
+### Notion — Tier B — information hierarchy / block system
+
+**URL:** https://notion.so
+
+**What it is:** Document+database workspace built on a graph of "blocks" — every text line, row, page, even the workspace is a block with a parent pointer and content array. **The UI is a direct render of that tree.**
+
+**Visual signature:** Extremely restrained chrome. Left sidebar is a tree of pages (split into 4 tabs as of 3.4 — pages, agent chats, meetings, notifications), center is a single scrollable document column with generous margins, right side is contextual (comments, properties, AI). Zero decorative color — accent comes from emoji/custom icons users bring themselves. **Typography carries 90% of the visual load.**
+
+**Color / Typography / Density / Motion:**
+- **Color:** Mostly greyscale with a muted blue accent.
+- **Typography:** One sans font (Inter-like) with tight weight hierarchy (400 body, 600 headings, 500 UI).
+- **Density:** *Paragraph-spacing-adaptive* — different padding for list items vs paragraph blocks based on adjacent-block type. Lists compact, prose breathes.
+- **Motion:** Near-invisible — only drag-and-drop, toggle open/close, slash-menu slide.
+
+**Signature layout:** Three-zone shell — sidebar (~240px, resizable), doc column (max-width ~900px centered), optional right rail. Database inline views nest INSIDE document columns — **the database UI is subordinate to the doc, not the other way around.**
+
+**Key borrowable decisions:**
+- **Adjacency-based spacing.** Tight padding between items of the same type (table rows, log lines), loose between different types. Rhythm without strict baseline grid.
+- **Structural indentation.** Nesting means *ownership*, not just visual offset — a child metric inherits its parent's scope (permissions, tags, time window). Works beautifully for kiroxy's account → route → request hierarchy.
+- **Right-side contextual rail** opens/closes without reflowing main content. Good home for "inspect a single request" without a modal.
+- **Slash-menu for actions** — keyboard-first command palette anchored to cursor position.
+- **Custom icons as the only source of color.** Chrome stays neutral.
+
+**Explicit NOT-to-borrow:**
+- Loud empty-state cards. An ops dashboard with zero traffic should show zeros, not a marketing card.
+- Crowded sidebar (pre-3.4 era) — junk-drawer risk.
+- Inventing new glyph for "settings" loses decade of muscle memory. Stick to gear/three-dots.
+
+**Source URLs:**
+- https://www.notion.com/blog/data-model-behind-notion
+- https://www.notion.com/blog/updating-the-design-of-notion-pages
+- https://theorganizednotebook.com/blogs/blog/notion-new-ui-design-update-june-2025
+
+---
+
+### Figma — Tier B — canvas + panel layout
+
+**URL:** https://figma.com
+
+**What it is:** Browser-native design tool with infinite canvas flanked by left (layers/assets) and right (properties) panels, a floating bottom toolbar, and top menu bar. **UI3 (GA Oct 2024) is the current generation.**
+
+**Visual signature:** Canvas is king — center 60-80% of the screen is always the artboard, never chrome. Slim bottom toolbar replaced old top-heavy toolbar. **Panels are docked and resizable after Figma publicly walked back their floating-panel experiment** — explicit admission that floating "slowed people down" and "cramped the canvas."
+
+**Color / Typography / Density / Motion:**
+- **Color:** Near-monochrome (white/light-grey panels, dark-grey text) + single blue accent for selection/primary actions.
+- **Typography:** Inter throughout.
+- **Density:** Very high — right properties panel can show 20+ input fields in a single screen.
+- **Motion:** Functional — property-panel sections expand/collapse 150ms ease. No decorative motion on canvas.
+
+**Signature layout:** Four-zone shell — top menu bar (~40px), left panel (docked, resizable), canvas (flexes), right properties panel (docked, resizable, ~240-280px default). Bottom floating toolbar (~48px) with tool palette. **Properties panel reordered components to the TOP above x/y/w/h** because design-systems work became the majority use case.
+
+**Key borrowable decisions:**
+- **Docked + resizable as default, floating as exception.** Figma paid in engineer-years to learn this — do not re-learn it.
+- **Thin bottom toolbar for primary actions.** Frees vertical space where users look most.
+- **Properties panel ordered by frequency of use, not by convention.** For kiroxy: show `status / latency / tokens / cost` first, not raw headers first.
+- **Minimize UI** (collapse both panels to slivers) as a power-user mode for focus-reading dashboards during incident response.
+- **One accent color only.** Blue for selection/active. Everything else is semantic state.
+
+**Explicit NOT-to-borrow:**
+- Floating panels on hover — already proven to fail. Skip.
+- Icon-only controls without labels as default — new users can't discover features.
+- Canvas as a metaphor for a dashboard. Works for spatial artifacts, not for lists and tables.
+
+**Source URLs:**
+- https://figma.com/blog/our-approach-to-designing-ui3
+- https://www.figma.com/blog/behind-our-redesign-ui3/
+- https://ux-news.com/figma-has-updated-to-ui3-for-all-users/
+
+---
+
+### Tailscale admin — Tier B — beautiful-ops aesthetic
+
+**URL:** https://login.tailscale.com/admin
+
+**What it is:** Zero-trust network admin console — devices (tailnet machines), ACLs, DNS, users. Dense infrastructure operation, **rendered with unusual restraint.**
+
+**Visual signature:** Looks more like a marketing page than an admin panel — deliberately. Generous white space, one primary table (machines), **aggressive use of search-as-filter rather than drop-down menus**, typography-forward rather than chart-forward. Built in React with Radix primitives and Tailwind, with a custom design-system layer on top for semantic tokens.
+
+**Color / Typography / Density / Motion:**
+- **Color:** Light mode: off-white background (~#FAFAFA), near-black text, one blue for links, semantic green/amber/red dots. **Dark mode (May 2024)** shipped after multi-year delay — used as forcing function to replace ad-hoc Tailwind classes with semantic tokens (`text-base`, `text-muted`, `text-disabled`). Chose `outline` over `ring` for accessibility.
+- **Typography:** Inter-like sans at 14px body.
+- **Density:** Medium-low for an ops tool — row breathing room over cramming info, because search DSL lets users filter rather than scan.
+- **Motion:** Almost none — only table row hover and dropdown open.
+
+**Signature layout:** Top horizontal navigation (~56px) with tabs (Machines, Users, Access Controls, DNS, Settings, Logs). **No left sidebar at top level** — navigation is horizontal because there are 6-8 sections. Inside a tab: search bar pinned to top, single dense data table, right-side detail drawer slides in on row click. **Search DSL** is the power user's path: `is:internal`, `has:update-available`, `lastseen:<10m`, `os:macos`, `tag:server`, `owner:shreya@...` — they explicitly chose filtering over sorting because sorting is usually a proxy for "find a device."
+
+**Key borrowable decisions:**
+- **Search DSL over dropdowns.** For kiroxy's request log: `model:claude-sonnet status:429 latency:>2s user:alice` beats six drop-down filter controls. Typeahead on the colon unlocks the whole filter vocabulary.
+- **Horizontal top nav, not left sidebar**, when top-level nav is small (6-10 items). Saves 240px of horizontal space for actual data.
+- **Semantic color tokens from day one.** `text-muted`, `bg-raised`, `border-subtle` — not `gray-500`. Pays for itself the moment dark mode ships.
+- **One primary table per page, right-side drawer for detail.** Row click opens drawer, doesn't navigate away — keeps list context visible.
+- **Ship a slimmer "mini" variant.** Their macOS windowed-app has "mini player" mode. For kiroxy: `/mini` or menubar-sized view showing just live throughput + top 3 errors.
+
+**Explicit NOT-to-borrow:**
+- Marketing-page whitespace in dense ops flows. Tailscale has low device counts (tens-hundreds); kiroxy will have thousands/min. Use Tailscale's *typography and color discipline* but pack denser — 32-36px row height, not 48-56px.
+- Hiding sorting entirely — defensible for devices, too purist for a request log where `order by cost desc` is legitimate first-use.
+- Horizontal-only nav — works for Tailscale's ~8 top-level sections but kiroxy's scope (Dashboard, Requests, Accounts, Routes, Settings, Logs, Metrics) already pushes that limit.
+
+**Source URLs:**
+- https://tailscale.com/blog/heart-of-dark-mode
+- https://tailscale.com/blog/windowed-macos-ui-beta
+- https://github.com/tailscale/tailscale/issues/2540 · https://login.tailscale.com/admin
+
+---
+
+### Replit workspace — Tier B — split-pane + Kanban task board
+
+**URL:** https://replit.com
+
+**What it is:** Browser IDE + hosting + AI agent, pivoted toward "describe it and Agent builds it" with Agent 4. **Workspace is the unified shell: chat thread + live preview + file editor + shared Kanban task board, all rearrangeable via Splits.**
+
+**Visual signature:** Dark by default, high-density, dev-tool DNA but softened — rounded corners (~8px), subtle inner borders instead of hard separators, colorful accent per project type. The **panel system is the product**: users split any pane into 5 directions using conical drop zones. Underneath: panels are a multi-node tree — split same direction = new child; split opposite = new subtree.
+
+**Color / Typography / Density / Motion:**
+- **Color:** Dark neutral background, one brand orange-red accent, semantic colors for run states (green=running, amber=building, red=error).
+- **Typography:** Monospace for code, sans for chat/UI.
+- **Density:** Very high in editor, medium in chat thread.
+- **Motion:** The standout: drag-and-drop is "fluid and interruptible" — mid-drag cancel returns pane to origin, panes shrink continuously as you drag. Inspired by Apple's Fluid Interfaces WWDC talk.
+
+**Signature layout:** Workspace = freely arrangeable multi-node tree of panes. Default template: left (files), center (editor), right (preview), bottom (console). **Task board = Kanban: Drafts → Active → Ready → Done.** Each task gets its own isolated project copy until merged.
+
+**Key borrowable decisions:**
+- **Kanban task board as the operational view.** For kiroxy: each long-running request/batch/refresh moves through `Queued → Running → Succeeded / Failed`. Multi-task overview without a polling loop.
+- **Isolated project copy per task.** Replit dispatches each agent task into "an exact copy of your current project." For kiroxy: each debug-a-request action forks to a read-only environment (replay that request with a different model/prompt) without touching prod traffic.
+- **Multi-node tree for panel layout.** Not pixel-positioned — a tree means "put a webview in top-right" is a simple "insert at rightmost leaf." Serializable, restorable, shareable via deep-link.
+- **Per-thread chat per task.** Instead of one god-chat, each background task gets its own thread.
+- **Fluid interruptible drag.** If panel rearrangement ever ships, Apple-fluid-interfaces model is the reference.
+
+**Explicit NOT-to-borrow:**
+- Infinite canvas as first-class surface. Works for Replit (visual apps). Kiroxy is tabular ops data — canvas adds zero value.
+- Agent chat as the primary entry point. Replit Agent 4 reduces the home screen to a prompt box. For kiroxy, live metrics and active alerts must be primary.
+- Dark-only — reasonable for a code editor, but an ops tool used during daytime incident response needs both.
+
+**Source URLs:**
+- https://blog.replit.com/splits · https://blog.replit.com/whats-changed-agent3-to-agent4
+- https://blog.replit.com/introducing-agent-4-built-for-creativity
 
 ---
 
