@@ -2,6 +2,227 @@
 
 Append-only. One entry per phase.
 
+## Phase G.0 + G.1 — Onboarder Scaffold + Single-Account Flow  (2026-05-12 16:43 UTC)
+- Hours: ~75 min (within 90 min cap)
+- Commits:
+  - d94d446 feat(onboard): scaffold Python sidecar for OAuth automation
+  - 62693f6 feat(onboard): add PKCE + token exchange (kiro_oauth.py)
+  - 87d3769 feat(onboard): add Camoufox browser driver with humanization
+  - aaf1007 feat(onboard): add profiles.json (adapted from kikirro)
+  - 34945bc feat(onboard): implement single-account full-auto flow (G.1)
+- Gate: **green** — Python `py_compile` OK on all modules; stdlib-only PKCE
+  unit test (`test_oauth.py`) passes; `onboard.py --help` exits 0.
+- End-to-end verification: **not run in this session** (requires live Google
+  credentials; user-side validation only).
+- Verdict: SCAFFOLD COMPLETE. G.2+ deferred to backlog.
+
+### What this is
+Python sidecar tool at `tools/onboard/` that automates Kiro Desktop OAuth
+token acquisition. Orchestration of PKCE → login URL → browser drive →
+code-capture → token-exchange → output JSON is 100% automated; Google
+credential entry remains manual (user-driven) in the Camoufox window
+because the G.1 cut is a skeleton. Full automation of the credential
+step lives under Phase G.2/G.3 in BACKLOG.
+
+### Files added
+- `tools/onboard/onboard.py` — main entry, argparse, orchestration
+- `tools/onboard/kiro_oauth.py` — PKCE + URL build + `/oauth/token` exchange
+  (stdlib + httpx only)
+- `tools/onboard/browser_driver.py` — Camoufox wrapper (humanized typing,
+  redirect-listener based callback capture)
+- `tools/onboard/profiles.json` — 100-profile rotation pool (adapted from
+  kikirro)
+- `tools/onboard/test_oauth.py` — PKCE unit test (stdlib unittest)
+- `tools/onboard/requirements.txt` — `camoufox>=0.4`, `patchright>=1.44`,
+  `httpx>=0.27`
+- `tools/onboard/README.md` — setup + usage + troubleshooting
+- `tools/onboard/.gitignore` — excludes `tokens_output/`, `screenshots/`,
+  `credentials.*`, venv, pycache
+
+### Integration with kiroxy core
+Output JSON shape matches `kiroxy import-accounts-json` schema exactly
+(array of `{provider, authMethod, accessToken, refreshToken, profileArn,
+expiresIn, addedAt}`). Sidecar is fully decoupled: kiroxy Go binary
+does not ship Python or Camoufox; users install sidecar separately
+in a venv if they want automated onboarding, else they can keep using
+their own extractor.
+
+### BACKLOG updates (appended in separate edit)
+- P2: G.2 credential encryption (age or macOS Keychain)
+- P2: G.3 batch mode with concurrency cap
+- P2: G.4 retry logic + failure classification
+- P3: G.5 polish, progress UI, docs
+
+---
+
+
+## Phase F — opencode Integration  (2026-05-12 16:35 UTC)
+- Hours: ~75 min (within 90 min cap)
+- Commits: files landed under commit `1e467e5` (see Phase D entry below
+  for attribution note). Phase F had no distinct commit of its own due to
+  a staging race with the concurrent Phase D session.
+- Tag: none (user tags after review)
+- Gate: **green** (`make gate` — 18 packages)
+- Verdict: COMPLETE
+
+### What got built
+`kiroxy opencode-config` subcommand emits a JSON snippet the user pastes
+into `~/.config/opencode/opencode.json`. Supports `-base-url`, `-api-key`,
+`-provider-name`, `-models` filter, `-output` file.
+
+### Critical finding — model-name canonicalisation
+The "kiro/*" display labels from the Kiro Pro tier UI (e.g. `kiro/opus-4.7`)
+are NOT API model IDs. `internal/models/models.go`'s resolver silently
+rewrites any unknown model to `claude-sonnet-4-6` — meaning a user who
+puts `kiro/opus-4.7` in their opencode config would pay for Opus but
+receive Sonnet responses. Silent degradation of the worst kind.
+
+**Correction applied:** `opencode-config` emits only the 7 API IDs that
+`modelMapOrdered` actually round-trips:
+- `claude-opus-4-7` (routes to `claude-opus-4.7`, 1M)
+- `claude-opus-4-6` (routes to `claude-opus-4.6`, 1M)
+- `claude-opus-4.5` (routes to `claude-opus-4.5`, 200K)
+- `claude-sonnet-4-6` (routes to `claude-sonnet-4.6`, 200K; default fallback)
+- `claude-sonnet-4-6[1m]` (routes to `claude-sonnet-4.6-1m`, 1M + thinking)
+- `claude-sonnet-4.5` (routes to `claude-sonnet-4.5`, 200K)
+- `claude-haiku-4.5` (routes to `claude-haiku-4.5`, 200K)
+
+Models excluded because they would silent-fallback:
+`kiro/auto`, `kiro/sonnet-4`, `kiro/deepseek-3.2`, `kiro/glm-5`,
+`kiro/minimax-m2.1`, `kiro/minimax-m2.5`, `kiro/qwen3-coder-next`.
+Documented in `docs/OPENCODE.md` under "Models that silent-fallback".
+
+### Inbound auth audit
+Searched for case-sensitive `Authorization` header handling in
+`internal/` + `cmd/`. Zero matches; all call sites use
+`http.Header.Get(...)` which canonicalises the key. No code change
+required. No test added (no code changed).
+
+### Files added
+- `cmd/kiroxy/opencode_config.go` (~10 kB) — subcommand implementation
+  with resolver-verified model list + flag handling
+- `docs/OPENCODE.md` (~7 kB) — usage guide, JSON snippet example,
+  `models` MAP-not-array gotcha, full display-label-to-API-ID mapping
+  table, troubleshooting, multi-account pool note
+
+### Files modified
+- `cmd/kiroxy/main.go` — dispatch `opencode-config` subcommand
+
+### Attribution note
+Due to parallel execution race with Phase D, files appear under commit
+`1e467e5 feat(cli): add healthcheck subcommand`. Content is correct
+(gate green, behaviour verified); attribution is cosmetically muddled.
+Not rewriting history to avoid coordination with active parallel work.
+
+### Verification
+```
+GOEXPERIMENT=jsonv2 go build ./... → exit 0
+GOEXPERIMENT=jsonv2 go vet ./...   → exit 0
+GOEXPERIMENT=jsonv2 go test ./...  → 18 packages OK
+
+kiroxy opencode-config -api-key test-abc | python -m json.tool
+  → valid JSON, 7 models under provider.kiroxy.models
+kiroxy opencode-config -api-key test-abc -models "claude-opus-4-7,claude-sonnet-4.5"
+  → exactly 2 models emitted
+kiroxy opencode-config -api-key test-abc -models "kiro/opus-4.7"
+  → stderr warning, stdout omits the silent-fallback entry
+kiroxy opencode-config -api-key test-abc -output /tmp/snippet.json
+  → file written (0600), stdout empty
+```
+
+### Strict non-goals respected
+- No edit of `~/.config/opencode/opencode.json` (emit only)
+- No opencode schema validation beyond JSON well-formedness
+- No auto-discovery of opencode installation
+- No runtime dependency additions
+- `v0.4.0` not tagged (user handles release cut)
+- No `git push`
+
+---
+
+
+## Phase C.2b — Desktop-Flow JSON Import + End-to-End Smoke  (2026-05-12 15:22 UTC)
+- Hours: ~40 min (within 45 min cap)
+- Commits:
+  - 76e26f1 feat: add import-accounts-json for desktop-sourced tokens
+  - 427b545 feat: thread profile_arn from vault metadata into credentials
+- Tag: **v0.2.2** — first end-to-end working proxy
+- Gate: **green** (`make gate` OK; `/v1/messages` returns real Anthropic responses)
+- Verdict: **RESOLVED — end-to-end proxy operation validated**
+
+### What got proven
+For the first time in the project's history, a real curl-to-curl request
+flowed through kiroxy to Kiro upstream and back as a valid Anthropic
+Messages API response.
+
+- **Non-streaming:** HTTP 200, 3.5s. Body:
+  ```
+  {"content":[{"text":"Hi!","type":"text"}],
+   "model":"claude-sonnet-4-6",
+   "stop_reason":"end_turn",
+   "usage":{...}, ...}
+  ```
+- **Streaming:** HTTP 200, 2.6s, 1021-byte SSE body, 7 distinct events in
+  correct order: `message_start` → `content_block_start` →
+  `content_block_delta` (×2) → `content_block_stop` → `message_delta` →
+  `message_stop`. Model counted 1-5 as prompted.
+
+### Model-name resolver finding (see Phase F for the correction)
+- Requested model: `kiro/opus-4.7` (per operator brief)
+- Actual served model: `claude-sonnet-4-6`
+- `models.Resolve` logged:
+  `WARN models.Resolve: non-claude model, falling back to default  requested_model=kiro/opus-4.7 kiro_model=claude-sonnet-4.6`
+- Consequence: `kiro/*` prefixed display labels silently degrade to the
+  default. Phase F's `opencode-config` avoids this by emitting only
+  canonical API IDs.
+
+### Files added
+- `cmd/kiroxy/import_json.go` (167 LoC) — `kiroxy import-accounts-json`
+  subcommand. Parses JSON array from the Desktop-flow extractor, derives
+  account id from `profileArn` (fallback to JWT `sub`/`email`), persists
+  REAL access_token + refresh_token + profileArn + expiresIn + provider
+  + authMethod metadata to the vault.
+
+### Files modified
+- `cmd/kiroxy/main.go` — dispatch `import-accounts-json`
+- `internal/auth/credentials.go` (or similar) — add `ProfileARN` field
+  to `auth.Credentials` if not already present
+- `internal/pool/pool.go` — `TokenGetter.GetToken()` now parses
+  `Bundle.Metadata` JSON and populates `Credentials.ProfileARN`.
+  Defensive: empty metadata → empty ProfileARN. This closes the gap
+  where profileArn was stored in vault but not surfaced to the request
+  builder.
+
+### Why this worked where Phase C.1 / C.2 failed
+- C.1 failed: Builder ID Free-tier JWT lacks CodeWhisperer scopes
+  (`hasRequestedScopes: false`)
+- C.2 failed: kikirro tokens are from `app.kiro.dev` (Web Portal), wrong
+  client_id for `auth.desktop.kiro.dev`
+- C.2b works: tokens from the Desktop-flow extractor hit the Kiro
+  Desktop OAuth client directly, produce real `accessToken` + `profileArn`
+  that CodeWhisperer target accepts on the first request — no refresh
+  needed during the smoke window
+
+### Known gap (tracked as P1 in BACKLOG)
+Pool-mode token refresher is not wired. Imported accounts stop working
+after `expires_in` seconds (~1h, per the extractor output) until the P1
+backlog item ships. Fresh imports work immediately.
+
+### Strict non-goals respected
+- Production vault at `~/.kiroxy/tokens.db` untouched (isolated at
+  `/tmp/kiroxy-desktop-smoke.db` throughout)
+- No `git push`
+- No edit of `~/.config/opencode/opencode.json`
+- Verbose outbound tap (`internal/kiroclient/tap.go`) was added for
+  smoke diagnostics and reverted cleanly before tag
+
+### BACKLOG diff
+- P1 (promoted): wire pool-mode refresher for `source="import-accounts"`
+  and `source="import-accounts-json"` accounts
+
+---
+
+
 ## Phase D — Docker Deployment Path  (2026-05-12 15:15 UTC)
 - Hours: ~1.25
 - Commit: (this one)

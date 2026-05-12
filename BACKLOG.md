@@ -1,10 +1,20 @@
 # BACKLOG.md — kiroxy post-MVP
 
-Moved from the build brief / caught by anti-scope-creep during MVP:
+Moved from the build brief / caught by anti-scope-creep during MVP.
+
+Last triaged: 2026-05-12 (post-v0.3.0).
+
+---
+
+## P0 — next release (v0.4.0)
+
+- **Wire pool-mode token refresher** — see the P1 item below, promoted to
+  P0 for the next release because without auto-refresh the v0.3.0
+  stack is only usable for ~1h per onboarded account.
 
 ## Phase G — Onboarder follow-ups (post G.0 + G.1)
 
-G.0 scaffold + G.1 single-account flow landed at `d94d446`…`378c939`.
+G.0 scaffold + G.1 single-account flow landed in v0.3.0.
 Remaining work:
 
 - **P2: G.2 — Credential encryption.** Current onboarder ingests `--password` via CLI arg (visible in `ps`) or stdin. Batch mode (G.3) needs persistent credential storage. Options: age (modern, portable, no keyring dependency) or macOS Keychain (OS-integrated; requires `security(1)` shelling). Preferred: age with password-derived keys; fall back to Keychain on macOS if user opts in. Deliverable: `tools/onboard/credentials.enc` generator + decrypter; `onboard.py --credentials-file credentials.enc --email you@…` path that reads the decrypted password for that entry only.
@@ -14,13 +24,9 @@ Remaining work:
 
 ## Phase 2 (post-v0.1.0)
 
-- **P1 (PROMOTED from P2): Wire pool-mode token refresher for source="import-accounts" accounts.** Current state: `pool.TokenGetter.GetToken()` doesn't read `Bundle.Metadata` nor trigger refresh. Triplet-imported accounts work only while the stored access_token is fresh; they break after ~1h when it expires because the kiroclient used for the pool path has no `WithTokenRefresher` (only `KIROXY_KIRO_DB_PATH` mode does). Scope: extend `pool.TokenGetter` + `main.go` to call `auth.refreshSocialToken` when triplet accounts need rotation; persist rotated refresh_token + access_token back to the vault.
+- **P1 (PROMOTED from P2): Wire pool-mode token refresher for `source="import-accounts"` and `source="import-accounts-json"` accounts.** Current state: `pool.TokenGetter.GetToken()` reads `Bundle.Metadata` for `profile_arn` (v0.2.2) but does NOT trigger refresh when the access_token expires. Imported accounts work only during the `expires_in` window (~1h for Desktop-flow tokens) because the kiroclient used for the pool path has no `WithTokenRefresher` (only `KIROXY_KIRO_DB_PATH` mode does). Scope: extend `pool.TokenGetter` + `main.go` to call `auth.refreshSocialToken` for Desktop-flow accounts (`authMethod="social"` in metadata) when rotation is needed; persist rotated refresh_token + access_token back to the vault. This is the next release's defining feature — without it, v0.3.0 is usable only for short-lived testing.
 - **P2: Pool tier-awareness — warn/error when a Pro-tier model is requested but the picked account is Free tier.** Needs tier metadata in vault schema or a runtime probe (one-shot call after first refresh).
-- **P2: `opencode-config` subcommand should emit all 13 canonical Kiro models** (Free + Pro Anthropic + Others from the tier display), with a `--models` filter for subset emission. Reference list:
-  - Free Anthropic: `kiro/auto`, `kiro/haiku-4.5`, `kiro/sonnet-4`, `kiro/sonnet-4.5`
-  - Pro Anthropic:  `kiro/sonnet-4.6`, `kiro/opus-4.5`, `kiro/opus-4.6`, `kiro/opus-4.7`
-  - Free Others:    `kiro/deepseek-3.2`, `kiro/glm-5`, `kiro/minimax-m2.1`, `kiro/minimax-m2.5`, `kiro/qwen3-coder-next`
-  - Output cap: 64K all models.
+- **`opencode-config` subcommand** — **CLOSED in v0.3.0 (Phase F).** Ships 7 resolver-verified Claude model IDs with a `-models` filter. The 13-label Pro tier list was *not* adopted literally: `kiro/*` display labels silently rewrite to `claude-sonnet-4-6` in `internal/models/models.go`, so emitting them in opencode config would cause silent-fallback billing misattribution. See OVERNIGHT_LOG Phase F entry for the mapping logic. If Anthropic-family non-Claude models (`kiro/deepseek-3.2`, `kiro/glm-5`, etc.) later appear in the resolver table, `opencode-config` can be extended to include them.
 - **AWS Builder ID device-code OAuth inside `kiroxy add-account`** — **CLOSED in v0.2.0 (Phase B).**
 - **`--json` flag for `list-accounts` and `status`** — machine-readable output. — P3
 - **Interactive `--yes` / `-y` flag on `remove-account`** when/if multi-user lands. — P3

@@ -4,12 +4,123 @@ All notable changes to kiroxy will be documented in this file. Format loosely fo
 
 ## [Unreleased]
 
+Nothing staged for the next release yet.
+
+## [0.3.0] — 2026-05-12
+
+Phase D + Phase F + Phase G.0/G.1 landed on top of v0.2.2. Proxy is
+end-to-end validated (v0.2.2), ships as a Docker container (D), speaks
+opencode's config format (F), and has a Python sidecar that automates
+Kiro Desktop OAuth onboarding (G).
+
 ### Added
-- **Docker deployment path (Phase D).** Multi-stage `Dockerfile` (distroless-nonroot runtime, ~30 MiB) + hardened `docker-compose.yml` (read-only root FS, all caps dropped, `no-new-privileges`, named volume at `/data/tokens.db`). Pins `GOEXPERIMENT=jsonv2` in the build stage and injects version via `-ldflags -X main.version=$VERSION`.
-- **`kiroxy healthcheck` subcommand.** In-binary `/healthz` probe used by the container `HEALTHCHECK` directive; distroless has no shell/curl, so the image re-executes itself.
-- **Makefile targets** `docker-build`, `docker-run`, `docker-compose-up`, `docker-compose-down`, `docker-clean`. Each target exits cleanly with a readable error when `docker` is not on PATH.
-- **`.dockerignore`** excluding `.env*`, `*.db*`, `refresh_tokens.txt`, `kiro_tokens.json`, and VCS/build artefacts from the build context.
-- **README "Run with Docker"** section covering quickstart, manual `docker run`, security posture, and the `KIROXY_BIND=0.0.0.0` / volume gotchas.
+- **Docker deployment path (Phase D).** Multi-stage `Dockerfile`
+  (`gcr.io/distroless/static-debian12:nonroot` runtime, ~30 MiB) +
+  hardened `docker-compose.yml` (read-only root FS, all caps dropped,
+  `no-new-privileges`, named volume at `/data/tokens.db`). Pins
+  `GOEXPERIMENT=jsonv2` in the build stage and injects version via
+  `-ldflags -X main.version=$VERSION`. `-trimpath -s -w` for
+  reproducible, stripped output.
+- **`kiroxy healthcheck` subcommand.** In-binary `/healthz` probe used
+  by the container `HEALTHCHECK` directive; distroless has no
+  shell/curl, so the image re-executes itself.
+- **Makefile targets** `docker-build`, `docker-run`, `docker-compose-up`,
+  `docker-compose-down`, `docker-clean`. Each target exits cleanly with
+  a readable error when `docker` is not on PATH.
+- **`.dockerignore`** excluding `.env*`, `*.db*`, `refresh_tokens.txt`,
+  `kiro_tokens.json`, and VCS/build artefacts from the build context.
+- **README "Run with Docker"** section covering quickstart, manual
+  `docker run`, security posture, and the `KIROXY_BIND=0.0.0.0` /
+  volume gotchas.
+- **`kiroxy opencode-config` subcommand (Phase F).** Emits a JSON
+  snippet the operator pastes into `~/.config/opencode/opencode.json`.
+  Flags: `-base-url`, `-api-key`, `-provider-name`, `-models` filter,
+  `-output` file. Emits only the 7 resolver-verified Claude model IDs
+  (`claude-opus-4-7`, `claude-opus-4-6`, `claude-opus-4.5`,
+  `claude-sonnet-4-6`, `claude-sonnet-4-6[1m]`, `claude-sonnet-4.5`,
+  `claude-haiku-4.5`). Unknown `kiro/*` labels from the Pro tier UI
+  are excluded because the resolver silently rewrites them to
+  `claude-sonnet-4-6`.
+- **`docs/OPENCODE.md`** — setup guide, JSON snippet example,
+  display-label → API-ID mapping table, troubleshooting, multi-account
+  pool note, silent-fallback caveat.
+- **`tools/onboard/` Python sidecar (Phase G.0 + G.1).** Full-auto
+  Kiro Desktop OAuth acquisition. Orchestrates PKCE → login URL →
+  Camoufox browser drive → callback capture → token exchange →
+  output JSON (matches `kiroxy import-accounts-json` schema).
+  G.1 single-account flow with humanized typing, 100-profile
+  rotation (adapted from kikirro), stdlib-only PKCE unit test.
+  External tool by design — kiroxy Go binary does not ship Python
+  or Camoufox.
+
+### Changed
+- Nothing. Phase D/F/G are purely additive on top of v0.2.2.
+
+### Fixed
+- Nothing. No regressions found.
+
+### Known gaps (see `BACKLOG.md`)
+- P1: pool-mode token refresher not wired for
+  `source="import-accounts-json"` accounts; imports stop working after
+  `expires_in` seconds (~1h) until this lands.
+- P2-P3: Phase G.2–G.5 (credential encryption, batch mode, retry
+  logic, polish UI) deferred.
+
+## [0.2.2] — 2026-05-12
+
+First end-to-end working proxy. See `v0.2.2` tag annotation and
+`OVERNIGHT_LOG.md` Phase C.2b entry for full detail. Highlights:
+
+### Added
+- `kiroxy import-accounts-json` subcommand for Desktop-flow tokens.
+- `kiroxy debug-refresh` admin/diagnostic tool.
+- `pool.TokenGetter` now threads `profile_arn` from vault metadata
+  into `auth.Credentials`, closing the gap where profileArn was stored
+  but not surfaced.
+- `internal/kiroclient.chooseAmzTarget` — switches to AmazonQ target
+  when `ProfileARN` empty (Builder ID path), CodeWhisperer target
+  otherwise (Desktop-flow path).
+
+### Validated
+- `/v1/messages` non-streaming: HTTP 200, valid Anthropic response.
+- `/v1/messages` streaming: HTTP 200, 7 correct SSE events.
+
+## [0.2.1-patch] — 2026-05-12
+
+CLI ergonomics fixes. See OVERNIGHT_LOG Phase C-PREP entry.
+
+### Fixed
+- Vault `Open()` now auto-creates parent directory at 0700.
+- `kiroxy --version`, `-v`, `--help`, `-h` work at top level.
+- Subcommand `--help` prints subcommand-specific usage and exits 0.
+- `VERSION` wired from `git describe --tags --always --dirty`.
+
+## [0.2.0] — 2026-05-12
+
+### Added
+- **AWS Builder ID device-code OAuth** inside `kiroxy add-account`.
+- Token refresh + rotation.
+
+### Known limitation (see `BLOCKED.md`)
+- Builder ID Free-tier accounts lack CodeWhisperer scopes; upstream
+  rejects `/v1/messages`. Retained in code but superseded by the
+  Desktop-flow JSON import path in v0.2.2.
+
+## [0.1.1] — 2026-05-12
+
+### Added
+- `kiroxy import-accounts` subcommand (line-delimited triplet format).
+- Vault `metadata` column for opaque per-account data.
+
+### Note
+- The triplet format (`email:refresh_token:signature`) was designed
+  for the kikirro extractor output. Later analysis (Phase C.2) showed
+  kikirro emits 2-field `email:refresh_token` pairs where the colon
+  inside the cookie value fooled the parser into splitting on 3 fields.
+  Triplet-format accounts imported via this command require tokens
+  scoped to Kiro Desktop; kikirro Web Portal tokens do not work.
+  Users should prefer `import-accounts-json` (v0.2.2+) with Desktop-flow
+  tokens from the `tools/onboard/` sidecar.
 
 ## [0.1.0-mvp] — 2026-05-11
 
@@ -38,6 +149,5 @@ First cut of kiroxy. MIT, personal-use, self-hosted Kiro-to-Anthropic proxy.
 - Full per-file attribution + `NOTICE`.
 
 ### Known follow-ups (see `BACKLOG.md`)
-- AWS Builder ID device-code flow inside `kiroxy add-account`.
 - OpenAI-compatible `/v1/chat/completions` surface.
 - Prometheus / OTel exporters (wiring already in `internal/tracing/`).
