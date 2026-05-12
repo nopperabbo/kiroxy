@@ -21,3 +21,12 @@
 
 # go
 vendor/
+
+# onboarder (Phase G) runtime artifacts
+tools/onboard/.venv/
+tools/onboard/tokens_output/
+tools/onboard/screenshots/
+tools/onboard/credentials.*
+tools/onboard/__pycache__/
+tools/onboard/*.log
+tools/onboard/kiro_tokens.json
