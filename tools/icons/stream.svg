@@ -1,0 +1,8 @@
+<!-- kiroxy icon set — inspired by Tabler Icons (MIT). Hand-authored for 1.5px stroke.
+     Represents the LiveRequestStream: stacked data waves over time. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"
+     fill="none" stroke="currentColor" stroke-width="1.5"
+     stroke-linecap="round" stroke-linejoin="round" class="kx-icon">
+  <path d="M3 12h3l2-6 4 12 2-6 3 0"/>
+  <path d="M17 12h4"/>
+</svg>
