@@ -10,7 +10,6 @@ package pool
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -266,8 +265,9 @@ func (p *Pool) RecordFailure(id string, kind FailureKind, reason string) {
 // "give me credentials for the next request" without knowing about accounts,
 // cooldowns, or LRU order.
 type TokenGetter struct {
-	Pool  *Pool
-	Vault *tokenvault.Vault
+	Pool    *Pool
+	Vault   *tokenvault.Vault
+	Refresh *RefreshConfig
 }
 
 // GetToken implements messages.TokenGetter. It picks an account from the
@@ -280,17 +280,34 @@ func (tg *TokenGetter) GetToken(ctx context.Context) (*auth.Credentials, error) 
 	if err != nil {
 		return nil, err
 	}
+
+	// Load authoritative bundle from vault so we can read metadata and
+	// (optionally) refresh before returning.
+	b, _ := tg.Vault.Get(ctx, p.Provider, p.ID)
+
+	// Phase 2.5: proactive refresh for social accounts near expiry.
+	if b != nil && tg.Refresh != nil && tg.Refresh.RefreshFn != nil {
+		md := parseAccountMetadata(b.Metadata)
+		if md.AuthMethod == "social" && needsRefresh(md, tg.Refresh.effectiveSkew(), time.Now()) {
+			refreshed, rerr := refreshOne(ctx, tg.Vault, tg.Refresh, p.Provider, p.ID, p.Region)
+			if rerr != nil {
+				return nil, rerr
+			}
+			if refreshed != nil {
+				b = refreshed
+			}
+		}
+	}
+
 	creds := &auth.Credentials{
 		AccessToken: p.Token,
 		Region:      p.Region,
 		AuthType:    p.Provider,
 	}
-	if b, err := tg.Vault.Get(ctx, p.Provider, p.ID); err == nil && b != nil && b.Metadata != "" {
-		var md struct {
-			ProfileArn string `json:"profile_arn"`
-			AuthMethod string `json:"auth_method"`
-		}
-		if jerr := json.Unmarshal([]byte(b.Metadata), &md); jerr == nil {
+	if b != nil {
+		creds.AccessToken = b.AccessToken
+		if b.Metadata != "" {
+			md := parseAccountMetadata(b.Metadata)
 			creds.ProfileARN = md.ProfileArn
 			if md.AuthMethod != "" {
 				creds.AuthType = md.AuthMethod

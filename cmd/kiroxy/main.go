@@ -198,8 +198,23 @@ func runServe(ctx context.Context, args []string) error {
 		if poolInst.Count() == 0 {
 			slog.Warn("no accounts in token vault; /v1/messages will return 503 until 'kiroxy add-account' runs (M9)")
 		}
-		authMgr = &pool.TokenGetter{Pool: poolInst, Vault: vault}
-		kiroClient = kiroclient.NewHTTPClient()
+		tg := &pool.TokenGetter{
+			Pool:  poolInst,
+			Vault: vault,
+			Refresh: &pool.RefreshConfig{
+				RefreshFn: pool.DefaultRefreshFn(nil),
+			},
+		}
+		authMgr = tg
+		kiroClient = kiroclient.NewHTTPClient(
+			kiroclient.WithTokenRefresher(func(ctx context.Context) (string, error) {
+				creds, err := tg.GetToken(ctx)
+				if err != nil {
+					return "", err
+				}
+				return creds.AccessToken, nil
+			}),
+		)
 	}
 
 	srv := server.New(server.Options{
