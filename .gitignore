@@ -30,3 +30,10 @@ tools/onboard/credentials.*
 tools/onboard/__pycache__/
 tools/onboard/*.log
 tools/onboard/kiro_tokens.json
+
+# Credentials (root-level — also covered under tools/onboard/)
+/kiro_tokens.json
+/refresh_tokens.txt
+/refresh_tokens_single.txt
+/refresh_token_smoke.txt
+/*.triplet.txt
