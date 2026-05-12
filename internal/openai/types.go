@@ -133,9 +133,9 @@ type ChatMessage struct {
 // MessageContent is a union: a plain string or an array of content parts.
 // OpenAI accepts both; we normalize to the same representation.
 type MessageContent struct {
-	Text  string        // set when content is a plain string
-	Parts []ContentPart // set when content is an array
-	IsNull bool         // set when content is explicitly null (assistant tool_calls messages)
+	Text   string        // set when content is a plain string
+	Parts  []ContentPart // set when content is an array
+	IsNull bool          // set when content is explicitly null (assistant tool_calls messages)
 }
 
 // IsString reports whether the content was a plain string.
@@ -193,8 +193,8 @@ type ImageURL struct {
 
 // Tool is an OpenAI tool (function) definition.
 type Tool struct {
-	Type     string       `json:"type"` // must be "function"
-	Function FunctionDef  `json:"function"`
+	Type     string      `json:"type"` // must be "function"
+	Function FunctionDef `json:"function"`
 }
 
 // FunctionDef is the function schema inside a tool definition.
@@ -277,10 +277,10 @@ type ChatCompletionResponse struct {
 
 // Choice is a single element in a ChatCompletionResponse.Choices array.
 type Choice struct {
-	Index        int              `json:"index"`
-	Message      ChatMessage      `json:"message"`
-	FinishReason string           `json:"finish_reason"`
-	Logprobs     any              `json:"logprobs,omitempty"` // always null for us
+	Index        int         `json:"index"`
+	Message      ChatMessage `json:"message"`
+	FinishReason string      `json:"finish_reason"`
+	Logprobs     any         `json:"logprobs,omitempty"` // always null for us
 }
 
 // Usage is the OpenAI token usage envelope.
@@ -302,10 +302,10 @@ type ChatCompletionChunk struct {
 
 // ChunkChoice is a single choice in a streaming chunk.
 type ChunkChoice struct {
-	Index        int         `json:"index"`
-	Delta        ChunkDelta  `json:"delta"`
-	FinishReason *string     `json:"finish_reason"` // null until final chunk
-	Logprobs     any         `json:"logprobs,omitempty"`
+	Index        int        `json:"index"`
+	Delta        ChunkDelta `json:"delta"`
+	FinishReason *string    `json:"finish_reason"` // null until final chunk
+	Logprobs     any        `json:"logprobs,omitempty"`
 }
 
 // ChunkDelta is the delta payload inside a streaming chunk.

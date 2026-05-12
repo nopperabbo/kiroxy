@@ -20,13 +20,13 @@ import (
 // anthropicResponse mirrors the fields we care about from the Anthropic
 // /v1/messages JSON response. Extra fields are ignored.
 type anthropicResponse struct {
-	ID           string                     `json:"id"`
-	Model        string                     `json:"model"`
-	Role         string                     `json:"role"`
-	Content      []anthropic.ContentBlock   `json:"content"`
-	StopReason   string                     `json:"stop_reason"`
-	StopSequence string                     `json:"stop_sequence"`
-	Usage        anthropicUsage             `json:"usage"`
+	ID           string                   `json:"id"`
+	Model        string                   `json:"model"`
+	Role         string                   `json:"role"`
+	Content      []anthropic.ContentBlock `json:"content"`
+	StopReason   string                   `json:"stop_reason"`
+	StopSequence string                   `json:"stop_sequence"`
+	Usage        anthropicUsage           `json:"usage"`
 }
 
 type anthropicUsage struct {

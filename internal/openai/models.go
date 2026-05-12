@@ -21,13 +21,13 @@ import (
 // /v1/models listing is stable (sorted by OpenAI alias) so callers that
 // read the first entry always get the same pick.
 var aliasTable = map[string]string{
-	"gpt-4o":          "claude-sonnet-4-6",
-	"gpt-4o-mini":     "claude-sonnet-4-6",
-	"gpt-4-turbo":     "claude-opus-4-7",
-	"gpt-4":           "claude-opus-4-7",
-	"gpt-3.5-turbo":   "claude-haiku-4.5",
-	"o1":              "claude-opus-4-7",
-	"o1-mini":         "claude-sonnet-4-6",
+	"gpt-4o":        "claude-sonnet-4-6",
+	"gpt-4o-mini":   "claude-sonnet-4-6",
+	"gpt-4-turbo":   "claude-opus-4-7",
+	"gpt-4":         "claude-opus-4-7",
+	"gpt-3.5-turbo": "claude-haiku-4.5",
+	"o1":            "claude-opus-4-7",
+	"o1-mini":       "claude-sonnet-4-6",
 }
 
 // ResolveModel maps an OpenAI-facing model name to the ID sent down to the
