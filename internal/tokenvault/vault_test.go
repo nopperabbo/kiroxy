@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -261,5 +263,42 @@ func TestGet_NotFound(t *testing.T) {
 	_, err := v.Get(context.Background(), "kiro", "nope")
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("want ErrNotFound, got %v", err)
+	}
+}
+
+func TestOpen_AutoCreatesParentDir(t *testing.T) {
+	dir := t.TempDir()
+	nested := filepath.Join(dir, "does", "not", "exist", "yet", "vault.db")
+	v, err := Open(context.Background(), nested)
+	if err != nil {
+		t.Fatalf("Open should auto-create parent dirs, got: %v", err)
+	}
+	defer v.Close()
+	info, err := os.Stat(filepath.Dir(nested))
+	if err != nil {
+		t.Fatalf("parent dir missing after Open: %v", err)
+	}
+	if mode := info.Mode().Perm(); mode != 0o700 {
+		t.Errorf("want mode 0700, got %04o", mode)
+	}
+}
+
+func TestOpen_RejectsReadOnlyParent(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root bypasses write perms; skipping")
+	}
+	dir := t.TempDir()
+	ro := filepath.Join(dir, "readonly")
+	if err := os.Mkdir(ro, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(ro, 0o700) })
+
+	_, err := Open(context.Background(), filepath.Join(ro, "sub", "vault.db"))
+	if err == nil {
+		t.Fatal("expected error on read-only parent")
+	}
+	if !strings.Contains(err.Error(), "create vault dir") {
+		t.Errorf("error should mention vault dir creation, got: %v", err)
 	}
 }

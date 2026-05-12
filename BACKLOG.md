@@ -4,7 +4,7 @@ Moved from the build brief / caught by anti-scope-creep during MVP:
 
 ## Phase 2 (post-v0.1.0)
 
-- **AWS Builder ID device-code OAuth inside `kiroxy add-account`** — currently we accept the refresh token directly; porting Quorinex/auth/builderid.go unlocks full zero-config onboarding. — P1
+- **AWS Builder ID device-code OAuth inside `kiroxy add-account`** — **CLOSED in v0.2.0 (Phase B).**
 - **`--json` flag for `list-accounts` and `status`** — machine-readable output. — P3
 - **Interactive `--yes` / `-y` flag on `remove-account`** when/if multi-user lands. — P3
 - **OpenAI-compatible surface** `/v1/chat/completions` + `/v1/models` — P1

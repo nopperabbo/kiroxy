@@ -2,6 +2,52 @@
 
 Append-only. One entry per phase.
 
+## Phase B — Builder ID Device-Code OAuth  (2026-05-12 11:35 UTC)
+- Hours: ~2.5 (under 3h budget)
+- Commit: c89057a
+- Tag: v0.2.0
+- Gate: **green**
+- Verification output:
+  ```
+  make gate → GATE GREEN (18 packages)
+  go test -race ./internal/builderid → 8/8 PASS in ~7s
+    (SlowDown test really sleeps 5s+ to prove the interval bump)
+  Smoke:
+    kiroxy add-account --refresh-token=rt → still works (fallback)
+    kiroxy add-account -h                 → new flags visible
+  ```
+- Files added:
+  - internal/builderid/builderid.go       (420 LoC, new package)
+  - internal/builderid/builderid_test.go  (290 LoC, 8 mock-OIDC tests)
+- Files modified:
+  - cmd/kiroxy/accounts.go  — split into addAccountWithRefreshToken (old)
+                               + addAccountViaOAuth (new default). Opens
+                               browser, polls, persists.
+- Design decisions:
+  - **Rewrote rather than ported Quorinex's code.** Same wire shapes + URLs +
+    scopes, but cleaner: typed errors instead of 6-return-value tuple,
+    no package-level session registry (caller scope), no background GC
+    goroutine (Go context deadline is enough). MIT attribution preserved
+    in file header.
+  - **Metadata column stores client_id + client_secret** from the registered
+    OIDC client. This is what Quorinex persists for the 'IdC' auth path.
+    kirocc's refresh flow only needs refresh_token for desktop-auth, but if
+    we ever add the OIDC refresh flow we already have what we need.
+  - **Browser auto-open is opt-in-by-default**. --open=false for headless
+    environments. Falls back silently to manual URL copy if open fails.
+  - **Ticker prints '.' every 3 poll attempts**. Light progress feedback
+    without spam.
+  - **5-minute default timeout**. Generous for human pace; the underlying
+    device authorization expires in 600s anyway.
+- Surprises: none. State machine matches AWS OIDC spec as documented in
+  Quorinex + cross-referenced with kirocc's auth/refresh.go handling.
+- Not tested: live OAuth against prod AWS. That's the Phase C smoke test.
+- BACKLOG diff:
+  - Closed: 'AWS Builder ID device-code OAuth inside add-account' (was P1)
+
+---
+
+
 ## Phase A — Triplet Bulk Import  (2026-05-12 11:21 UTC)
 - Hours: ~50 min (under 1h budget)
 - Commit: 9cbcdbb

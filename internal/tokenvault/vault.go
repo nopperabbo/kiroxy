@@ -18,6 +18,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -63,7 +65,14 @@ var (
 )
 
 // Open opens (or creates) the SQLite database at path and applies the schema.
+// If the parent directory of path does not exist, it is created with mode 0700.
+// Existing directories are left untouched.
 func Open(ctx context.Context, path string) (*Vault, error) {
+	if dir := filepath.Dir(path); dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return nil, fmt.Errorf("create vault dir %s: %w", dir, err)
+		}
+	}
 	dsn := fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(on)", path)
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {

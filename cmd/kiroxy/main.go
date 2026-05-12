@@ -39,12 +39,15 @@ import (
 	"local/kiroxy/internal/tokenvault"
 )
 
-const (
-	version = "0.1.0-mvp"
-)
+// version is overridden at build time via -ldflags "-X main.version=<tag>"
+// (see Makefile). It must be a var (not const) for -X to take effect.
+var version = "dev"
 
 func main() {
 	if err := run(context.Background(), os.Args[1:]); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			os.Exit(0)
+		}
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
@@ -52,8 +55,20 @@ func main() {
 
 // run is the testable entrypoint. args excludes the program name.
 func run(ctx context.Context, args []string) error {
-	// Subcommand dispatch. Default (no subcmd) = "serve" for compatibility with
-	// `kiroxy` bare invocation.
+	// Top-level shortcuts: --version / -version / -v / --help / -h / help.
+	// These beat the subcommand dispatch so that flag-looking invocations
+	// don't get swallowed by the default "serve" path.
+	if len(args) == 1 {
+		switch args[0] {
+		case "--version", "-version", "-v":
+			fmt.Println(version)
+			return nil
+		case "--help", "-h":
+			printHelp()
+			return nil
+		}
+	}
+
 	sub := "serve"
 	rest := args
 	if len(args) > 0 && !startsWithDash(args[0]) {
@@ -64,7 +79,7 @@ func run(ctx context.Context, args []string) error {
 	switch sub {
 	case "serve":
 		return runServe(ctx, rest)
-	case "version", "-v", "--version":
+	case "version", "-v", "--version", "-version":
 		fmt.Println(version)
 		return nil
 	case "add-account":
