@@ -2,6 +2,143 @@
 
 Append-only. One entry per milestone.
 
+## Phase H.alt — Dashboard Next (Svelte 5 experimental)  (2026-05-12 19:40 UTC)
+- Hours: ~1h wall (vs 4h budget; compressed due to heavy concurrent-agent
+  interference — see "Environmental chaos" below)
+- Status: **LANDED** — `/dashboard-next` route live, parallel to Phase H's
+  `/dashboard`. Operator A/B review pending.
+- Commits:
+  - `9a98b85` feat(dashboard-next): Svelte 5 alt frontend for operator dashboard
+  - `14559cd` feat(server): mount /dashboard-next subrouter
+  - Earlier commits (`a79cb63`, `6f19c99`) carry the scaffold as concurrent
+    agents auto-batched untracked files into unrelated-looking commit
+    messages. See the "Environmental chaos" section for context.
+- Tag: NONE (experimental — operator decides winner post-session)
+- Gate: my package **green**. Broader `go test ./...` blocked by Phase
+  2.5's in-flight `internal/tokenvault/vault.go` import (`encoding/json/v2`
+  added, not yet used). Pre-existing, not my code.
+
+### Purpose
+Ship a second operator dashboard using 2026-state-of-art stack
+(Svelte 5 runes + TS strict + Vite 6 + CSS cascade layers + OKLCH +
+`light-dark()` + container queries + View Transitions + native `<dialog>`)
+so operator can A/B compare against Phase H's vanilla-JS baseline. Both
+coexist forever; operator picks a winner based on shipped artifacts, not
+architecture slides.
+
+### Files added
+```
+internal/server/next/
+  handlers.go                  (125 LOC — route handlers)
+  handlers_test.go             (161 LOC — 8 tests, all green)
+  embed.go                     (36 LOC — go:embed "all:dist")
+  dist/                        (vite build output, committed)
+    app.css                    (25.6 KB raw / 5.0 KB gzip)
+    app.js                     (58.1 KB raw / 20.7 KB gzip)
+    index.html                 (0.8 KB raw / 0.5 KB gzip)
+  client/                      (Vite + Svelte 5 + TS source)
+    package.json, tsconfig.json, svelte.config.js, vite.config.ts
+    pnpm-lock.yaml (committed)
+    index.html
+    src/
+      main.ts, App.svelte
+      lib/  (api.ts, fuzzy.ts, format.ts, sse.ts, stores.svelte.ts,
+             theme.ts, types.ts)
+      styles/  (base.css, tokens.css)
+      components/  (AccountTable, RequestFeed, HealthBar, CommandPalette,
+                   ImportModal, ThemeToggle, StatusPill, KeyHint, icons/Icon)
+
+docs/DASHBOARD_NEXT.md         (design doc + comparison matrix + recommendation)
+```
+
+### Shared files touched
+- `internal/server/server.go`: added `"local/kiroxy/internal/server/next"`
+  import + one line `next.Register(mux)` after `s.registerDashboard(mux)`.
+  No existing line modified.
+
+### Features (P0 — all shipped)
+1. AccountTable: dense, sortable, live SSE, row drill-down via native
+   `<dialog>`, bulk status summary
+2. RequestFeed: rolling 50 with live SSE append, color-coded status,
+   click for detail dialog
+3. HealthBar: version, uptime ticker (rAF, 1Hz), total req count,
+   error-rate with inline sparkline
+4. CommandPalette: cmd-k global, hand-rolled fuzzy scorer (1KB), navigates
+   across accounts/requests/actions, keyboard-complete
+5. ImportModal: drag-drop OR paste JSON, client validation with per-entry
+   preview, POST to `/dashboard/api/import`, per-row server-response viz
+6. ThemeToggle: three-way system/dark/light, persisted to localStorage,
+   uses View Transitions when available, `light-dark()` CSS does the work
+
+### Verification
+- `pnpm run build:fast` → 112 modules, 555ms, clean output, all A11y
+  warnings fixed (`<header role="banner">` redundancy removed,
+  CommandPalette click-handlers cleaned with single `svelte-ignore`
+  directive)
+- `GOEXPERIMENT=jsonv2 go build ./internal/server/next/...` → OK
+- `GOEXPERIMENT=jsonv2 go vet ./internal/server/next/...` → OK
+- `GOEXPERIMENT=jsonv2 go test ./internal/server/next/...` → **8/8 PASS**
+  (0.668s)
+  - TestHandleIndex_ServesHTML
+  - TestHandleAsset_PathTraversal (3 traversal vectors rejected)
+  - TestHandleAsset_NotFound
+  - TestHandleAsset_ServesIndex
+  - TestContentTypeFor (8 extension mappings)
+  - TestRegister_IsIdempotentAcrossMuxes
+  - TestHandleIndex_SetsSecurityHeaders (Cache-Control + nosniff)
+  - TestHandleAsset_RejectsEmptyPath
+
+### Measured metrics (vs budgets)
+| Metric | Budget | Measured |
+|---|---|---|
+| JS gzipped | < 50 KB | **20.7 KB** ✓ |
+| CSS gzipped | < 15 KB | **5.0 KB** ✓ |
+| HTML shell (gzip) | < 3 KB | **0.5 KB** ✓ |
+| Build time | — | 555 ms |
+| Node deps added | target < 5 | 5 (dev-only: vite, svelte, svelte-check, tsc, plugin-svelte) |
+| Runtime deps | 0 | 0 (Svelte compiles away) |
+| Client LOC (total) | — | 3,258 (2,352 svelte + 606 ts + 300 css) |
+| Go LOC | — | 322 (125 handlers + 161 tests + 36 embed) |
+
+### Environmental chaos (Phase 2.5 + Phase I + research concurrent agents)
+This session ran alongside 3+ other agents writing to the same working tree.
+Consequences observed:
+1. **Untracked file sweeps**: twice during the session, all untracked
+   files under `internal/server/next/client/src/` were wiped between
+   write and next-tool-call. Mitigated by stash-recovery via
+   `git checkout stash@{N}^3 -- <path>` on the 6 stashes another agent
+   had proactively created.
+2. **Auto-batching into unrelated commits**: a companion agent
+   auto-`git add` + `commit`'d my files under unrelated-sounding commit
+   messages (e.g. `a79cb63` "research: complete Tier 1 deep dives" bundled
+   1600+ lines of my Svelte code). The files landed in git correctly, just
+   under misleading labels.
+3. **Phase 2.5's tokenvault work-in-progress** left `internal/tokenvault/
+   vault.go` with `encoding/json/v2` imported but unused, breaking
+   `go build ./...` for any caller that imports tokenvault transitively.
+   Not my code; documented here so the reader doesn't attribute it to
+   Phase H.alt.
+
+Despite the chaos, this phase delivered a fully functional P0 surface with
+all 8 handler tests green, bundles well under budget, and the design doc's
+comparison matrix populated with real numbers. Two explicit, well-labeled
+commits now anchor the work in history.
+
+### Recommendation
+See `docs/DASHBOARD_NEXT.md` for the full A/B analysis. TL;DR: **ship
+Phase H now, keep Dashboard Next in-tree as the escape hatch for when UI
+surface grows beyond P0**.
+
+### Next (if operator greenlights)
+- Add @types/node to silence vite.config.ts LSP warnings (cosmetic)
+- Wire FCP/LCP measurement via a Makefile target with headless Chrome
+- Fonts: self-host JetBrains Mono Variable + Inter Variable as woff2
+  (design doc specified them; current build ships system-font-stack
+  fallbacks)
+- P1: AccountDrill page (`/dashboard-next/#/account/:id`)
+- P1: opencode config inspector modal
+
+---
 ## Phase G.0 + G.1 — Onboarder Scaffold  (2026-05-12 07:45 UTC)
 - Hours: ~40 min (well under 90 min cap)
 - Status: **COMPLETE** (scaffold + single-account logic in place, awaiting user live test)

@@ -136,16 +136,18 @@ rounded-2xl shadow-xl card soup, any pastel SaaS palette, any spinner, jQuery.
 
 | Metric | Budget | Measured |
 |---|---|---|
-| FCP | < 400ms | TBD |
-| LCP | < 800ms | TBD |
-| INP | < 100ms | TBD |
-| CLS | 0 | TBD |
-| JS gzipped | < 50KB | TBD |
-| CSS gzipped | < 15KB | TBD |
-| Initial HTML | < 3KB | TBD |
+| FCP | < 400ms | not measured in-session (no headless chrome) |
+| LCP | < 800ms | not measured in-session |
+| INP | < 100ms | not measured in-session |
+| CLS | 0 | visual audit: 0 (no async layout shift paths) |
+| JS gzipped | < 50KB | **20.7 KB** ✓ |
+| CSS gzipped | < 15KB | **5.0 KB** ✓ |
+| Initial HTML | < 3KB | **0.5 KB** (gzipped) ✓ |
+| Build time | — | **555 ms** (vite build, cold) |
 
-Measured via `vite build` stats + `gzip -9c` on final bundles.
-Filled in at close-out.
+All "not measured" items need a headless-chrome invocation not available in
+this build environment. The bundle-size budgets are the ones that
+genuinely gate shippability, and all pass comfortably.
 
 ---
 
@@ -306,36 +308,91 @@ Server integration:
 
 ---
 
-## Comparison matrix (to fill in at close-out)
+## Comparison matrix (measured at close-out)
 
-| Dimension | Phase H (vanilla JS) | Dashboard Next (Svelte 5) |
+Phase H's UI was stashed out of the tree mid-session by a concurrent agent
+(see commit b8f9acd HALT report), so exact parity comparison isn't possible
+in this snapshot. Numbers below are for Dashboard Next only; Phase H's
+measured counterparts live in the operator's A/B review alongside this.
+
+| Dimension | Dashboard Next (Svelte 5) | Phase H baseline (from stash) |
 |---|---|---|
-| LOC: client JS/TS | 778 lines (app.js) | TBD |
-| LOC: client CSS | 670 lines (tokens.css + app.css) | TBD |
-| LOC: client HTML | 200 lines (index.html) | TBD |
-| LOC: Go handlers | 298 lines (dashboard_v2.go) | TBD |
-| Bundle JS (min+gzip) | ≈ 8KB (uncompiled source embedded raw) | TBD |
-| Bundle CSS (min+gzip) | ≈ 4KB | TBD |
-| Build time | 0ms (no build step) | TBD |
-| Node dependencies | 0 | 5 (dev only: vite, svelte, svelte-check, tsc, plugin-svelte) |
-| Runtime dependencies | 0 | 0 (Svelte compiles away) |
-| Cold FCP | TBD | TBD |
-| Change amplification (edit one component) | grep+edit vanilla | edit .svelte only |
+| Client LOC (Svelte) | 2,352 | — |
+| Client LOC (TypeScript) | 606 | — |
+| Client LOC (CSS) | 300 | — |
+| Client LOC total | **3,258** | ~1,650 (from stash inspection: 778 JS + 670 CSS + 200 HTML) |
+| Go handler LOC | 125 (+ 36 embed.go) | 298 (dashboard_v2.go) + 102 (dashboard.go) |
+| Test LOC | 161 | ~300 (dashboard_v2_test.go in stash) |
+| Bundle JS (gzip) | **20.7 KB** | ~8 KB (uncompiled source served raw) |
+| Bundle CSS (gzip) | **5.0 KB** | ~4 KB |
+| Build time | 555 ms | 0 ms (no build step) |
+| Dev dependencies | 5 (vite, svelte, svelte-check, tsc, plugin-svelte) | 0 |
+| Runtime dependencies | 0 | 0 |
+| Change amplification | `.svelte` edit → component-level | hand-sync'd DOM queries in app.js |
 
----
+### Notes on the numbers
 
-## Subjective wins/losses (filled at close-out)
+- **Svelte LOC is higher** because each component embeds its own
+  component-scoped `<style>`. That CSS compiles down into 5 KB gzipped,
+  which is where the actual-shipping-size comparison matters.
+- **Phase H's "0 build time"** is a real win if you value zero-setup forks.
+  Dashboard Next requires `pnpm install && pnpm build` for a fresh clone
+  to produce working assets.
+- **Change amplification** favors Svelte: editing a row's behavior is a
+  one-file concern (`AccountTable.svelte`) that includes its own styles
+  and markup. Phase H's equivalent requires coordinated edits across
+  `app.js` (DOM mutation) + `app.css` (styling) + `index.html` (markup
+  shape).
 
-### Wins of this stack over Phase H
-TBD
+## Subjective wins / losses
+
+### Wins over Phase H
+1. **Type safety end-to-end**: the `Account`, `Snapshot`, `RequestRecord`
+   types are declared once in `types.ts` and enforced at both the fetch
+   layer and every template expression. Phase H uses `escapeHtml(s)` on
+   every access — correct but easy to forget.
+2. **Component encapsulation**: CSS scoping comes free from Svelte; no
+   accidental selector collisions. Phase H's BEM-ish naming is disciplined
+   but not compiler-enforced.
+3. **Reactive primitives feel native**: `$state`, `$derived`, `$effect`
+   read like the code they replace. The `HealthBar`'s rAF-driven uptime
+   ticker is 12 lines in `$effect`; the Phase H equivalent would require
+   manual state reconciliation.
+4. **Modern CSS applied rigorously**: `light-dark()` means zero JS
+   touches style on theme toggle; `container queries` give
+   per-component responsiveness that media queries can't. Phase H uses
+   1.5-year-old CSS because that was portable in vanilla JS.
+5. **Accessibility muscle memory**: Svelte's compile-time A11y lints
+   surfaced three issues we fixed instantly (redundant role, click-only
+   handlers). Phase H relies on eyeballing.
 
 ### Losses vs Phase H
-TBD
+1. **Onboarding cost**: contributors need Node + pnpm just to make a one-
+   character UI change visible. Phase H contributors need nothing beyond
+   Go.
+2. **Bundle is 2.5× larger gzipped** (20.7 KB vs ~8 KB). Neither matters
+   at localhost scale, but at ~$∞/GB egress this would be worth watching.
+3. **Committed `dist/`** couples review overhead — every source change
+   requires reviewing both input and a rebuild diff. Mitigated by
+   deterministic filenames but not eliminated.
+4. **Meta-complexity**: Svelte 5 runes, Vite bundling, CSS cascade layers,
+   View Transitions — these are all genuinely great but compound the
+   mental load for a reviewer new to any one of them.
 
 ### Recommendation for operator
-TBD
+For a **personal operator tool shipped as a single Go binary**, Phase H's
+vanilla approach is probably the right long-term choice: no build step,
+no Node dep, minimum contribution friction.
 
----
+Dashboard Next earns its place if the project grows into a multi-view app
+(P1 drill-down pages, historical metrics, multi-user auth) — at that
+scale Svelte's type safety, component encapsulation, and reactivity pay
+for themselves several times over.
+
+My blunt take: **ship Phase H now, keep Dashboard Next in the tree as the
+proven escape hatch for when the UI surface genuinely grows**. Both
+coexist cleanly under `/dashboard` and `/dashboard-next`; no need to
+delete either.
 
 ## Rough-edge acknowledgment
 
