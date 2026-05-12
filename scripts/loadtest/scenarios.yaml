@@ -1,0 +1,69 @@
+# kiroxy load-test scenarios
+#
+# Used by run.sh. Not consumed by the Go harness directly (harness takes
+# flags); instead run.sh reads this file and invokes the harness once per
+# scenario.
+#
+# Format: a top-level `scenarios:` mapping, each entry has:
+#   concurrency   parallel workers
+#   total         total requests to issue
+#   duration      optional, e.g. "5m"; when set, run for this long (overrides total)
+#   stream        if true, use streaming (anthropic mode only)
+#   mode          anthropic|kiro. "anthropic" goes through kiroxy; "kiro"
+#                 targets mock_kiro directly (upper-bound reference).
+#   description   short free-form label for the report
+#
+# All values match the CLI flags exposed by scripts/loadtest/main.go.
+
+scenarios:
+  light:
+    concurrency: 1
+    total: 10
+    stream: false
+    mode: anthropic
+    description: "Sanity: 10 sequential non-stream requests to kiroxy."
+
+  sustained:
+    concurrency: 5
+    total: 100
+    stream: false
+    mode: anthropic
+    description: "Warm path: 100 requests at concurrency 5."
+
+  burst:
+    concurrency: 20
+    total: 100
+    stream: false
+    mode: anthropic
+    description: "Contention: 100 requests at concurrency 20."
+
+  streaming:
+    concurrency: 5
+    total: 20
+    stream: true
+    mode: anthropic
+    description: "SSE stability: 20 streaming requests at concurrency 5."
+
+  sustained_5m:
+    concurrency: 5
+    duration: "5m"
+    stream: false
+    mode: anthropic
+    description: "Endurance: 5 minutes sustained at concurrency 5."
+
+  # Reference scenarios: hit mock_kiro directly to measure the eventstream
+  # pipeline without kiroxy in the path. The delta between these and the
+  # corresponding anthropic scenarios is kiroxy's overhead.
+  mock_light:
+    concurrency: 1
+    total: 10
+    stream: false
+    mode: kiro
+    description: "Upper-bound: 10 sequential requests against mock_kiro."
+
+  mock_burst:
+    concurrency: 20
+    total: 100
+    stream: false
+    mode: kiro
+    description: "Upper-bound: 100 requests at concurrency 20 against mock_kiro."
