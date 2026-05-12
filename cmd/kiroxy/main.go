@@ -34,6 +34,7 @@ import (
 	"local/kiroxy/internal/config"
 	"local/kiroxy/internal/kiroclient"
 	"local/kiroxy/internal/messages"
+	"local/kiroxy/internal/metrics"
 	"local/kiroxy/internal/pool"
 	"local/kiroxy/internal/server"
 	"local/kiroxy/internal/tokenvault"
@@ -149,6 +150,9 @@ func runServe(ctx context.Context, args []string) error {
 		vault      *tokenvault.Vault
 		poolInst   *pool.Pool
 	)
+	startedAt := time.Now()
+	metricsReg := metrics.New(startedAt)
+	metricsSink := metricsReg.Sink()
 	if cfg.KiroDBPath != "" {
 		authMgr = auth.NewAuthManager(cfg.KiroDBPath)
 		kiroClient = kiroclient.NewHTTPClient(
@@ -177,6 +181,13 @@ func runServe(ctx context.Context, args []string) error {
 		}
 		vault = v
 		poolInst = pool.New(pool.DefaultPolicy())
+		poolInst.SetMetricsSink(metricsSink)
+		if err := pool.RegisterPoolGauges(metricsReg.Registerer(), poolInst); err != nil {
+			return fmt.Errorf("register pool gauges: %w", err)
+		}
+		if err := tokenvault.RegisterVaultGauges(metricsReg.Registerer(), vault); err != nil {
+			return fmt.Errorf("register vault gauges: %w", err)
+		}
 
 		accts, err := vault.ListByProvider(ctx, "kiro")
 		if err != nil {
@@ -203,6 +214,7 @@ func runServe(ctx context.Context, args []string) error {
 			Vault: vault,
 			Refresh: &pool.RefreshConfig{
 				RefreshFn: pool.DefaultRefreshFn(nil),
+				Metrics:   metricsSink,
 			},
 		}
 		authMgr = tg
@@ -224,12 +236,13 @@ func runServe(ctx context.Context, args []string) error {
 		APIKey:          cfg.APIKey,
 		Logger:          slog.Default(),
 		ReadinessChecks: buildReadinessChecks(vault, poolInst),
+		Metrics:         metricsReg,
 		DashboardStateProvider: &dashboardProvider{
 			version:   version,
 			vaultPath: cfg.DBPath,
 			vault:     vault,
 			pool:      poolInst,
-			startedAt: time.Now(),
+			startedAt: startedAt,
 		},
 	})
 

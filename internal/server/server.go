@@ -9,6 +9,7 @@ import (
 
 	"local/kiroxy/internal/kiroclient"
 	"local/kiroxy/internal/messages"
+	"local/kiroxy/internal/metrics"
 	"local/kiroxy/internal/server/next"
 )
 
@@ -50,6 +51,10 @@ type Options struct {
 	// disabled and the feed shows no history. A process-wide ring is
 	// typical; tests construct smaller rings as needed.
 	RequestRing *RequestRing
+
+	// Metrics is the Prometheus registry exposed at /metrics. When nil,
+	// the endpoint returns 503 and no request instrumentation is emitted.
+	Metrics *metrics.Registry
 }
 
 // Server bundles the process-wide handler tree.
@@ -69,7 +74,11 @@ func New(opts Options) *Server {
 	}
 	var svc *messages.Service
 	if opts.Auth != nil {
-		svc = messages.New(opts.Auth, opts.KiroClient)
+		svcOpts := []messages.Option{}
+		if opts.Metrics != nil {
+			svcOpts = append(svcOpts, messages.WithMetrics(opts.Metrics.Sink()))
+		}
+		svc = messages.New(opts.Auth, opts.KiroClient, svcOpts...)
 	}
 	ready := newReadiness()
 	for name, c := range opts.ReadinessChecks {
@@ -110,6 +119,8 @@ func (s *Server) Handler() http.Handler {
 	// and returns a 503 via the OpenAI error shape when msgSvc is nil.
 	mux.HandleFunc("POST /v1/chat/completions", s.handleChatCompletions)
 	mux.HandleFunc("GET /v1/models", s.handleListModels)
+
+	s.registerMetrics(mux)
 
 	authMW := newAuthMiddleware(s.opts.APIKey)
 	var rec RequestRecorder

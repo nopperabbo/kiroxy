@@ -45,6 +45,15 @@ func (m *authMiddleware) wrap(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		// /metrics follows the same loopback bypass as /dashboard so that
+		// a Prometheus running on the same host can scrape without API key
+		// plumbing. Non-loopback scrapers must authenticate, UNLESS the
+		// operator has set KIROXY_METRICS_PUBLIC=1 for a trusted private
+		// metrics network.
+		if r.URL.Path == "/metrics" && (isLoopback(r) || metricsIsPublic()) {
+			next.ServeHTTP(w, r)
+			return
+		}
 		provided := extractAPIKey(r)
 		if provided == "" {
 			writeAuthProblem(w, http.StatusUnauthorized, "missing_api_key", "set X-Api-Key header or Authorization: Bearer <token>")
