@@ -400,6 +400,15 @@ def _parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="run Camoufox headless (default: windowed, for debug visibility)",
     )
     p.add_argument(
+        "--challenge-mode", choices=["auto", "manual", "skip"], default="auto",
+        help=(
+            "how to handle Google challenges: "
+            "'auto' = detect + prompt operator to solve (default); "
+            "'manual' = skip auto-type entirely, wait for operator to sign in; "
+            "'skip' = G.1 behavior (type and hope)."
+        ),
+    )
+    p.add_argument(
         "--timeout-login-s", type=int, default=120,
         help="seconds to wait for the kiro:// redirect (default: 120)",
     )
@@ -460,6 +469,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     from browser_driver import BrowserDriver, BrowserDriverUnavailableError
     from warmup import run_warmup, should_warmup, write_marker
+    from challenge import (
+        ChallengeMode, is_hard_fail, poll_for_challenge, prompt_and_wait_for_solve,
+    )
 
     screenshot_slug = _safe_slug(args.email)
     screenshot_base = SCREENSHOT_DIR / f"onboard_{screenshot_slug}_{int(time.time())}"
@@ -471,6 +483,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         _log("warmup: skipped (profile recently warmed)")
     else:
         _log("warmup: profile cold or stale; will warm before login")
+
+    challenge_mode = ChallengeMode(args.challenge_mode)
+    _log(f"challenge-mode: {challenge_mode.value}")
 
     try:
         with BrowserDriver(
@@ -491,10 +506,61 @@ def main(argv: Optional[List[str]] = None) -> int:
             drv.navigate(login_url, wait_until="domcontentloaded")
             drv.page.wait_for_timeout(800)  # let SPA hydrate
 
-            if args.provider == "google":
-                _drive_google(drv, args.email, password)
+            if challenge_mode == ChallengeMode.MANUAL:
+                # Don't auto-type anything. Just prompt once and wait for the
+                # operator to sign in manually. Same UX as kiro_login.py, but
+                # in-tree.
+                _log("manual mode: not typing credentials; waiting for operator sign-in")
+                print(
+                    "\n⚠ Manual sign-in mode. Please complete sign-in in the browser "
+                    "window, then press ENTER to continue.\n",
+                    file=sys.stderr, flush=True,
+                )
+                try:
+                    sys.stdin.readline()
+                except Exception:
+                    pass
             else:
-                _drive_github(drv, args.email, password)
+                # AUTO or SKIP: drive the flow.
+                if args.provider == "google":
+                    _drive_google(drv, args.email, password)
+                else:
+                    _drive_github(drv, args.email, password)
+
+                if challenge_mode == ChallengeMode.AUTO:
+                    # Poll up to 60s for a challenge. If detected:
+                    #   BLOCKED → abort immediately.
+                    #   Others → prompt, wait, resume.
+                    _log("→ scanning for Google challenges (up to 60s)")
+                    kind = poll_for_challenge(drv.page, timeout_s=60)
+                    if kind is not None:
+                        _log(f"challenge detected: {kind.value}")
+                        if is_hard_fail(kind):
+                            # Save a screenshot of the blocked state for context.
+                            SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
+                            shot = drv.screenshot(
+                                str(screenshot_base) + "_blocked.png"
+                            )
+                            print(
+                                f"error: Google hard-blocked sign-in ({kind.value}). "
+                                f"This account is cooked on this IP/profile. "
+                                f"Try a different account or residential proxy, or use "
+                                f"kiro_login.py for manual sign-in.",
+                                file=sys.stderr,
+                            )
+                            if shot:
+                                print(f"debug screenshot: {shot}", file=sys.stderr)
+                            return 1
+                        ok = prompt_and_wait_for_solve(kind)
+                        if not ok:
+                            print(
+                                f"error: aborted waiting for operator to solve {kind.value}",
+                                file=sys.stderr,
+                            )
+                            return 1
+                        _log("operator signalled resume; waiting for redirect")
+                    else:
+                        _log("no challenge detected within 60s; redirect should arrive")
 
             _log(f"→ waiting up to {args.timeout_login_s}s for kiro:// redirect")
             callback_url = drv.wait_for_navigation_matching(
