@@ -13,6 +13,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"local/kiroxy/internal/auth"
+	"local/kiroxy/internal/metrics"
 	"local/kiroxy/internal/tokenvault"
 )
 
@@ -55,6 +56,10 @@ type RefreshConfig struct {
 
 	// BaseBackoff is the first retry delay (default 500ms). Doubles each retry.
 	BaseBackoff time.Duration
+
+	// Metrics is the optional metrics sink. Nil-safe: a nil value disables
+	// refresh-attempts emission at each call site.
+	Metrics *metrics.Sink
 
 	// group coalesces concurrent refreshes for the same (provider, id).
 	group singleflight.Group
@@ -135,12 +140,18 @@ func needsRefresh(md accountMetadata, skew time.Duration, now time.Time) bool {
 // Reserve/Commit generation-lock machinery and the caller's RefreshFn.
 // Retries on transient errors with exponential backoff. Returns the NEW
 // bundle on success.
-func refreshOne(ctx context.Context, vault *tokenvault.Vault, cfg *RefreshConfig, provider, id, region string) (*tokenvault.Bundle, error) {
+//
+// kind classifies WHY this refresh was triggered (proactive pre-expiry
+// vs reactive 401/403), only for metric labelling — the refresh logic is
+// identical either way.
+func refreshOne(ctx context.Context, vault *tokenvault.Vault, cfg *RefreshConfig, provider, id, region string, kind metrics.RefreshKind) (*tokenvault.Bundle, error) {
 	if cfg.RefreshFn == nil {
+		cfg.Metrics.RefreshAttempt(kind, metrics.RefreshResultFailOther)
 		return nil, errors.New("pool refresh: RefreshFn not configured")
 	}
 	refreshTok, gen, err := vault.Reserve(ctx, provider, id, cfg.effectiveLockTTL())
 	if err != nil {
+		cfg.Metrics.RefreshAttempt(kind, metrics.RefreshResultFailOther)
 		return nil, fmt.Errorf("reserve: %w", err)
 	}
 
@@ -154,6 +165,7 @@ func refreshOne(ctx context.Context, vault *tokenvault.Vault, cfg *RefreshConfig
 			select {
 			case <-ctx.Done():
 				_ = vault.Release(ctx, provider, id, gen, false)
+				cfg.Metrics.RefreshAttempt(kind, metrics.RefreshResultFailTransient)
 				return nil, ctx.Err()
 			case <-time.After(backoff):
 			}
@@ -186,8 +198,10 @@ func refreshOne(ctx context.Context, vault *tokenvault.Vault, cfg *RefreshConfig
 					"err_type", fmt.Sprintf("%T", cerr),
 					"err", cerr)
 				_ = vault.Release(ctx, provider, id, gen, false)
+				cfg.Metrics.RefreshAttempt(kind, metrics.RefreshResultFailOther)
 				return nil, fmt.Errorf("vault commit: %w", cerr)
 			}
+			cfg.Metrics.RefreshAttempt(kind, metrics.RefreshResultSuccess)
 			return bundle, nil
 		}
 		lastErr = rerr
@@ -195,15 +209,18 @@ func refreshOne(ctx context.Context, vault *tokenvault.Vault, cfg *RefreshConfig
 			// Terminal — refresh_token is dead. Release lock, bubble up
 			// for caller to mark the account failed.
 			_ = vault.Release(ctx, provider, id, gen, false)
+			cfg.Metrics.RefreshAttempt(kind, metrics.RefreshResultFail401)
 			return nil, rerr
 		}
 		if !errors.Is(rerr, auth.ErrRefreshTransient) {
 			// Unknown error class — treat as terminal.
 			_ = vault.Release(ctx, provider, id, gen, false)
+			cfg.Metrics.RefreshAttempt(kind, metrics.RefreshResultFailOther)
 			return nil, rerr
 		}
 		// Transient — continue retry loop.
 	}
 	_ = vault.Release(ctx, provider, id, gen, false)
+	cfg.Metrics.RefreshAttempt(kind, metrics.RefreshResultFailTransient)
 	return nil, fmt.Errorf("pool refresh: exhausted %d retries: %w", cfg.effectiveMaxRetries(), lastErr)
 }

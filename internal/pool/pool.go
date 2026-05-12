@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"local/kiroxy/internal/auth"
+	"local/kiroxy/internal/metrics"
 	"local/kiroxy/internal/tokenvault"
 )
 
@@ -70,6 +71,10 @@ type Pool struct {
 	accounts map[string]*Account
 	health   map[string]*HealthState
 	policy   Policy
+
+	// metricsSink is nil-safe. When set, cooldown transitions emit
+	// account_cooldowns_total increments keyed by reason.
+	metricsSink *metrics.Sink
 }
 
 // New returns an empty Pool with the given policy.
@@ -79,6 +84,12 @@ func New(policy Policy) *Pool {
 		health:   make(map[string]*HealthState),
 		policy:   policy,
 	}
+}
+
+// SetMetricsSink attaches a metrics sink. Passing nil disables emission.
+// Safe to call at most once at boot; not intended for hot-path reconfiguration.
+func (p *Pool) SetMetricsSink(s *metrics.Sink) {
+	p.metricsSink = s
 }
 
 // Add registers an account in the pool. If an account with the same ID exists,
@@ -224,9 +235,9 @@ const (
 // toward ConsecutiveErrorThreshold before cooling down.
 func (p *Pool) RecordFailure(id string, kind FailureKind, reason string) {
 	p.mu.Lock()
-	defer p.mu.Unlock()
 	a := p.accounts[id]
 	if a == nil {
+		p.mu.Unlock()
 		return
 	}
 	a.ErrorCount++
@@ -237,9 +248,15 @@ func (p *Pool) RecordFailure(id string, kind FailureKind, reason string) {
 	}
 	h.Consecutive++
 	h.LastError = reason
+	// Cooldown was either already present or newly set; we only want to
+	// emit the metric on the transition from "no cooldown" (or expired)
+	// to a fresh future cooldown, so stash the previous value.
+	prev := h.CooldownUntil
+	cooldownJustApplied := false
 	switch kind {
 	case FailureQuota:
 		h.CooldownUntil = time.Now().Add(p.policy.QuotaCooldown)
+		cooldownJustApplied = h.CooldownUntil.After(prev)
 	default:
 		if h.Consecutive >= p.policy.ConsecutiveErrorThreshold {
 			cool := p.policy.ShortCooldown
@@ -250,6 +267,7 @@ func (p *Pool) RecordFailure(id string, kind FailureKind, reason string) {
 				cool = p.policy.MaxCooldown
 			}
 			h.CooldownUntil = time.Now().Add(cool)
+			cooldownJustApplied = h.CooldownUntil.After(prev)
 		}
 	}
 	slog.Debug("pool: account fault",
@@ -257,6 +275,13 @@ func (p *Pool) RecordFailure(id string, kind FailureKind, reason string) {
 		slog.Int("consecutive", h.Consecutive),
 		slog.String("reason", reason),
 		slog.String("cooldown_until", h.CooldownUntil.Format(time.RFC3339)))
+	sink := p.metricsSink
+	p.mu.Unlock()
+	// Emit outside the lock — the metric write can involve atomic ops and
+	// we don't want metric collection to contend with the pool's hot path.
+	if cooldownJustApplied {
+		sink.Cooldown(cooldownReasonFor(kind))
+	}
 }
 
 // ---- TokenGetter glue ----
@@ -289,7 +314,7 @@ func (tg *TokenGetter) GetToken(ctx context.Context) (*auth.Credentials, error) 
 	if b != nil && tg.Refresh != nil && tg.Refresh.RefreshFn != nil {
 		md := parseAccountMetadata(b.Metadata)
 		if md.AuthMethod == "social" && needsRefresh(md, tg.Refresh.effectiveSkew(), time.Now()) {
-			refreshed, rerr := refreshOne(ctx, tg.Vault, tg.Refresh, p.Provider, p.ID, p.Region)
+			refreshed, rerr := refreshOne(ctx, tg.Vault, tg.Refresh, p.Provider, p.ID, p.Region, metrics.RefreshKindProactive)
 			if rerr != nil {
 				return nil, rerr
 			}
