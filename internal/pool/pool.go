@@ -10,6 +10,7 @@ package pool
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -269,15 +270,32 @@ type TokenGetter struct {
 	Vault *tokenvault.Vault
 }
 
-// GetToken implements messages.TokenGetter.
+// GetToken implements messages.TokenGetter. It picks an account from the
+// pool, loads the current access_token from the vault, and enriches the
+// returned Credentials with any Kiro-specific fields stored in
+// Bundle.Metadata (profile_arn, auth_method). The metadata JSON is
+// tolerant: missing/empty/malformed fields leave Credentials fields zero.
 func (tg *TokenGetter) GetToken(ctx context.Context) (*auth.Credentials, error) {
 	p, err := tg.Pool.Pick(ctx, tg.Vault)
 	if err != nil {
 		return nil, err
 	}
-	return &auth.Credentials{
+	creds := &auth.Credentials{
 		AccessToken: p.Token,
 		Region:      p.Region,
 		AuthType:    p.Provider,
-	}, nil
+	}
+	if b, err := tg.Vault.Get(ctx, p.Provider, p.ID); err == nil && b != nil && b.Metadata != "" {
+		var md struct {
+			ProfileArn string `json:"profile_arn"`
+			AuthMethod string `json:"auth_method"`
+		}
+		if jerr := json.Unmarshal([]byte(b.Metadata), &md); jerr == nil {
+			creds.ProfileARN = md.ProfileArn
+			if md.AuthMethod != "" {
+				creds.AuthType = md.AuthMethod
+			}
+		}
+	}
+	return creds, nil
 }
