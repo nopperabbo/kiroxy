@@ -231,7 +231,7 @@ func TestHTTPClient_EndpointURL(t *testing.T) {
 		region  string
 		want    string
 	}{
-		{"region-based", "", "us-west-2", "https://q.us-west-2.amazonaws.com/"},
+		{"region-based", "", "us-west-2", "https://runtime.us-west-2.kiro.dev/"},
 		{"override", "http://localhost:8080", "us-west-2", "http://localhost:8080"},
 	}
 	for _, tt := range tests {

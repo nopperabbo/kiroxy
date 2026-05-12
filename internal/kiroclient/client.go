@@ -14,6 +14,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -156,11 +157,21 @@ func (c *HTTPClient) recordError(ctx context.Context, err error) {
 	}
 }
 
+// endpointURL returns the Kiro API URL for a region.
+//
+// AWS deprecates legacy `q.<region>.amazonaws.com` on 2026-05-15 in favour
+// of `runtime.<region>.kiro.dev`. Defaults to new endpoint; legacy is
+// available via KIROXY_USE_LEGACY_ENDPOINT=1 until 2026-08-15.
+//
+// Reference: jwadow/kiro-gateway#146 (deadline), PR #155 (migration).
 func (c *HTTPClient) endpointURL(region string) string {
 	if c.baseURL != "" {
 		return c.baseURL
 	}
-	return fmt.Sprintf("https://q.%s.amazonaws.com/", region)
+	if os.Getenv("KIROXY_USE_LEGACY_ENDPOINT") == "1" {
+		return fmt.Sprintf("https://q.%s.amazonaws.com/", region)
+	}
+	return fmt.Sprintf("https://runtime.%s.kiro.dev/", region)
 }
 
 // GenerateAssistantResponse sends a request to the Kiro API with retry logic.

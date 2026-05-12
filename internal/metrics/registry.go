@@ -220,9 +220,9 @@ func (r *Registry) Handler() http.Handler {
 		})
 	}
 	return promhttp.HandlerFor(r.reg, promhttp.HandlerOpts{
-		ErrorHandling:     promhttp.HTTPErrorOnError,
+		ErrorHandling:      promhttp.HTTPErrorOnError,
 		DisableCompression: false,
-		Timeout:           5 * time.Second,
+		Timeout:            5 * time.Second,
 	})
 }
 
