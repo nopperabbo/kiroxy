@@ -9,7 +9,7 @@ import { resolve } from "node:path";
 //     cache busting is handled via Cache-Control: no-cache, not filenames.
 //   - Committed dist diffs are readable when filenames are stable.
 const ROOT = fileURLToPath(new URL(".", import.meta.url));
-const OUT_DIR = resolve(ROOT, "../../assets/next");
+const OUT_DIR = resolve(ROOT, "../dist");
 
 export default defineConfig({
   plugins: [
