@@ -1,1 +1,1506 @@
-{"version": 1, "count": 0, "profiles": []}
+{
+  "version": 1,
+  "count": 100,
+  "profiles": [
+    {
+      "id": "us-mac-29",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1200
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Indiana/Indianapolis",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "ca-lnx-01",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1536,
+        "height": 864
+      },
+      "locale": "en-CA",
+      "timezone_id": "America/Winnipeg",
+      "accept_language": "en-CA,en;q=0.9,fr-CA;q=0.8"
+    },
+    {
+      "id": "gb-mac-13",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "us-win-19",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Detroit",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "br-lnx-01",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 1080
+      },
+      "locale": "pt-BR",
+      "timezone_id": "America/Sao_Paulo",
+      "accept_language": "pt-BR,pt;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "jp-mac-03",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "ja-JP",
+      "timezone_id": "Asia/Tokyo",
+      "accept_language": "ja-JP,ja;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "gb-mac-10",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1792,
+        "height": 1120
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "au-win-07",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1536,
+        "height": 864
+      },
+      "locale": "en-AU",
+      "timezone_id": "Australia/Melbourne",
+      "accept_language": "en-AU,en;q=0.9"
+    },
+    {
+      "id": "nl-mac-04",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2560,
+        "height": 1440
+      },
+      "locale": "nl-NL",
+      "timezone_id": "Europe/Amsterdam",
+      "accept_language": "nl-NL,nl;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "au-mac-09",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1536,
+        "height": 864
+      },
+      "locale": "en-AU",
+      "timezone_id": "Australia/Sydney",
+      "accept_language": "en-AU,en;q=0.9"
+    },
+    {
+      "id": "de-win-05",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "de-DE",
+      "timezone_id": "Europe/Berlin",
+      "accept_language": "de-DE,de;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "fr-win-01",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "locale": "fr-FR",
+      "timezone_id": "Europe/Paris",
+      "accept_language": "fr-FR,fr;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "au-win-05",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1792,
+        "height": 1120
+      },
+      "locale": "en-AU",
+      "timezone_id": "Australia/Melbourne",
+      "accept_language": "en-AU,en;q=0.9"
+    },
+    {
+      "id": "us-win-05",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1792,
+        "height": 1120
+      },
+      "locale": "en-US",
+      "timezone_id": "America/New_York",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "gb-win-05",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1792,
+        "height": 1120
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "au-win-01",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1600,
+        "height": 900
+      },
+      "locale": "en-AU",
+      "timezone_id": "Australia/Perth",
+      "accept_language": "en-AU,en;q=0.9"
+    },
+    {
+      "id": "gb-win-07",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1536,
+        "height": 864
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "us-win-25",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "locale": "en-US",
+      "timezone_id": "America/New_York",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "ca-win-04",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2048,
+        "height": 1280
+      },
+      "locale": "en-CA",
+      "timezone_id": "America/Toronto",
+      "accept_language": "en-CA,en;q=0.9,fr-CA;q=0.8"
+    },
+    {
+      "id": "es-win-02",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1200
+      },
+      "locale": "es-ES",
+      "timezone_id": "Europe/Madrid",
+      "accept_language": "es-ES,es;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "us-mac-13",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2560,
+        "height": 1440
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Chicago",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-win-04",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1536,
+        "height": 864
+      },
+      "locale": "en-US",
+      "timezone_id": "America/New_York",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "au-lnx-10",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "en-AU",
+      "timezone_id": "Australia/Melbourne",
+      "accept_language": "en-AU,en;q=0.9"
+    },
+    {
+      "id": "au-win-03",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "locale": "en-AU",
+      "timezone_id": "Australia/Sydney",
+      "accept_language": "en-AU,en;q=0.9"
+    },
+    {
+      "id": "us-mac-08",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2048,
+        "height": 1280
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Denver",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "gb-win-12",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "us-mac-32",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1600,
+        "height": 900
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Indiana/Indianapolis",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-win-31",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2048,
+        "height": 1280
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Phoenix",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "gb-lnx-08",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "us-win-30",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Phoenix",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-lnx-26",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2560,
+        "height": 1440
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Detroit",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-mac-22",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Los_Angeles",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "gb-lnx-02",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1792,
+        "height": 1120
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "au-win-02",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2048,
+        "height": 1280
+      },
+      "locale": "en-AU",
+      "timezone_id": "Australia/Perth",
+      "accept_language": "en-AU,en;q=0.9"
+    },
+    {
+      "id": "gb-win-01",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2048,
+        "height": 1280
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "nl-lnx-03",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 1080
+      },
+      "locale": "nl-NL",
+      "timezone_id": "Europe/Amsterdam",
+      "accept_language": "nl-NL,nl;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "us-win-11",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1600,
+        "height": 900
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Chicago",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "gb-cros-06",
+      "platform": "Chrome OS",
+      "user_agent": "Mozilla/5.0 (X11; CrOS x86_64 15509.111.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Chrome OS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 1080
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "au-win-04",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1536,
+        "height": 864
+      },
+      "locale": "en-AU",
+      "timezone_id": "Australia/Brisbane",
+      "accept_language": "en-AU,en;q=0.9"
+    },
+    {
+      "id": "us-win-40",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2560,
+        "height": 1440
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Phoenix",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "sg-win-02",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1680,
+        "height": 1050
+      },
+      "locale": "en-SG",
+      "timezone_id": "Asia/Singapore",
+      "accept_language": "en-SG,en;q=0.9"
+    },
+    {
+      "id": "ca-win-03",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 1080
+      },
+      "locale": "en-CA",
+      "timezone_id": "America/Vancouver",
+      "accept_language": "en-CA,en;q=0.9,fr-CA;q=0.8"
+    },
+    {
+      "id": "gb-win-09",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1536,
+        "height": 864
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "de-lnx-04",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "locale": "de-DE",
+      "timezone_id": "Europe/Berlin",
+      "accept_language": "de-DE,de;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "au-win-08",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "locale": "en-AU",
+      "timezone_id": "Australia/Sydney",
+      "accept_language": "en-AU,en;q=0.9"
+    },
+    {
+      "id": "us-win-16",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Chicago",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "nl-win-01",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1200
+      },
+      "locale": "nl-NL",
+      "timezone_id": "Europe/Amsterdam",
+      "accept_language": "nl-NL,nl;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "es-mac-03",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1600,
+        "height": 900
+      },
+      "locale": "es-ES",
+      "timezone_id": "Europe/Madrid",
+      "accept_language": "es-ES,es;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "us-win-23",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1200
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Phoenix",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "ca-lnx-06",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1536,
+        "height": 864
+      },
+      "locale": "en-CA",
+      "timezone_id": "America/Edmonton",
+      "accept_language": "en-CA,en;q=0.9,fr-CA;q=0.8"
+    },
+    {
+      "id": "gb-mac-11",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1200
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "ca-mac-05",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1536,
+        "height": 864
+      },
+      "locale": "en-CA",
+      "timezone_id": "America/Vancouver",
+      "accept_language": "en-CA,en;q=0.9,fr-CA;q=0.8"
+    },
+    {
+      "id": "ca-lnx-09",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "locale": "en-CA",
+      "timezone_id": "America/Winnipeg",
+      "accept_language": "en-CA,en;q=0.9,fr-CA;q=0.8"
+    },
+    {
+      "id": "ca-mac-07",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1200
+      },
+      "locale": "en-CA",
+      "timezone_id": "America/Edmonton",
+      "accept_language": "en-CA,en;q=0.9,fr-CA;q=0.8"
+    },
+    {
+      "id": "us-win-09",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Phoenix",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-lnx-28",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Detroit",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "fr-win-04",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "locale": "fr-FR",
+      "timezone_id": "Europe/Paris",
+      "accept_language": "fr-FR,fr;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "de-win-01",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "locale": "de-DE",
+      "timezone_id": "Europe/Berlin",
+      "accept_language": "de-DE,de;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "us-win-38",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1200
+      },
+      "locale": "en-US",
+      "timezone_id": "America/New_York",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-mac-24",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1200
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Los_Angeles",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "gb-lnx-14",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2048,
+        "height": 1280
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "us-mac-03",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 1080
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Chicago",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "nl-mac-05",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "locale": "nl-NL",
+      "timezone_id": "Europe/Amsterdam",
+      "accept_language": "nl-NL,nl;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "es-win-01",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "locale": "es-ES",
+      "timezone_id": "Europe/Madrid",
+      "accept_language": "es-ES,es;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "us-win-10",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1536,
+        "height": 864
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Detroit",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "jp-lnx-01",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "locale": "ja-JP",
+      "timezone_id": "Asia/Tokyo",
+      "accept_language": "ja-JP,ja;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "us-win-02",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Los_Angeles",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "de-lnx-02",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "de-DE",
+      "timezone_id": "Europe/Berlin",
+      "accept_language": "de-DE,de;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "ca-win-02",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1600,
+        "height": 900
+      },
+      "locale": "en-CA",
+      "timezone_id": "America/Toronto",
+      "accept_language": "en-CA,en;q=0.9,fr-CA;q=0.8"
+    },
+    {
+      "id": "us-win-21",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 1080
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Chicago",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "fr-win-03",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 1080
+      },
+      "locale": "fr-FR",
+      "timezone_id": "Europe/Paris",
+      "accept_language": "fr-FR,fr;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "us-mac-17",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1536,
+        "height": 864
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Phoenix",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "gb-mac-03",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1200
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "us-mac-01",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2048,
+        "height": 1280
+      },
+      "locale": "en-US",
+      "timezone_id": "America/New_York",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-win-06",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Indiana/Indianapolis",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-win-36",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2560,
+        "height": 1440
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Chicago",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "gb-win-15",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1680,
+        "height": 1050
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "us-lnx-12",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Phoenix",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-win-07",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Phoenix",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-win-33",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1792,
+        "height": 1120
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Denver",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "ca-win-08",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2048,
+        "height": 1280
+      },
+      "locale": "en-CA",
+      "timezone_id": "America/Vancouver",
+      "accept_language": "en-CA,en;q=0.9,fr-CA;q=0.8"
+    },
+    {
+      "id": "ca-mac-10",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "locale": "en-CA",
+      "timezone_id": "America/Winnipeg",
+      "accept_language": "en-CA,en;q=0.9,fr-CA;q=0.8"
+    },
+    {
+      "id": "jp-win-02",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1536,
+        "height": 864
+      },
+      "locale": "ja-JP",
+      "timezone_id": "Asia/Tokyo",
+      "accept_language": "ja-JP,ja;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "fr-mac-02",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2048,
+        "height": 1280
+      },
+      "locale": "fr-FR",
+      "timezone_id": "Europe/Paris",
+      "accept_language": "fr-FR,fr;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "nl-lnx-02",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1536,
+        "height": 864
+      },
+      "locale": "nl-NL",
+      "timezone_id": "Europe/Amsterdam",
+      "accept_language": "nl-NL,nl;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "gb-win-04",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "en-GB",
+      "timezone_id": "Europe/London",
+      "accept_language": "en-GB,en;q=0.9"
+    },
+    {
+      "id": "us-win-27",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 1080
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Los_Angeles",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "de-win-03",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "locale": "de-DE",
+      "timezone_id": "Europe/Berlin",
+      "accept_language": "de-DE,de;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "us-win-37",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1792,
+        "height": 1120
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Boise",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-win-35",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1200
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Denver",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-win-20",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1200
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Los_Angeles",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "br-cros-02",
+      "platform": "Chrome OS",
+      "user_agent": "Mozilla/5.0 (X11; CrOS x86_64 15509.111.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Chrome OS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1200
+      },
+      "locale": "pt-BR",
+      "timezone_id": "America/Sao_Paulo",
+      "accept_language": "pt-BR,pt;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "sg-lnx-01",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "locale": "en-SG",
+      "timezone_id": "Asia/Singapore",
+      "accept_language": "en-SG,en;q=0.9"
+    },
+    {
+      "id": "us-mac-15",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 1080
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Detroit",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-win-34",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1536,
+        "height": 864
+      },
+      "locale": "en-US",
+      "timezone_id": "America/New_York",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-lnx-18",
+      "platform": "Linux",
+      "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Linux\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 2560,
+        "height": 1440
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Chicago",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "us-win-14",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1200
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Phoenix",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "fr-cros-05",
+      "platform": "Chrome OS",
+      "user_agent": "Mozilla/5.0 (X11; CrOS x86_64 15509.111.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Chrome OS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "fr-FR",
+      "timezone_id": "Europe/Paris",
+      "accept_language": "fr-FR,fr;q=0.9,en;q=0.8"
+    },
+    {
+      "id": "us-mac-39",
+      "platform": "macOS",
+      "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"macOS\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1920,
+        "height": 1200
+      },
+      "locale": "en-US",
+      "timezone_id": "America/Phoenix",
+      "accept_language": "en-US,en;q=0.9"
+    },
+    {
+      "id": "au-win-06",
+      "platform": "Windows",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+      "sec_ch_ua": "\"Not=A?Brand\";v=\"99\", \"Chromium\";v=\"147\", \"Google Chrome\";v=\"147\"",
+      "sec_ch_ua_platform": "\"Windows\"",
+      "sec_ch_ua_mobile": "?0",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "en-AU",
+      "timezone_id": "Australia/Perth",
+      "accept_language": "en-AU,en;q=0.9"
+    }
+  ]
+}
