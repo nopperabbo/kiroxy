@@ -230,6 +230,60 @@ Pins `GOEXPERIMENT=jsonv2` automatically.
 
 ---
 
+## Run with Docker
+
+A multi-stage `Dockerfile` (distroless, nonroot, ~30 MiB) and `docker-compose.yml` ship with the repo. The token vault lives in a named volume at `/data/tokens.db` so it survives container restarts.
+
+### Quick start
+
+```bash
+cp .env.example .env                         # fill in KIROXY_API_KEY
+make docker-compose-up                       # build + start in background
+docker compose logs -f kiroxy                # tail JSON logs
+curl http://127.0.0.1:8787/healthz           # {"status":"ok",...}
+```
+
+Add an account (running container has the same CLI surface as the native binary):
+
+```bash
+docker compose exec kiroxy kiroxy add-account \
+  --label=my-account --refresh-token=<your-refresh-token>
+docker compose exec kiroxy kiroxy list-accounts
+```
+
+### Manual `docker run`
+
+```bash
+make docker-build                            # tags kiroxy:<git-describe> + kiroxy:local
+docker run --rm \
+  -p 127.0.0.1:8787:8787 \
+  -v kiroxy-data:/data \
+  --read-only --cap-drop=ALL \
+  --security-opt=no-new-privileges:true \
+  --tmpfs /tmp:size=16m,mode=1777 \
+  -e KIROXY_API_KEY="$KIROXY_API_KEY" \
+  kiroxy:local
+```
+
+### Security posture inside the container
+
+| Control | Setting |
+|---|---|
+| Base image | `gcr.io/distroless/static-debian12:nonroot` (no shell, no package manager) |
+| User | `nonroot` (UID 65532) |
+| Root FS | read-only; only `/data` (vault) and `/tmp` (tmpfs) are writable |
+| Capabilities | all dropped |
+| Privilege escalation | `no-new-privileges:true` |
+| Healthcheck | in-binary `kiroxy healthcheck` subcommand (no curl, no shell) |
+
+### Gotchas
+
+- **`KIROXY_BIND` inside the container is `0.0.0.0`** \u2014 the network namespace IS the boundary. Control host-side exposure via `docker run -p` / compose's `ports:` mapping (defaults to `127.0.0.1:8787`).
+- **`docker compose down` keeps the volume**; `docker compose down -v` wipes it (including `tokens.db`). Back up the volume before running `-v`.
+- **Image tags never use `:latest`**; set `IMAGE=foo:bar` on `make docker-build` if you want a custom tag.
+
+---
+
 ## Licensing and attribution
 
 - **kiroxy** itself is MIT (see `LICENSE`).
