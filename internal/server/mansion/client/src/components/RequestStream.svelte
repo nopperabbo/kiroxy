@@ -81,8 +81,19 @@
   <div class="stream__body" role="table">
     {#if visible.length === 0}
       <div class="stream__empty" role="row">
-        <Icon name="dot" size={12} />
-        <span class="faint">no requests match this filter yet. try removing filters, or send a request.</span>
+        <div class="stream__empty-icon" aria-hidden="true">
+          <span class="stream__cursor">▍</span>
+        </div>
+        <div>
+          <div class="stream__empty-title">no requests yet</div>
+          <div class="stream__empty-hint faint">
+            {#if store.filters.search || range !== "all" || store.filters.onlyErrors}
+              your filters are hiding everything. <button type="button" class="stream__empty-btn" onclick={() => { store.setFilter('search',''); store.setFilter('onlyErrors', false); setRange('all'); }}>clear filters</button>
+            {:else}
+              the proxy hasn't served a request yet. try <code class="mono">curl -H "x-api-key: $KIROXY_API_KEY" http://127.0.0.1:8787/v1/models</code>
+            {/if}
+          </div>
+        </div>
       </div>
     {/if}
     {#each visible as r (r.id)}
@@ -129,7 +140,6 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    min-block-size: 420px;
   }
   .stream__head {
     display: flex;
@@ -173,15 +183,15 @@
     color: var(--c-text);
   }
   .seg--active {
-    color: var(--c-text);
+    color: var(--c-accent);
     background: var(--c-surface);
-    box-shadow: var(--sh-1);
+    box-shadow: var(--sh-1), inset 0 0 0 1px color-mix(in oklch, var(--c-accent), transparent 60%);
   }
 
   .stream__body {
     flex: 1 1 auto;
     overflow-y: auto;
-    max-block-size: 540px;
+    max-block-size: min(640px, 70vh);
   }
 
   .pip {
@@ -274,10 +284,55 @@
 
   .stream__empty {
     display: flex;
-    align-items: center;
-    gap: var(--sp-3);
+    align-items: flex-start;
+    gap: var(--sp-4);
     padding: var(--sp-7) var(--sp-5);
     color: var(--c-text-faint);
+  }
+  .stream__empty-icon {
+    color: var(--c-accent);
+  }
+  .stream__cursor {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xl);
+    line-height: 1;
+    animation: blink 1.1s steps(2, end) infinite;
+  }
+  @keyframes blink {
+    from { opacity: 1; }
+    50%  { opacity: 0.1; }
+    to   { opacity: 1; }
+  }
+  .stream__empty-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    color: var(--c-text);
+    margin-block-end: 3px;
+  }
+  .stream__empty-hint {
+    font-size: var(--fs-sm);
+    max-inline-size: 44ch;
+    line-height: var(--lh-snug);
+  }
+  .stream__empty-hint code {
+    font-size: var(--fs-2xs);
+    color: var(--c-accent);
+    background: var(--c-accent-wash);
+    padding: 1px 6px;
+    border-radius: var(--r-sm);
+    border: 1px solid color-mix(in oklch, var(--c-accent), transparent 70%);
+  }
+  .stream__empty-btn {
+    color: var(--c-accent);
+    border-block-end: 1px dashed color-mix(in oklch, var(--c-accent), transparent 60%);
+    padding: 0;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+  }
+  .stream__empty-btn:hover {
+    color: var(--c-accent-strong);
   }
 
   .stream__more {

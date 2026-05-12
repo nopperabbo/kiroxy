@@ -41,6 +41,7 @@
   );
   let errRate = $derived(total > 0 ? errs / total : 0);
   let errClass = $derived(errRate > 0.1 ? "danger" : errRate > 0.02 ? "warn" : "good");
+  let sparkActive = $derived(store.totalSpark.some((v) => v > 0));
 </script>
 
 <header class="topbar" aria-label="kiroxy control plane">
@@ -76,7 +77,11 @@
         <span class="state__value mono tabular">{total.toLocaleString()}</span>
       </div>
       <div class="state__spark" aria-hidden="true">
-        <Sparkline values={store.totalSpark} width={120} height={28} accent="accent" />
+        {#if sparkActive}
+          <Sparkline values={store.totalSpark} width={120} height={28} accent="accent" />
+        {:else}
+          <span class="state__spark-empty mono faint">no traffic yet</span>
+        {/if}
       </div>
       <div class="state__stack state__stack--{errClass}" title="error rate over total requests">
         <span class="state__label caps">errors</span>
@@ -239,10 +244,18 @@
   }
   .state__spark {
     display: inline-flex;
-    padding: 2px var(--sp-2);
+    align-items: center;
+    padding: 2px var(--sp-3);
     border-left: 1px solid var(--c-rule);
     border-right: 1px solid var(--c-rule);
     color: var(--c-accent);
+    min-inline-size: 110px;
+    justify-content: center;
+  }
+  .state__spark-empty {
+    font-size: var(--fs-2xs);
+    text-transform: uppercase;
+    letter-spacing: var(--tr-wide);
   }
 
   .actions {

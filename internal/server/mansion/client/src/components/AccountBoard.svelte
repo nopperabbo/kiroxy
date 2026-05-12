@@ -271,7 +271,11 @@
   .chip--toggle {
     cursor: pointer;
     user-select: none;
+    opacity: 0.68;
     transition: all var(--mo-fast) var(--ease-std);
+  }
+  .chip--toggle:hover {
+    opacity: 1;
   }
   .chip--toggle input {
     position: absolute;
@@ -279,6 +283,7 @@
     pointer-events: none;
   }
   .chip--toggle.active {
+    opacity: 1;
     color: var(--c-accent);
     border-color: color-mix(in oklch, var(--c-accent), transparent 40%);
     background: var(--c-accent-wash);
@@ -290,7 +295,7 @@
   .row {
     display: grid;
     grid-template-columns:
-      28px minmax(140px, 1.4fr) 52px 120px 72px 60px 110px minmax(120px, 1.6fr);
+      28px minmax(140px, 1.2fr) 54px 110px 64px 52px 96px minmax(0, 1.5fr);
     align-items: center;
     gap: var(--sp-4);
     padding: var(--sp-3) var(--sp-5);
