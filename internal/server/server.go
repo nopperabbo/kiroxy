@@ -9,6 +9,7 @@ import (
 
 	"local/kiroxy/internal/kiroclient"
 	"local/kiroxy/internal/messages"
+	"local/kiroxy/internal/server/next"
 )
 
 // Options is how main constructs a Server.
@@ -94,6 +95,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /readyz", s.ready.handle)
 	s.registerDashboard(mux)
+	next.Register(mux) // /dashboard-next: experimental 2026-stack alt to /dashboard
 
 	if s.msgSvc != nil {
 		mux.HandleFunc("POST /v1/messages", s.msgSvc.HandleMessages)
