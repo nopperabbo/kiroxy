@@ -101,7 +101,7 @@ Logger = Callable[[str], None]
 def run_warmup(
     driver,
     steps: Sequence[WarmupStep] = DEFAULT_WARMUP,
-    hard_cap_s: int = WARMUP_HARD_CAP_S,
+    hard_cap_s: float = WARMUP_HARD_CAP_S,
     log: Optional[Logger] = None,
 ) -> Tuple[int, int]:
     """Execute each step against the given BrowserDriver.
