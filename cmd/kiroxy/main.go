@@ -84,6 +84,8 @@ func run(ctx context.Context, args []string) error {
 		return nil
 	case "add-account":
 		return runAddAccount(ctx, rest)
+	case "debug-refresh":
+		return runDebugRefresh(ctx, rest)
 	case "import-accounts":
 		return runImportAccounts(ctx, rest)
 	case "list-accounts":

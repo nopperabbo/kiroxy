@@ -4,6 +4,13 @@ Moved from the build brief / caught by anti-scope-creep during MVP:
 
 ## Phase 2 (post-v0.1.0)
 
+- **P1 (PROMOTED from P2): Wire pool-mode token refresher for source="import-accounts" accounts.** Current state: `pool.TokenGetter.GetToken()` doesn't read `Bundle.Metadata` nor trigger refresh. Triplet-imported accounts work only while the stored access_token is fresh; they break after ~1h when it expires because the kiroclient used for the pool path has no `WithTokenRefresher` (only `KIROXY_KIRO_DB_PATH` mode does). Scope: extend `pool.TokenGetter` + `main.go` to call `auth.refreshSocialToken` when triplet accounts need rotation; persist rotated refresh_token + access_token back to the vault.
+- **P2: Pool tier-awareness — warn/error when a Pro-tier model is requested but the picked account is Free tier.** Needs tier metadata in vault schema or a runtime probe (one-shot call after first refresh).
+- **P2: `opencode-config` subcommand should emit all 13 canonical Kiro models** (Free + Pro Anthropic + Others from the tier display), with a `--models` filter for subset emission. Reference list:
+  - Free Anthropic: `kiro/auto`, `kiro/haiku-4.5`, `kiro/sonnet-4`, `kiro/sonnet-4.5`
+  - Pro Anthropic:  `kiro/sonnet-4.6`, `kiro/opus-4.5`, `kiro/opus-4.6`, `kiro/opus-4.7`
+  - Free Others:    `kiro/deepseek-3.2`, `kiro/glm-5`, `kiro/minimax-m2.1`, `kiro/minimax-m2.5`, `kiro/qwen3-coder-next`
+  - Output cap: 64K all models.
 - **AWS Builder ID device-code OAuth inside `kiroxy add-account`** — **CLOSED in v0.2.0 (Phase B).**
 - **`--json` flag for `list-accounts` and `status`** — machine-readable output. — P3
 - **Interactive `--yes` / `-y` flag on `remove-account`** when/if multi-user lands. — P3

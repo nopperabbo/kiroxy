@@ -2,6 +2,73 @@
 
 Append-only. One entry per phase.
 
+## Phase C.2 — Triplet Path Acceptance Test  (2026-05-12 14:20 UTC)
+- Hours: ~45 min (within 60 min cap)
+- Commit: (this one)
+- Tag: NONE — verdict BLOCKED pending fresh credential
+- Gate: **green** (make gate OK; upstream refresh fails at credential layer)
+- Verdict: **BLOCKED — refresh_token in `refresh_tokens.txt` rejected by upstream**
+- Model tested (per addendum): none reached — never got to Step D
+  - `kiro/sonnet-4.5` planned; not exercised because Step C refresh failed
+  - Canonical naming format verification: deferred
+
+### Added files
+- `cmd/kiroxy/debug_refresh.go` — `kiroxy debug-refresh` subcommand.
+  Flags: `--provider`, `--id`, `--region`, `--persist`, `--verbose`,
+  `--wire`, `--user-agent`, `--snake-case`. Calls
+  `prod.{region}.auth.desktop.kiro.dev/refreshToken` directly with stored
+  refresh_token; persists new access_token on 2xx. Useful admin/diag tool.
+
+### Modified files
+- `cmd/kiroxy/main.go` — dispatch `debug-refresh` subcommand.
+
+### Diagnostic matrix
+| # | Variant | Result |
+|---|---|---|
+| Step C | default UA, camelCase, us-east-1 | 401 Bad credentials |
+| DIAG 1 | wire dump (verify wire shape) | 401 (no wire issue) |
+| DIAG 2 | `aws-sdk-js/...KiroIDE-` UA | 401 (UA format not the gate) |
+| DIAG 3 | `refresh_token` snake_case | 400 ValidationException — camelCase required (rules out field-name mismatch) |
+| DIAG 2-REDO | `KiroIDE-0.10.32-<64hex>` + `Sec-Fetch-Mode: cors` | 401 (full IDE mimicry doesn't help) |
+| DIAG 4 us-west-2 | regional sweep | DNS no-such-host (endpoint only at us-east-1) |
+| DIAG 4 eu-west-1 | regional sweep | DNS no-such-host |
+
+### Conclusion
+All request-shape hypotheses ruled out. Only plausible remaining cause
+is that the refresh_token itself is no longer valid (expired/revoked/already-
+consumed). Kiro's `kiroauthservice` gives crisp `UnauthorizedException: Bad
+credentials` for dead tokens; it gives a distinct `ValidationException` for
+wire-level issues (confirmed by DIAG 3). The two error shapes are
+distinguishable; we're seeing the former.
+
+### Not done (deferred)
+- Step D smoke `/v1/messages` with `kiro/sonnet-4.5` (blocked on valid creds)
+- Step E finalize with BUILD_LOG Phase C.2 entry, BACKLOG updates
+  (this entry IS the finalize for the "blocked" branch)
+
+### BACKLOG promotions (appended via separate edit)
+- **P1 (PROMOTED from P2):** wire pool-mode token refresher for
+  `source="import-accounts"` accounts. Pool path currently has no
+  `WithTokenRefresher`; triplet-imported accounts break after
+  access_token expires (~1h) because refresh never fires.
+- **P2:** pool tier-awareness — warn/error when Pro model requested
+  but picked account is Free tier.
+- **P2:** `opencode-config` subcommand should emit all 13 canonical
+  models from Kiro tier display.
+
+### Safety verification
+- Port 8788 never bound in this phase (no server launched)
+- No kiroxy serve process touched
+- Production vault at `~/.kiroxy/tokens.db` untouched (we used KIROXY_DB_PATH=/tmp/kiroxy-triplet-smoke.db)
+- `~/.config/opencode/*` untouched
+- No git push
+- `/tmp/kiroxy-triplet-smoke.db*` cleaned before commit
+
+---
+
+
+
+
 ## Phase C — Autonomous Smoke Test  (2026-05-12 13:08 UTC)
 - Hours: ~40 min
 - Commit: (this one)

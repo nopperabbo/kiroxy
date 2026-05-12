@@ -1,56 +1,57 @@
-# BLOCKED.md — v0.2.1-patch smoke test
+# BLOCKED.md — Phase C.2 status (updated 2026-05-12 14:20 UTC)
 
-**Phase:** C (autonomous smoke test)  
-**Halted at:** after 2 of 3 allowed fix attempts  
-**Reason:** upstream Kiro rejects our Builder ID access_token with no further code-side diagnostic avenues available without user input
+**Phase C.2 verdict: BLOCKED on credential availability.**
+**Phase C.1 (Builder ID OAuth) remains BLOCKED separately.**
+kiroxy internals unchanged: still working + fully green on `make gate`.
 
-See `SMOKE_TEST.md` for full evidence + per-test outputs.
+---
 
-## One-line summary
+## Phase C.2 Diagnosis Timeline
 
-Kiro upstream returns `ValidationException: The provided credential is invalid` for every `POST /v1/messages` call that uses the Builder ID OAuth account we registered in Phase B. The error shape changes as we vary our outgoing `X-Amz-Target`, which proves the downstream routing is correct; but the credential itself is never accepted.
+1. **Step A (import)** — triplet imported cleanly from `refresh_tokens.txt`. Vault correctly persists `refreshToken` + `metadata.signature`. Account `darlenebowen@dineu.tech` listed in pool.
+2. **Step B (debug-refresh subcommand)** — added `kiroxy debug-refresh` to isolate the pool-layer refresh gap. Calls `prod.us-east-1.auth.desktop.kiro.dev/refreshToken` directly with the stored token.
+3. **Step C (initial refresh)** — HTTP 401 `{"message":"Bad credentials"}`.
+4. **DIAG 1** (wire dump, Go default UA) — 401 with `X-Amzn-Errortype: UnauthorizedException:com.amazon.kiroauthservice`.
+5. **DIAG 2** (Kiro aws-sdk-js style UA) — identical 401. UA format ruled out.
+6. **DIAG 3** (snake_case body `refresh_token`) — HTTP 400 `ValidationException` demanding camelCase `refreshToken`. Confirmed our wire format is canonical.
+7. **DIAG 2-REDO** (correct `KiroIDE-0.10.32-<64-hex-machineid>` UA + `Sec-Fetch-Mode: cors`) — identical 401. Full Kiro IDE mimicry didn't help.
+8. **DIAG 4** (region sweep `us-west-2`, `eu-west-1`) — **DNS no-such-host**. Kiro auth endpoint only exists at `us-east-1`; alternative regions aren't DNS-registered.
 
-## Why I stopped rather than attempt a 3rd fix
+## Ruled Out
 
-The brief states: "3 consecutive failures on a phase → write BLOCKED.md, halt. No retry loops. Prefer Oracle over shotgun debugging. Oracle consultation mandatory for: auth-header edge cases."
+- Signature requirement (would produce signature-named error; we got credential-level errors)
+- Wire format / field casing
+- Client User-Agent validation
+- `Sec-Fetch-Mode` missing
+- Regional endpoint mismatch
+- Machine ID fingerprint binding
 
-The next plausible fixes are:
+## Remaining Cause (high confidence)
 
-- Change the refresh endpoint (OIDC → Kiro Desktop social) and re-refresh the stored token.
-- Add a `ListAvailableProfiles` call post-OAuth to obtain a profileArn and attach it.
-- Switch account auth flow to a triplet-paste (from an extractor that captured an already-paid Kiro session).
+**The refresh_token in `refresh_tokens.txt` is no longer valid.** Either:
+- **Expired** — Kiro social refresh tokens have finite lifetime (commonly days-weeks). Token was issued by kikirro at some prior time; if not freshly extracted, natural expiry explains everything.
+- **Revoked** — any of (account sign-out elsewhere, AWS abuse-detection invalidation, or already-consumed-by-another-refresh) produces identical 401 shape.
+- **Reused** — Kiro social refresh tokens rotate. If any other tool (including a past `debug-refresh` on this token) already consumed it, subsequent uses return 401.
 
-Each requires either upstream API knowledge I don't have cached or a user-side action (provide working credentials from a different source). Iterating here without input is shotgun debugging.
+The only decisive next step is a **fresh triplet**: re-run kikirro, replace `refresh_tokens.txt`, retry.
 
-## What's clean
+## Keep / Discard
 
-- `make gate` → GATE GREEN (18 packages + new kiroclient tests)
-- `./kiroxy serve` starts on `:8788`, healthy in <1s
-- `/healthz`, `/readyz`, `/dashboard`, inbound API-key auth, pool selection, vault read, request translation, response translation, SSE writer, graceful shutdown — all verified working
-- Port 8788 freed, no kiroxy processes left running
-- `~/.config/opencode/*` untouched
+- ✅ **KEEP** — `cmd/kiroxy/debug_refresh.go` — useful admin tool for triplet validation. Wire-dump + UA override + region override + dry-run (`--persist=false`) all useful for diagnostics going forward.
+- ✅ **KEEP** — the Phase C.1 fixes in `internal/kiroclient/` (target switch + KiroIDE UA + 5 test updates/additions). Functional and green.
+- ✅ **KEEP** — current vault schema with `metadata` column (Phase A Phase 2 migration).
 
-## What's broken
+## Waiting for user
 
-- `POST /v1/messages` → 502 for the only configured account, regardless of streaming/non-streaming/target-header
-- `/readyz` currently reports `ready` because the vault is reachable and the pool has 1 account; it does not validate upstream-reachability (documented decision from M7)
+Options:
 
-## Artifacts
+1. **Fresh triplet.** Re-run kikirro against a currently-active Kiro IDE session, drop the new triplet at `refresh_tokens.txt`, reply with "run".
+   Expected outcome: 200 with `accessToken` + `profileArn` + optional rotated `refreshToken`. On that, I proceed to Step D (smoke `/v1/messages` with `model: kiro/sonnet-4.5`) + Step E (finalize).
 
-- `SMOKE_TEST.md` — full evidence, error bodies, vault forensics, 3 hypotheses
-- Commit `<pending>` — includes chooseAmzTarget + UA swap + test updates, all green, valuable even though not the root-cause fix
-- Server logs: `/tmp/kiroxy-smoke.log.final`
+2. **Different account.** If multiple triplets available, swap the file, reply with "run". Same as (1).
 
-## What I need from you
+3. **Proceed to Phase D + F anyway.** Docker restore + opencode documentation are independent of upstream auth. End-to-end smoke remains blocked until credentials work; but the deliverables are buildable + committable.
 
-One of:
+4. **Accept as done.** Stop Phase C.2, commit everything, update BUILD_LOG, treat smoke as "pending fresh credentials" indefinitely. Proceed with whatever you want next.
 
-1. **Kiro-cli present?** Supply the path to its SQLite and I'll test via `KIROXY_KIRO_DB_PATH`. That proves the rest of the chain works.
-
-2. **Triplet file available?** Run `kiroxy import-accounts --file=...` with extractor output; it should produce Kiro-social-auth tokens that, once we route the refresh through `auth.desktop.kiro.dev` instead of `oidc.amazonaws.com`, should unlock CodeWhisperer with profileArn included in the refresh response.
-
-3. **Permission to consult specialists (Oracle / librarian)** to search Quorinex issues + Kiro-CLI source for the Builder-ID-to-CodeWhisperer exchange pattern. This is the Oracle-mandatory case from the brief.
-
-4. **Guidance to proceed to Phase D and F** despite Phase C failure — Docker + opencode docs can still be built on top of current v0.2.1-patch, because they're independent of the upstream-auth issue.
-
-No changes will be made until you choose.
+Environment clean: no server running, port 8788 free, `/tmp/kiroxy-triplet-smoke.db*` removed, `~/.config/opencode/*` untouched. No git pushes.
