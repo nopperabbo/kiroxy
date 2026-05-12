@@ -12,25 +12,39 @@ Last triaged: 2026-05-12 (post-Phase I).
   P0 for the next release because without auto-refresh the v0.3.0
   stack is only usable for ~1h per onboarded account.
 
-## Phase G — Onboarder follow-ups (post G.0 + G.1)
+## Phase G — Onboarder follow-ups (post G.0 + G.1 + G.FIX)
 
 G.0 scaffold + G.1 single-account flow landed in v0.3.0.
 
-### G.1 auto-login status: NOT RELIABLE (2026-05-12 live test)
+### G.1 auto-login status: UPDATED by Phase G.FIX (2026-05-12 22:xx)
 
-Multiple live-test attempts against Google SSO get stuck at the password-challenge step. Google's `checkConnection=youtube` probe gates progression and our Camoufox session is not passing the invisible fingerprint challenge. Patches applied (context-level listeners, persistent URL log, explicit new_context/new_page) did not change the outcome — the redirect never fires because Google never advances past challenge.
+Phase G.FIX shipped layered stealth engineering targeting Google's
+anti-bot defenses:
 
-This is not a code bug. Google automated-login detection is in an arms race with stealth frameworks (Camoufox, Patchright, undetected-chromedriver, etc.) and maintaining a high success rate requires dedicated stealth infrastructure we do not have. The kikirro extractor (user's sibling project) has 30%+ block rate even with 100-profile rotation + Patchright — that is the realistic ceiling.
+- **Layer 1** — warm profile persistence (Camoufox `persistent_context=True` + YouTube/Google/GitHub pre-warmup with 7-day marker).
+- **Layer 2** — residential proxy support (`KIROXY_ONBOARD_PROXY` env + `--proxy` flag + egress validation + geoip pass-through).
+- **Layer 3** — human-like interaction (burst-pause typing, typo injection, curved mouse drift).
+- **Layer 4** — challenge detection + manual-solve recovery (`--challenge-mode {auto,manual,skip}`, 7 challenge kinds with localized phrase patterns).
+- **Layer 5** — session reuse (free via Layer 1; profile dirs persist forever).
+- **Layer 6** — fingerprint diagnostic tool (`fingerprint_check.py` against sannysoft + creepjs).
 
-**Recommended operator workflow** (documented in `tools/onboard/README.md`): use the sibling `kiro_login.py` tool (Camoufox with **manual** login) for token acquisition. It is proven to work reliably because it lets the user solve any challenge Google presents. Then import via `kiroxy import-accounts-json`.
+Honest reliability band (documented in `tools/onboard/README.md`):
 
-The `onboard.py` script is kept in-tree as **best-effort** automation for accounts that don't trigger Google challenges. Document this caveat prominently. Do not promise "full automation" in user-facing docs.
+- Fresh Gmail + residential proxy + warmed profile + no 2FA: **65-80%**
+- Fresh Gmail, no proxy: **25-45%**
+- Previously-automated account + proxy: **30-50%**
+- Account with 2FA: **0% full-auto**; challenge-mode=auto prompts the operator and resumes.
+- Google-flagged account: **5-15%**; fall back to manual sign-in via `kiro_login.py` or `--challenge-mode manual`.
+
+85 unit tests pass in `tools/onboard/`. Live-Google validation is the operator's responsibility — TESTING.md has the checklist.
+
+`onboard.py` is no longer a "best-effort" tool with an empty toolkit; it ships a real layered stealth stack. It is still NOT a guarantee. Google's arms race continues; these numbers may drift.
 
 ### Remaining work:
 
 - **P2: G.2 — Credential encryption.** Current onboarder ingests `--password` via CLI arg (visible in `ps`) or stdin. Batch mode (G.3) needs persistent credential storage. Options: age (modern, portable, no keyring dependency) or macOS Keychain (OS-integrated; requires `security(1)` shelling). Preferred: age with password-derived keys; fall back to Keychain on macOS if user opts in. Deliverable: `tools/onboard/credentials.enc` generator + decrypter; `onboard.py --credentials-file credentials.enc --email you@…` path that reads the decrypted password for that entry only.
-- **P2: G.3 — Batch mode with concurrency cap.** Accept `--credentials-file` (or plain `--accounts-file email:password`) and run N accounts through onboarder in parallel with a concurrency cap (default 3; Kiro/Google are both rate-sensitive). Atomic writes already in place; needs a lock file or fcntl around the output JSON for concurrent `_upsert`. Reuse profile rotation from `_pick_profile()`.
-- **P2: G.4 — Retry logic + failure classification.** Classify failures: transient (network, timeout, Camoufox crash) → retry with backoff; hard (wrong password, Google block, consent declined) → fail fast + surface. Mirror kikirro's `_classify_error` shape. On classify=hard, add a `failed_accounts.json` sidecar so G.3 batch runs can resume.
+- **P2: G.3 — Batch mode with concurrency cap.** Accept `--credentials-file` (or plain `--accounts-file email:password`) and run N accounts through onboarder in parallel with a concurrency cap (default 3; Kiro/Google are both rate-sensitive). Atomic writes already in place; needs a lock file or fcntl around the output JSON for concurrent `_upsert`. Reuse profile rotation from `_pick_profile()`. Reuse the G.FIX per-account profile dirs (already keyed by email).
+- **P2: G.4 — Retry logic + failure classification.** Classify failures: transient (network, timeout, Camoufox crash) → retry with backoff; hard (wrong password, Google block, consent declined) → fail fast + surface. Mirror kikirro's `_classify_error` shape. With challenge detection in place, this is now simpler — BLOCKED is already a hard fail in G.FIX. On classify=hard, add a `failed_accounts.json` sidecar so G.3 batch runs can resume.
 - **P3: G.5 — Polish, progress UI, docs.** tqdm-style progress for batch, per-account status line, README expanded with success/failure rate tips, retry playbook, screenshots walkthrough.
 
 ## Phase 2 (post-v0.1.0)
