@@ -88,6 +88,8 @@ func run(ctx context.Context, args []string) error {
 		return runDebugRefresh(ctx, rest)
 	case "import-accounts":
 		return runImportAccounts(ctx, rest)
+	case "import-accounts-json":
+		return runImportAccountsJSON(ctx, rest)
 	case "list-accounts":
 		return runListAccounts(ctx, rest)
 	case "remove-account":
@@ -111,6 +113,7 @@ func printHelp() {
 	fmt.Println("  serve                  run the HTTP proxy (default)")
 	fmt.Println("  add-account            store a single Kiro refresh token in the vault")
 	fmt.Println("  import-accounts        bulk-import email:refresh_token[:signature] triplets (--file or --stdin)")
+	fmt.Println("  import-accounts-json   bulk-import Desktop-flow JSON array (accessToken+refreshToken+profileArn)")
 	fmt.Println("  list-accounts          list accounts in the vault")
 	fmt.Println("  remove-account <id>    delete an account")
 	fmt.Println("  status                 show pool+vault state")
