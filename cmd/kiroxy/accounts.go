@@ -10,11 +10,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"text/tabwriter"
 	"time"
 
+	"local/kiroxy/internal/builderid"
 	"local/kiroxy/internal/config"
 	"local/kiroxy/internal/pool"
 	"local/kiroxy/internal/tokenvault"
@@ -24,15 +27,25 @@ func runAddAccount(ctx context.Context, args []string) error {
 	fs := flag.NewFlagSet("add-account", flag.ContinueOnError)
 	var (
 		label        = fs.String("label", "", "display label (defaults to a random 8-char id)")
-		refreshToken = fs.String("refresh-token", "", "Kiro refresh token (required); if unset kiroxy reads one line from stdin")
+		refreshToken = fs.String("refresh-token", "", "paste an existing Kiro refresh token (skips the OAuth flow)")
 		accessToken  = fs.String("access-token", "", "optional initial access token; if empty, a placeholder is stored and refreshed on first use")
 		provider     = fs.String("provider", "kiro", "provider name")
+		region       = fs.String("region", "us-east-1", "AWS region for the OAuth flow")
+		open         = fs.Bool("open", true, "open the verification URL in a browser (macOS/Linux)")
+		timeout      = fs.Duration("timeout", 5*time.Minute, "OAuth completion timeout")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 
-	rt := strings.TrimSpace(*refreshToken)
+	if strings.TrimSpace(*refreshToken) != "" {
+		return addAccountWithRefreshToken(ctx, *label, *refreshToken, *accessToken, *provider)
+	}
+	return addAccountViaOAuth(ctx, *label, *provider, *region, *open, *timeout)
+}
+
+func addAccountWithRefreshToken(ctx context.Context, label, refreshToken, accessToken, provider string) error {
+	rt := strings.TrimSpace(refreshToken)
 	if rt == "" {
 		fmt.Fprint(os.Stderr, "paste Kiro refresh token (one line): ")
 		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
@@ -42,19 +55,82 @@ func runAddAccount(ctx context.Context, args []string) error {
 		rt = strings.TrimSpace(line)
 	}
 	if rt == "" {
-		return errors.New("refresh token is required (via --refresh-token or stdin)")
+		return errors.New("refresh token is required")
 	}
-
-	at := strings.TrimSpace(*accessToken)
+	at := strings.TrimSpace(accessToken)
 	if at == "" {
 		at = "placeholder-will-be-refreshed-on-first-use"
 	}
-
-	id := strings.TrimSpace(*label)
+	id := strings.TrimSpace(label)
 	if id == "" {
 		id = randomID()
 	}
+	return persistAccount(ctx, provider, id, at, rt, "", "add-account")
+}
 
+func addAccountViaOAuth(ctx context.Context, label, provider, region string, doOpen bool, timeout time.Duration) error {
+	client := builderid.NewClient(region)
+	sess, err := client.Start(ctx)
+	if err != nil {
+		return fmt.Errorf("start Builder ID flow: %w", err)
+	}
+
+	fmt.Println()
+	fmt.Println("AWS Builder ID authorization started.")
+	fmt.Println()
+	fmt.Println("  1. Open this URL in a browser:")
+	fmt.Printf("     %s\n", sess.VerificationURI)
+	fmt.Println("  2. Confirm the code displayed there matches:")
+	fmt.Printf("     %s\n", sess.UserCode)
+	fmt.Println("  3. Sign in with your Builder ID and approve access.")
+	fmt.Println()
+	fmt.Printf("Waiting up to %v for you to complete sign-in...\n", timeout)
+	fmt.Println()
+
+	if doOpen {
+		_ = openBrowser(sess.VerificationURI)
+	}
+
+	pollCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	ticker := 0
+	result, err := client.WaitForCompletion(pollCtx, sess, func() {
+		ticker++
+		if ticker%3 == 0 {
+			fmt.Print(".")
+		}
+	})
+	fmt.Println()
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return fmt.Errorf("timed out waiting for sign-in after %v — run `kiroxy add-account` again", timeout)
+		}
+		return fmt.Errorf("oauth: %w", err)
+	}
+
+	id := strings.TrimSpace(label)
+	if id == "" {
+		id = randomID()
+	}
+	metadata := fmt.Sprintf(`{"client_id":%q,"client_secret":%q,"region":%q,"source":"builder-id-oauth"}`,
+		sess.ClientID, sess.ClientSecret, sess.Region)
+	if err := persistAccountWithMetadata(ctx, provider, id, result.AccessToken, result.RefreshToken, metadata, "builder-id-oauth"); err != nil {
+		return err
+	}
+
+	fmt.Println("sign-in complete.")
+	fmt.Printf("stored account: provider=%s id=%s\n", provider, id)
+	fmt.Printf("access token expires in ~%d seconds; kiroxy refreshes automatically.\n", result.ExpiresIn)
+	fmt.Println("\nrestart `kiroxy serve` to pick up the new account.")
+	return nil
+}
+
+func persistAccount(ctx context.Context, provider, id, accessToken, refreshToken, metadata, source string) error {
+	return persistAccountWithMetadata(ctx, provider, id, accessToken, refreshToken, metadata, source)
+}
+
+func persistAccountWithMetadata(ctx context.Context, provider, id, accessToken, refreshToken, metadata, source string) error {
 	cfg, err := configForCLI()
 	if err != nil {
 		return err
@@ -70,19 +146,34 @@ func runAddAccount(ctx context.Context, args []string) error {
 	if err := os.Chmod(cfg.DBPath, 0o600); err != nil {
 		fmt.Fprintf(os.Stderr, "warn: chmod %s: %v\n", cfg.DBPath, err)
 	}
-
-	b, err := vault.Save(ctx, *provider, id, tokenvault.Tokens{
-		AccessToken:  at,
-		RefreshToken: rt,
-		Source:       "add-account",
+	b, err := vault.Save(ctx, provider, id, tokenvault.Tokens{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		Source:       source,
+		Metadata:     metadata,
 	})
 	if err != nil {
 		return fmt.Errorf("save bundle: %w", err)
 	}
-	fmt.Printf("added account:\n  provider = %s\n  id       = %s\n  gen      = %d\n  updated  = %s\n",
-		b.Provider, b.ConnectionID, b.Generation, b.UpdatedAt.Format(time.RFC3339))
-	fmt.Println("\nrestart `kiroxy serve` to pick up the new account.")
+	if source == "add-account" {
+		fmt.Printf("added account:\n  provider = %s\n  id       = %s\n  gen      = %d\n  updated  = %s\n",
+			b.Provider, b.ConnectionID, b.Generation, b.UpdatedAt.Format(time.RFC3339))
+		fmt.Println("\nrestart `kiroxy serve` to pick up the new account.")
+	}
 	return nil
+}
+
+func openBrowser(url string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "linux":
+		cmd = exec.Command("xdg-open", url)
+	default:
+		return fmt.Errorf("auto-open not supported on %s", runtime.GOOS)
+	}
+	return cmd.Start()
 }
 
 func runListAccounts(ctx context.Context, _ []string) error {
