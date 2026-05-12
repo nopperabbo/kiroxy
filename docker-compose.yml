@@ -1,0 +1,102 @@
+# docker-compose.yml — kiroxy single-user deployment.
+#
+# Usage:
+#   cp .env.example .env                    # fill in KIROXY_API_KEY etc.
+#   docker compose up -d                    # start kiroxy on 127.0.0.1:8787
+#   docker compose logs -f kiroxy           # tail JSON logs
+#   docker compose exec kiroxy kiroxy list-accounts
+#   docker compose down                     # stop (vault persists in volume)
+#
+# Security posture:
+#   - Host port mapping is 127.0.0.1:8787 by default. Remote clients MUST
+#     reach kiroxy via a reverse proxy (Caddy, nginx, Cloudflare Tunnel) that
+#     terminates TLS. Override to 0.0.0.0:8787 only if you own the network.
+#   - Root filesystem is read-only; the only writable path is the named
+#     `kiroxy-data` volume at /data, which holds the SQLite token vault.
+#   - All Linux capabilities dropped; kiroxy needs none.
+#   - no-new-privileges prevents setuid escalation paths.
+
+name: kiroxy
+
+services:
+  kiroxy:
+    # Override with `docker compose build --build-arg VERSION=v0.3.0` or pull
+    # a pre-built image: `image: ghcr.io/<you>/kiroxy:v0.3.0`.
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${KIROXY_VERSION:-docker}
+    image: kiroxy:local
+    container_name: kiroxy
+    restart: unless-stopped
+
+    # Loopback-only by default. Change the left-hand side if you front this
+    # with a reverse proxy on the host (e.g. `8787:8787` then Caddy talks to
+    # it over the docker network, not the host).
+    ports:
+      - "127.0.0.1:${KIROXY_HOST_PORT:-8787}:8787"
+
+    environment:
+      # Inbound API key. Leave blank for loopback-only deployments; STRONGLY
+      # recommended when the port is reachable from anywhere else.
+      KIROXY_API_KEY: ${KIROXY_API_KEY:-}
+
+      # Log level (debug|info|warn|error).
+      KIROXY_LOG_LEVEL: ${KIROXY_LOG_LEVEL:-info}
+
+      # Upstream Kiro region. Only us-east-1 exists today.
+      KIROXY_KIRO_REGION: ${KIROXY_KIRO_REGION:-us-east-1}
+
+      # SIGTERM grace period for in-flight SSE streams.
+      KIROXY_SHUTDOWN_TIMEOUT: ${KIROXY_SHUTDOWN_TIMEOUT:-30}
+
+      # KIROXY_BIND / KIROXY_PORT / KIROXY_DB_PATH are baked into the image
+      # defaults (0.0.0.0 / 8787 / /data/tokens.db) and should NOT be
+      # overridden here unless you know what you're doing — KIROXY_DB_PATH
+      # in particular must live inside the volume mount.
+
+    volumes:
+      # Named volume survives `docker compose down` (but NOT `down -v`).
+      - kiroxy-data:/data
+
+    # Read-only root FS; /data is the only writable location. The SQLite
+    # WAL needs write access to its parent dir; the named volume covers it.
+    read_only: true
+
+    # Drop every Linux capability; kiroxy's a pure userland Go binary.
+    cap_drop:
+      - ALL
+
+    security_opt:
+      - no-new-privileges:true
+
+    # tmpfs for any library paths that might want to write temp files. This
+    # is belt-and-braces: kiroxy + modernc/sqlite shouldn't touch /tmp under
+    # our workload, but making /tmp available prevents a misbehaving dep
+    # from ever panicking the container.
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+
+    # The image already declares HEALTHCHECK; re-stating here gives compose
+    # nicer log output and lets operators tweak without rebuilding.
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/kiroxy", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    # Sensible defaults for a personal-use process.
+    stop_grace_period: 35s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  kiroxy-data:
+    # Docker picks the driver; override with `driver_opts` if you want to
+    # bind-mount a host path instead (e.g. bind /var/lib/kiroxy).
+    name: kiroxy-data
