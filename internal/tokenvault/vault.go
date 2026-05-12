@@ -18,6 +18,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +35,11 @@ type Bundle struct {
 	Generation           int64
 	UpdatedAt            time.Time
 	Source               string
+	// Metadata is opaque, caller-owned JSON (or empty) intended for
+	// non-credential trivia such as extractor-tool signatures, provider
+	// hints, or subscription metadata. The vault does not interpret it;
+	// the upstream HTTP client never sends it.
+	Metadata             string
 	RefreshInProgress    bool
 	RefreshStartedAt     time.Time
 	RefreshLockExpiresAt time.Time
@@ -72,6 +78,15 @@ func Open(ctx context.Context, path string) (*Vault, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("init schema: %w", err)
 	}
+	// Idempotent migration: 'duplicate column' is expected on fresh DBs because
+	// the CREATE above already includes the column. We only care when it fails
+	// for any other reason.
+	if _, err := db.ExecContext(ctx, migrateAddMetadata); err != nil {
+		if !strings.Contains(err.Error(), "duplicate column") {
+			_ = db.Close()
+			return nil, fmt.Errorf("migrate add metadata: %w", err)
+		}
+	}
 	return &Vault{db: db}, nil
 }
 
@@ -90,12 +105,19 @@ CREATE TABLE IF NOT EXISTS token_bundles (
     generation              INTEGER NOT NULL DEFAULT 0,
     updated_at              INTEGER NOT NULL,
     source                  TEXT    NOT NULL DEFAULT '',
+    metadata                TEXT    NOT NULL DEFAULT '',
     refresh_in_progress     INTEGER NOT NULL DEFAULT 0,
     refresh_started_at      INTEGER NOT NULL DEFAULT 0,
     refresh_lock_expires_at INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (provider, connection_id)
 ) WITHOUT ROWID;
+
+-- v0.1.1: add metadata column to legacy DBs created before this migration.
+-- SQLite is permissive about ADD COLUMN on an existing table; we ignore the
+-- 'duplicate column' error that arises on fresh schemas (already has it).
 `
+
+const migrateAddMetadata = `ALTER TABLE token_bundles ADD COLUMN metadata TEXT NOT NULL DEFAULT ''`
 
 // Get returns the bundle for (provider, connectionID) or ErrNotFound.
 func (v *Vault) Get(ctx context.Context, provider, connectionID string) (*Bundle, error) {
@@ -105,8 +127,8 @@ func (v *Vault) Get(ctx context.Context, provider, connectionID string) (*Bundle
 func (v *Vault) getBundle(ctx context.Context, q queryer, provider, connectionID string) (*Bundle, error) {
 	row := q.QueryRowContext(ctx, `
 		SELECT provider, connection_id, access_token, refresh_token, previous_refresh_token,
-		       generation, updated_at, source, refresh_in_progress, refresh_started_at,
-		       refresh_lock_expires_at
+		       generation, updated_at, source, metadata, refresh_in_progress,
+		       refresh_started_at, refresh_lock_expires_at
 		FROM token_bundles
 		WHERE provider = ? AND connection_id = ?`,
 		provider, connectionID)
@@ -143,9 +165,9 @@ func (v *Vault) Save(ctx context.Context, provider, connectionID string, tokens 
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO token_bundles
 		  (provider, connection_id, access_token, refresh_token, previous_refresh_token,
-		   generation, updated_at, source,
+		   generation, updated_at, source, metadata,
 		   refresh_in_progress, refresh_started_at, refresh_lock_expires_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)
 		ON CONFLICT(provider, connection_id) DO UPDATE SET
 		  access_token           = excluded.access_token,
 		  refresh_token          = excluded.refresh_token,
@@ -153,11 +175,12 @@ func (v *Vault) Save(ctx context.Context, provider, connectionID string, tokens 
 		  generation             = excluded.generation,
 		  updated_at             = excluded.updated_at,
 		  source                 = excluded.source,
+		  metadata               = excluded.metadata,
 		  refresh_in_progress    = 0,
 		  refresh_started_at     = 0,
 		  refresh_lock_expires_at= 0`,
 		provider, connectionID, tokens.AccessToken, tokens.RefreshToken, prev,
-		nextGen, now, tokens.Source)
+		nextGen, now, tokens.Source, tokens.Metadata)
 	if err != nil {
 		return nil, fmt.Errorf("save bundle: %w", err)
 	}
@@ -172,6 +195,7 @@ type Tokens struct {
 	AccessToken  string
 	RefreshToken string
 	Source       string
+	Metadata     string
 }
 
 // Reserve acquires a refresh-token lock on the bundle. Returns ErrLockHeld if
@@ -305,8 +329,8 @@ func (v *Vault) Release(ctx context.Context, provider, connectionID string, rese
 func (v *Vault) ListByProvider(ctx context.Context, provider string) ([]*Bundle, error) {
 	rows, err := v.db.QueryContext(ctx, `
 		SELECT provider, connection_id, access_token, refresh_token, previous_refresh_token,
-		       generation, updated_at, source, refresh_in_progress, refresh_started_at,
-		       refresh_lock_expires_at
+		       generation, updated_at, source, metadata, refresh_in_progress,
+		       refresh_started_at, refresh_lock_expires_at
 		FROM token_bundles
 		WHERE provider = ?
 		ORDER BY connection_id`, provider)
@@ -378,7 +402,7 @@ func scanBundle(s rowScanner) (*Bundle, error) {
 	err := s.Scan(
 		&b.Provider, &b.ConnectionID, &b.AccessToken, &b.RefreshToken,
 		&b.PreviousRefreshToken, &b.Generation, &updatedAt, &b.Source,
-		&refreshInProgInt, &startedAt, &lockExpiresAt,
+		&b.Metadata, &refreshInProgInt, &startedAt, &lockExpiresAt,
 	)
 	if err != nil {
 		return nil, err

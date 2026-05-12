@@ -37,13 +37,27 @@ export KIROXY_KIRO_DB_PATH="$HOME/Library/Application Support/kiro-cli/data.sqli
 
 kiroxy will read and refresh tokens from the kiro-cli database directly.
 
-**Option B — managed token vault** (default, needs M9 `add-account` to be useful):
+**Option B — managed token vault** (recommended for multi-account):
+
+Seed the vault with one or more accounts:
 
 ```bash
-# Creates ~/.kiroxy/tokens.db with 0600 perms on first run.
-# Use 'kiroxy add-account' to register Kiro accounts (M9, not yet shipped).
-unset KIROXY_KIRO_DB_PATH
+# Single account
+./kiroxy add-account --label=my-account --refresh-token=<your-refresh-token>
+
+# Or bulk: line-delimited email:refresh_token:signature triplets
+./kiroxy import-accounts --file=triplets.txt
+
+# Or pipe triplets:
+cat triplets.txt | ./kiroxy import-accounts --stdin
 ```
+
+The managed vault lives at `~/.kiroxy/tokens.db` (mode 0600).
+
+**About the triplet format:** `email:refresh_token:signature` — only the
+refresh_token is sent upstream; the email is used as the account identifier
+and the optional signature is stored in `metadata` for reference (kiroxy
+never transmits it).
 
 Optional but recommended:
 

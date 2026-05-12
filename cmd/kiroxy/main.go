@@ -69,6 +69,8 @@ func run(ctx context.Context, args []string) error {
 		return nil
 	case "add-account":
 		return runAddAccount(ctx, rest)
+	case "import-accounts":
+		return runImportAccounts(ctx, rest)
 	case "list-accounts":
 		return runListAccounts(ctx, rest)
 	case "remove-account":
@@ -79,7 +81,7 @@ func run(ctx context.Context, args []string) error {
 		printHelp()
 		return nil
 	default:
-		return fmt.Errorf("unknown subcommand %q; try: serve, add-account, list-accounts, remove-account, status, version, help", sub)
+		return fmt.Errorf("unknown subcommand %q; try: serve, add-account, import-accounts, list-accounts, remove-account, status, version, help", sub)
 	}
 }
 
@@ -90,7 +92,8 @@ func printHelp() {
 	fmt.Println()
 	fmt.Println("commands:")
 	fmt.Println("  serve                  run the HTTP proxy (default)")
-	fmt.Println("  add-account            store a Kiro refresh token in the vault")
+	fmt.Println("  add-account            store a single Kiro refresh token in the vault")
+	fmt.Println("  import-accounts        bulk-import email:refresh_token[:signature] triplets (--file or --stdin)")
 	fmt.Println("  list-accounts          list accounts in the vault")
 	fmt.Println("  remove-account <id>    delete an account")
 	fmt.Println("  status                 show pool+vault state")
