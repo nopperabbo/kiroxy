@@ -1,5 +1,6 @@
 .PHONY: build vet fmt test test-race run tidy all gate clean \
-        docker-build docker-run docker-compose-up docker-compose-down docker-clean
+        docker-build docker-run docker-compose-up docker-compose-down docker-clean \
+        vuln release-dry-run
 
 export GOEXPERIMENT := jsonv2
 
@@ -35,7 +36,9 @@ run: build
 tidy:
 	go mod tidy
 
-gate: fmt vet build test
+# `gate` is the canonical pre-commit check. Set KIROXY_CI_STRICT=1 to also
+# require govulncheck (opt-in; CI sets this). Default behaviour unchanged.
+gate: fmt vet build test $(if $(filter 1,$(KIROXY_CI_STRICT)),vuln)
 	@echo "GATE GREEN"
 
 clean:
@@ -83,3 +86,21 @@ docker-clean:
 	-docker rm -f kiroxy 2>/dev/null
 	-docker rmi $(IMAGE) $(LATEST) 2>/dev/null
 	@echo "Note: named volume 'kiroxy-data' is preserved. Run 'docker volume rm kiroxy-data' to wipe the vault."
+
+# ---------------------------------------------------------------------------
+# Vulnerability scanning (govulncheck)
+# ---------------------------------------------------------------------------
+# Opt-in dependency of `gate` when KIROXY_CI_STRICT=1 (set by the CI
+# workflow's strict lane). Locally, run `make vuln` on demand. Degrades
+# gracefully if govulncheck is not on PATH: prints an install hint and
+# exits 0 so local developers are not blocked.
+
+vuln:
+	@if command -v govulncheck >/dev/null 2>&1; then \
+	  echo "govulncheck ./..."; \
+	  govulncheck ./...; \
+	else \
+	  echo "govulncheck not found on PATH; skipping."; \
+	  echo "  install with:  go install golang.org/x/vuln/cmd/govulncheck@latest"; \
+	  echo "  then ensure \$$(go env GOBIN) or \$$(go env GOPATH)/bin is on PATH."; \
+	fi
