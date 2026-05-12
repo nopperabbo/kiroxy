@@ -92,13 +92,15 @@ The first run for a new account does a 60–90s warmup (YouTube → Google
 search → GitHub) to build session cookies; subsequent runs skip warmup
 for 7 days.
 
-Output JSON shape (array; upserts by `profileArn`):
+Output JSON shape (array; upserts by `email`, falling back to
+`profileArn` for legacy entries without an `email` field):
 
 ```json
 [
   {
     "provider": "Google",
     "authMethod": "social",
+    "email": "you@gmail.com",
     "accessToken": "aoa...",
     "refreshToken": "aor...",
     "profileArn": "arn:aws:codewhisperer:...:profile/XXXXXXXX",
@@ -107,6 +109,127 @@ Output JSON shape (array; upserts by `profileArn`):
   }
 ]
 ```
+
+> **v1.0.1 dedupe change.** Earlier output files keyed accounts by the
+> last segment of `profileArn`, which silently collapsed Google Workspace
+> users within the same Kiro org (they share a `profileArn`) into a
+> single entry. `onboard.py` and `kiroxy import-accounts-json` now key
+> on `email` first. Legacy JSON files without `email` still import via a
+> `profileArn → token prefix` fallback cascade. If you'\''re on a pre-v1.0.1
+> vault and need Workspace dedupe, `rm tokens.db` and re-import; your
+> refresh tokens remain valid.
+
+## Batch mode — `batch.py`
+
+Drives multiple single-account onboards with state, rate limit, failure
+classification, and resume. Use this when you have a credentials list
+(email:password per line) and want an overnight or unattended run.
+
+**Input format** (same shape as kikirro'\''s `email.txt`):
+
+```
+# comments OK
+alice@gmail.com:password1
+bob@gmail.com:password with spaces and:colons-preserved
+```
+
+**Pre-flight checklist** before batching more than 2–3 accounts:
+
+- [ ] `KIROXY_ONBOARD_PROXY` exported (residential). The tool prints a
+      huge warning if it'\''s unset — batching from a home IP will trip
+      Google'\''s IP flagging after 5–10 fresh-account onboards.
+- [ ] `python3 -m unittest discover -s . -p "test_*.py"` passes
+      (153 tests, ~3s). Skip this, skip everything.
+- [ ] `python batch.py --file email.txt --dry-run` shows the expected
+      account list and skip reasons. Fix typos here, not mid-batch.
+- [ ] Output target cleared (or you'\''re intentionally resuming). Stale
+      state + new output file is a weird combination.
+- [ ] Test with ONE account via `onboard.py` first to confirm the
+      profile + proxy combo is live.
+
+**Usage:**
+
+```bash
+python batch.py --file email.txt \
+                --output ~/kiro_tokens.json \
+                --cooldown-s 60 \
+                --state batch_state.json \
+                --provider google \
+                --max-retries 2
+
+# Validate only (no browser launch):
+python batch.py --file email.txt --dry-run
+```
+
+**Flags:**
+
+| flag | default | description |
+|---|---|---|
+| `--file` | (required) | path to `email:password` file |
+| `--output` | `./kiro_tokens.json` | output JSON (upserts) |
+| `--state` | `./batch_state.json` | per-email status (for resume) |
+| `--provider` | `google` | `google` \| `github` |
+| `--cooldown-s` | `60` | seconds between accounts (single-threaded) |
+| `--max-retries` | `2` | transient retry ceiling per account |
+| `--onboard-script` | `./onboard.py` | override onboarder path |
+| `--log-root` | `./batch_logs` | per-account subprocess logs |
+| `--challenge-mode` | `auto` | passed through to `onboard.py` |
+| `--headless` | off | passed through to `onboard.py` |
+| `--timeout-login-s` | `120` | passed through to `onboard.py` |
+| `--dry-run` | off | parse + plan; don'\''t launch browsers |
+
+**Failure classification:**
+
+| Class | Kinds | Action |
+|---|---|---|
+| transient | network, browser, timeout | retry up to `--max-retries` |
+| hard | blocked, 2FA, wrong_pass, consent, unknown | fail immediately |
+
+All classification keys off subprocess exit code + stderr. The full
+onboarder stderr is teed to `batch_logs/<safe_email>/<ts>.log` so you
+can post-mortem without re-running.
+
+**Safety thresholds (automatic abort):**
+
+- 3 consecutive hard fails in the last 5 attempts → abort (IP likely
+  flagged; take a break, rotate proxies).
+- Camoufox crash rate > 20% of ≥ 5 samples → abort (local/tooling
+  problem; re-check `python -m camoufox fetch`).
+
+**Resume:**
+
+Re-run the same command. `DONE` entries are skipped. `FAILED` with a
+hard kind are sticky (won'\''t be retried — fix the root cause and set
+their status back to `pending` in the state file manually if you want
+another shot). Transient failures within the retry ceiling are
+pending and retried.
+
+**Output:**
+
+```
+starting batch: 76 accounts, state=batch_state.json, output=kiro_tokens.json
+[1/76] DONE <redacted>@example.com (42.1s, attempt=1)
+[2/76] TRANSIENT <redacted>@example.com (browser, attempt=1/3) — will retry
+[3/76] FAILED <redacted>@example.com (blocked, attempt=1)
+...
+────────────────────────────────────────────────────────────
+Batch complete: 69/76 succeeded (failed=7, skipped=0)
+
+Failed:
+  <redacted>@example.com — hard:blocked (attempts=1)
+  ...
+
+Resume: re-run the same command. Transient failures will
+be retried up to --max-retries; hard failures are sticky.
+```
+
+**Known limitations (v1):**
+
+- Single-threaded only. Parallel onboards trip Google'\''s per-IP rate
+  limit fast. `--parallel N` may land later once we'\''ve measured safe
+  concurrency with residential proxies.
+- Credentials are read from a plain text file. G.2 (credential
+  encryption with age or macOS Keychain) is still open in the backlog.
 
 ## Integrating with kiroxy
 
@@ -181,7 +304,7 @@ live-Google parts require operator hands on keyboard — see
 
 ```bash
 python3 -m unittest discover -s . -p "test_*.py"
-# 85 tests in ~3.5s; all should pass.
+# 153 tests in ~3s; all should pass.
 ```
 
 ## Troubleshooting
@@ -203,14 +326,15 @@ python3 -m unittest discover -s . -p "test_*.py"
 
 ## What's deferred (Phase G.2+)
 
-Phase G.FIX shipped layers 1–6 of the stealth plan. Not yet in tree:
+Phase G.FIX shipped layers 1–6 of the stealth plan; v1.0.1 closed BUG 4
+(per-email dedupe) and shipped G.3 (batch orchestrator). Still open:
 
-- **G.2: Credential encryption.** Store passwords encrypted at rest (age
-  or macOS Keychain) for batch mode.
-- **G.3: Batch mode with concurrency cap.** Run multiple accounts from a
-  credentials file, respecting Google's rate limits.
-- **G.4: Retry logic + failure classification.** Distinguish transient
-  failures (retry with backoff) from hard blocks (fail fast).
+- **G.2: Credential encryption.** Store passwords encrypted at rest
+  (age or macOS Keychain). Today `batch.py` reads plain `email:password`
+  lines; encrypted-at-rest credentials are a natural next step.
+- **G.4+: Parallel onboards.** Current batch is single-threaded
+  by design — Google rate-limits hard per-IP. Needs concurrency
+  measurement before a `--parallel N` flag is safe.
 - **G.5: Polish & progress UI.**
 
 Tracked in `../../BACKLOG.md`.
@@ -222,10 +346,11 @@ tools/onboard/
 ├── README.md                 — this file
 ├── TESTING.md                — manual-testing checklist for live Google
 ├── requirements.txt          — pinned Python deps
-├── .gitignore                — runtime artifacts (profiles_data/, screenshots/, …)
+├── .gitignore                — runtime artifacts (profiles_data/, screenshots/, batch_logs/, batch_state.json, …)
 ├── profiles.json             — 100-profile fingerprint rotation table
 ├── onboard.py                — main single-account CLI entry
-├── kiro_oauth.py             — PKCE + login URL + /oauth/token exchange
+├── batch.py                  — multi-account orchestrator (G.3)
+├── kiro_oauth.py             — PKCE + login URL + /oauth/token exchange + JWT helper
 ├── browser_driver.py         — Camoufox wrapper (persistent + proxy + humanize)
 ├── warmup.py                 — YouTube/Google/GitHub pre-login warmup
 ├── human.py                  — burst-pause typing, typos, mouse drift
@@ -233,10 +358,13 @@ tools/onboard/
 ├── proxy_support.py          — proxy URL parsing + egress validation
 ├── fingerprint_check.py      — diagnostic: run to see what Google sees
 ├── fixtures/mock_kiro.py     — stdlib HTTP server mocking /login + /oauth/token
-├── test_oauth.py             — 14 tests: PKCE, URL, callback parsing
+├── test_oauth.py             — 25 tests: PKCE, URL, callback parsing, JWT claims
 ├── test_human.py             — 17 tests: typing distribution, typos, drift
 ├── test_challenge.py         — 21 tests: detection patterns, prompt flow
 ├── test_warmup.py            — 10 tests: marker, TTL, cap, failure paths
 ├── test_proxy_support.py     — 17 tests: URL parsing, env/flag precedence
-└── test_onboard_mock.py      —  6 tests: end-to-end against mock HTTP fixture
+├── test_onboard_mock.py      — 15 tests: mock HTTP + dedupe cascade + upsert
+└── test_batch.py             — 48 tests: credential parsing, classification,
+                                abort thresholds, state round-trip,
+                                run_batch integration with fakes
 ```

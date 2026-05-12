@@ -11,16 +11,17 @@ cd tools/onboard
 python3 -m unittest discover -s . -p "test_*.py"
 ```
 
-Expected: **85 tests pass in ~3.5s**.
+Expected: **153 tests pass in ~3.2s**.
 
 Breakdown:
 
-- `test_oauth.py` — 14 tests: PKCE, URL building, callback parsing.
+- `test_oauth.py` — 25 tests: PKCE, URL building, callback parsing, JWT claim extraction.
 - `test_human.py` — 17 tests: typing distribution statistical properties.
 - `test_challenge.py` — 21 tests: detection patterns in all kinds, prompt flow.
 - `test_warmup.py` — 10 tests: marker TTL, hard cap, failure isolation.
 - `test_proxy_support.py` — 17 tests: URL parsing + env/flag precedence.
-- `test_onboard_mock.py` — 6 tests: end-to-end against stdlib mock HTTP fixture.
+- `test_onboard_mock.py` — 15 tests: end-to-end against stdlib mock HTTP + dedupe cascade + upsert.
+- `test_batch.py` — 48 tests: credential parsing, failure classification, abort thresholds, state round-trip, run_batch integration.
 
 If any of these fail, **do not proceed to live testing** — the deterministic
 layers are broken and live results will be noise.
@@ -203,14 +204,101 @@ python onboard.py --email any@gmail.com --password - ...
 
 - [ ] Automated tests pass: `python3 -m unittest discover -s . -p "test_*.py"`
 - [ ] `python3 onboard.py --help` exit 0
+- [ ] `python3 batch.py --help` exit 0
 - [ ] `python3 fingerprint_check.py --help` exit 0
 - [ ] Manual test 3 (challenge-mode=manual) works against the operator's
       own Google account
-- [ ] `jq .` on the output shows the expected 7 keys
+- [ ] `jq .` on the output shows the expected keys including `email`
 - [ ] `kiroxy import-accounts-json -dry-run` accepts the output
 - [ ] No passwords in any log line (grep your terminal scrollback)
 - [ ] No credentials or tokens in any committed file (`git diff
       HEAD~10..HEAD -- tools/onboard/`)
+
+## Manual test 8 — batch.py dry-run
+
+Goal: confirm the credential-file parser + plan output works without
+launching any browser.
+
+```bash
+cat > /tmp/fake-batch.txt <<EOF
+# comments OK
+alice@example.com:pw-alice
+bob@example.com:pw:with:colons
+# skip next
+notanemail:pw
+alice@example.com:dupe-of-alice
+carol@example.com:
+EOF
+
+python batch.py --file /tmp/fake-batch.txt --dry-run
+```
+
+Expected:
+
+- Exit 0.
+- Prints `parsed 2 credentials, 3 lines skipped` with each skip reason
+  (invalid email, duplicate, empty password).
+- Prints `would onboard: alice@example.com` and `bob@example.com`.
+- Does NOT launch Camoufox.
+
+## Manual test 9 — batch.py resume after interrupt
+
+Goal: confirm the state file survives interruption and re-running the
+same command resumes from where it left off.
+
+Use a test credentials file with 3 fake accounts (all will fail on
+auth, but we only care about the state machine behavior).
+
+```bash
+cat > /tmp/fake-resume.txt <<EOF
+fake1@test.invalid:pw1
+fake2@test.invalid:pw2
+fake3@test.invalid:pw3
+EOF
+
+rm -f /tmp/batch_state.json
+python batch.py --file /tmp/fake-resume.txt \
+                --output /tmp/fake_tokens.json \
+                --state /tmp/batch_state.json \
+                --cooldown-s 1 \
+                --max-retries 0
+# All 3 will fail — the point is to see the state file populate.
+# Expected: script runs through all 3, state file has 3 entries all
+# with status="failed" or (if transient) "pending".
+
+jq . /tmp/batch_state.json
+# Verify: 3 accounts, each with status + last_kind + last_attempt_at.
+
+# Re-run. Hard-failed accounts should be skipped.
+python batch.py --file /tmp/fake-resume.txt \
+                --output /tmp/fake_tokens.json \
+                --state /tmp/batch_state.json \
+                --cooldown-s 1 \
+                --max-retries 0
+# Expected: prints `[N/3] skip fakeN@test.invalid (status=failed, ...)`
+# for all entries whose previous kind was a `hard:*` kind.
+```
+
+## Manual test 10 — batch.py abort threshold
+
+Goal: confirm the safety rail fires when 3 consecutive hard fails land
+within the last 5 attempts.
+
+Point `--file` at 5 obviously-bad accounts (valid email shape, but
+totally fake passwords). The first 3 should fail with either
+`hard:wrong_password` or `hard:unknown` and then the batch should
+abort. Accounts 4 and 5 should NOT be attempted.
+
+```bash
+python batch.py --file /tmp/bad-passwords.txt \
+                --output /tmp/test_tokens.json \
+                --state /tmp/batch_state.json \
+                --cooldown-s 1 \
+                --max-retries 0
+# Expected: ✗ ABORTING: consecutive_hard_fails after the 3rd failure.
+# Exit code 2.
+# State file shows only 3 accounts attempted.
+```
 
 ## Known-failure modes to document when encountered
 
