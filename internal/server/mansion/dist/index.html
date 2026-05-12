@@ -1,11 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-scheme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>kiroxy / mansion (placeholder)</title>
+    <title>kiroxy / mansion</title>
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="Operator dashboard for the kiroxy proxy — accounts, requests, live telemetry." />
+    <script type="module" crossorigin src="/dashboard-mansion/assets/app.js"></script>
+    <link rel="stylesheet" crossorigin href="/dashboard-mansion/assets/app.css">
   </head>
   <body>
-    <p>Build the frontend with <code>make dashboard-mansion</code>.</p>
+    <div id="app" data-app-root></div>
+    <noscript>
+      <div style="padding: 2rem; font: 14px ui-monospace, monospace">
+        This dashboard is a single-page app and requires JavaScript.
+        <br />
+        The read-only fallback lives at <a href="/dashboard">/dashboard</a>.
+      </div>
+    </noscript>
   </body>
 </html>
