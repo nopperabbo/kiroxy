@@ -19,9 +19,10 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import os
 import re
-from typing import Tuple
+from typing import Optional, Tuple
 from urllib.parse import urlencode, urlparse, parse_qs
 
 import httpx
@@ -180,6 +181,59 @@ def exchange_code(code: str, verifier: str) -> dict:
     return data
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# JWT claim extraction (defensive fallback for email-based dedupe)
+#
+# Kiro's current accessTokens are opaque (`aoa...` prefix) and NOT JWTs, so
+# `jwt_sub_or_email` returns None for them. The helper exists so that future
+# token shape changes (or third-party callers who import kiro_oauth) can
+# derive a stable per-account identifier when the CLI --email flag is not
+# the authoritative source.
+#
+# Contract: returns the 'email' claim if present, else 'sub', else None.
+# NEVER raises — any decode / JSON / claim issue yields None so the caller
+# can cleanly fall back to other id sources (profileArn, token prefix).
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def jwt_sub_or_email(token: str) -> Optional[str]:
+    """Extract 'email' or 'sub' claim from a JWT access token, or None.
+
+    Defensive: returns None for empty strings, non-JWT shapes, malformed
+    base64, non-JSON payloads, objects without either claim, etc. Never
+    raises.
+
+    Claim preference: 'email' wins over 'sub' because 'sub' may be an
+    opaque provider id (UUID, subject identifier) with no human mapping.
+    """
+    if not token or not isinstance(token, str):
+        return None
+    # JWT shape: header.payload.signature — exactly 3 segments.
+    parts = token.split(".")
+    if len(parts) != 3:
+        return None
+    payload_b64 = parts[1]
+    # base64url — pad to a multiple of 4.
+    pad = "=" * (-len(payload_b64) % 4)
+    try:
+        payload_bytes = base64.urlsafe_b64decode(payload_b64 + pad)
+    except Exception:  # noqa: BLE001
+        return None
+    try:
+        claims = json.loads(payload_bytes)
+    except Exception:  # noqa: BLE001
+        return None
+    if not isinstance(claims, dict):
+        return None
+    email = claims.get("email")
+    if isinstance(email, str) and email.strip():
+        return email.strip()
+    sub = claims.get("sub")
+    if isinstance(sub, str) and sub.strip():
+        return sub.strip()
+    return None
+
+
 __all__ = [
     "AUTH_HOST",
     "AUTH_BASE_URL",
@@ -188,5 +242,6 @@ __all__ = [
     "build_login_url",
     "exchange_code",
     "generate_pkce",
+    "jwt_sub_or_email",
     "parse_callback_url",
 ]

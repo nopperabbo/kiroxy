@@ -620,6 +620,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     entry: Dict[str, Any] = {
         "provider": provider_cap,
         "authMethod": "social",
+        "email": args.email.strip().lower(),
         "accessToken": access_token,
         "refreshToken": refresh_token,
         "profileArn": profile_arn,

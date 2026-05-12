@@ -110,5 +110,68 @@ class TestCallbackParsing(unittest.TestCase):
             kiro_oauth.parse_callback_url("")
 
 
+def _mint_jwt(payload: dict) -> str:
+    """Build a minimal, unsigned JWT for tests (header + payload + empty sig)."""
+    header = base64.urlsafe_b64encode(
+        b'{"alg":"none","typ":"JWT"}'
+    ).rstrip(b"=").decode("ascii")
+    import json as _json
+    body = base64.urlsafe_b64encode(
+        _json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    ).rstrip(b"=").decode("ascii")
+    return f"{header}.{body}."
+
+
+class TestJwtSubExtraction(unittest.TestCase):
+    def test_extracts_email_when_present(self):
+        jwt = _mint_jwt({"email": "alice@example.com", "sub": "uuid-123"})
+        self.assertEqual(kiro_oauth.jwt_sub_or_email(jwt), "alice@example.com")
+
+    def test_falls_back_to_sub_when_no_email(self):
+        jwt = _mint_jwt({"sub": "uuid-123"})
+        self.assertEqual(kiro_oauth.jwt_sub_or_email(jwt), "uuid-123")
+
+    def test_strips_whitespace_on_email(self):
+        jwt = _mint_jwt({"email": "  bob@example.com  "})
+        self.assertEqual(kiro_oauth.jwt_sub_or_email(jwt), "bob@example.com")
+
+    def test_empty_token_returns_none(self):
+        self.assertIsNone(kiro_oauth.jwt_sub_or_email(""))
+        self.assertIsNone(kiro_oauth.jwt_sub_or_email(None))  # type: ignore[arg-type]
+
+    def test_non_jwt_returns_none(self):
+        # Kiro's current tokens have `aoa...` prefix and no dots — classic
+        # opaque token shape. Must return None cleanly.
+        self.assertIsNone(kiro_oauth.jwt_sub_or_email("aoaDummyTokenNoDotsHere"))
+
+    def test_wrong_segment_count_returns_none(self):
+        self.assertIsNone(kiro_oauth.jwt_sub_or_email("only.two"))
+        self.assertIsNone(kiro_oauth.jwt_sub_or_email("four.segments.here.wrong"))
+
+    def test_malformed_base64_returns_none(self):
+        # "!!!" is not valid base64url.
+        self.assertIsNone(kiro_oauth.jwt_sub_or_email("header.!!!.sig"))
+
+    def test_non_json_payload_returns_none(self):
+        # Valid base64url of 'not-json-at-all'
+        import base64 as _b
+        bad = _b.urlsafe_b64encode(b"not-json-at-all").rstrip(b"=").decode("ascii")
+        self.assertIsNone(kiro_oauth.jwt_sub_or_email(f"hdr.{bad}.sig"))
+
+    def test_payload_without_email_or_sub_returns_none(self):
+        jwt = _mint_jwt({"iss": "https://example.com", "aud": "kiro"})
+        self.assertIsNone(kiro_oauth.jwt_sub_or_email(jwt))
+
+    def test_payload_with_empty_email_and_sub_returns_none(self):
+        jwt = _mint_jwt({"email": "   ", "sub": ""})
+        self.assertIsNone(kiro_oauth.jwt_sub_or_email(jwt))
+
+    def test_payload_not_object_returns_none(self):
+        # Payload is a JSON array, not an object.
+        import base64 as _b
+        body = _b.urlsafe_b64encode(b"[1,2,3]").rstrip(b"=").decode("ascii")
+        self.assertIsNone(kiro_oauth.jwt_sub_or_email(f"hdr.{body}.sig"))
+
+
 if __name__ == "__main__":
     unittest.main()
