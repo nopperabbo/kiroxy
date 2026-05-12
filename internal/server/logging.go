@@ -24,11 +24,12 @@ func requestIDFromContext(ctx context.Context) string {
 }
 
 type loggingMiddleware struct {
-	logger *slog.Logger
+	logger   *slog.Logger
+	recorder RequestRecorder
 }
 
-func newLoggingMiddleware(logger *slog.Logger) *loggingMiddleware {
-	return &loggingMiddleware{logger: logger}
+func newLoggingMiddleware(logger *slog.Logger, recorder RequestRecorder) *loggingMiddleware {
+	return &loggingMiddleware{logger: logger, recorder: recorder}
 }
 
 func (m *loggingMiddleware) wrap(next http.Handler) http.Handler {
@@ -60,7 +61,28 @@ func (m *loggingMiddleware) wrap(next http.Handler) http.Handler {
 			slog.String("remote_ip", clientIP(r)),
 			slog.String("user_agent", r.Header.Get("User-Agent")),
 		)
+
+		if m.recorder != nil && !isDashboardTraffic(r.URL.Path) {
+			m.recorder.Record(RequestRecord{
+				ID:        reqID,
+				StartedAt: start.UTC(),
+				LatencyMS: latency.Milliseconds(),
+				Method:    r.Method,
+				Path:      r.URL.Path,
+				Status:    lw.status,
+				BytesOut:  lw.written,
+				RemoteIP:  clientIP(r),
+				UserAgent: r.Header.Get("User-Agent"),
+			})
+		}
 	})
+}
+
+// isDashboardTraffic filters out dashboard's own /dashboard/* requests so the
+// recent-requests feed doesn't recursively record its own SSE + asset loads.
+// The feed is about upstream proxy activity, not operator-UI traffic.
+func isDashboardTraffic(path string) bool {
+	return strings.HasPrefix(path, "/dashboard")
 }
 
 type loggingResponseWriter struct {

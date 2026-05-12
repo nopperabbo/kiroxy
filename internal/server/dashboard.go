@@ -37,6 +37,43 @@ type DashboardStateProvider interface {
 	DashboardSnapshot(ctx context.Context) DashboardState
 }
 
+// DashboardControlProvider exposes the mutating dashboard actions (import,
+// remove, config-emission). Separated from DashboardStateProvider so reads
+// and writes can be wired from different owners in tests.
+type DashboardControlProvider interface {
+	ImportAccounts(ctx context.Context, entries []DashboardImportEntry) ([]DashboardImportResult, error)
+	RemoveAccount(ctx context.Context, provider, id string) error
+	OpencodeConfig(ctx context.Context, baseURL string) ([]byte, error)
+}
+
+// DashboardImportEntry matches the schema of cmd/kiroxy/import_json.go so
+// operators can paste the same JSON the CLI accepts.
+type DashboardImportEntry struct {
+	Provider     string `json:"provider"`
+	AuthMethod   string `json:"authMethod"`
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	ProfileArn   string `json:"profileArn"`
+	ExpiresIn    int64  `json:"expiresIn"`
+	AddedAt      string `json:"addedAt"`
+}
+
+// DashboardImportResult is one row of the import-endpoint response.
+// Status is one of: "added", "updated", "skipped".
+type DashboardImportResult struct {
+	Index  int    `json:"index"`
+	ID     string `json:"id,omitempty"`
+	Status string `json:"status"`
+	Reason string `json:"reason,omitempty"`
+}
+
+// ErrAccountNotFound indicates the target account is absent from the vault.
+var ErrAccountNotFound = dashboardError("account not found")
+
+type dashboardError string
+
+func (e dashboardError) Error() string { return string(e) }
+
 func (s *Server) registerDashboard(mux *http.ServeMux) {
 	mux.HandleFunc("GET /dashboard", s.handleDashboardHTML)
 	mux.HandleFunc("GET /dashboard/api/state", s.handleDashboardState)

@@ -37,6 +37,18 @@ type Options struct {
 	// DashboardStateProvider, when set, powers the /dashboard/api/state endpoint.
 	// When nil, /dashboard/api/state returns an empty state.
 	DashboardStateProvider DashboardStateProvider
+
+	// DashboardControlProvider, when set, powers the write-paths of the
+	// dashboard v2 API (import + remove account). May be nil in tests or
+	// when the server is running in kiro-cli SQLite mode where the vault is
+	// owned by an external process.
+	DashboardControlProvider DashboardControlProvider
+
+	// RequestRing captures the last N completed HTTP requests for the
+	// dashboard "recent requests" feed. When nil, request recording is
+	// disabled and the feed shows no history. A process-wide ring is
+	// typical; tests construct smaller rings as needed.
+	RequestRing *RequestRing
 }
 
 // Server bundles the process-wide handler tree.
@@ -92,7 +104,11 @@ func (s *Server) Handler() http.Handler {
 	}
 
 	authMW := newAuthMiddleware(s.opts.APIKey)
-	logMW := newLoggingMiddleware(s.logger)
+	var rec RequestRecorder
+	if s.opts.RequestRing != nil {
+		rec = s.opts.RequestRing
+	}
+	logMW := newLoggingMiddleware(s.logger, rec)
 	return logMW.wrap(authMW.wrap(mux))
 }
 
