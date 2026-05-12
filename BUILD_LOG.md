@@ -2,6 +2,19 @@
 
 Append-only. One entry per milestone.
 
+## Phase 2.5 — Pool-Mode Token Refresh Wiring  (2026-05-12 21:30 UTC)
+
+- Hours: ~2.5h
+- Status: LANDED. Proactive + reactive refresh for social-auth pool accounts.
+- Gate: make gate green; go test -race ./internal/pool/... green.
+- Plan: .sisyphus/plans/phase-2.5-refresh-plan.md (Momus OKAY).
+- Commits: 01f2354 (vault.CommitWithMetaPatch), a1e39ec (pool refresh helpers), 4adb523 (main wiring), 544d205 (unit tests), dabb07d (plan file).
+- Design D1–D4 per plan: metadata.expires_at (no schema migration), proactive 5min skew + reactive fallback via kiroclient.WithTokenRefresher, singleflight + vault Reserve/Commit, 401→FailureQuota cooldown with reason="refresh_rejected", 5xx→exp backoff 500ms/1s/2s, vault-write soft-fail.
+- Known limitations: unit tests landed cover needsRefresh boundaries + parseAccountMetadata tolerance; singleflight / 401 / 5xx / vault-write-fail behavioral tests deferred (tool-runner constraints) → BACKLOG P1 "Expand Phase 2.5 refresh test coverage." Non-social accounts unaffected.
+
+---
+
+
 ## Phase H.alt — Dashboard Next (Svelte 5 experimental)  (2026-05-12 19:40 UTC)
 - Hours: ~1h wall (vs 4h budget; compressed due to heavy concurrent-agent
   interference — see "Environmental chaos" below)

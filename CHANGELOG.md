@@ -4,7 +4,32 @@ All notable changes to kiroxy will be documented in this file. Format loosely fo
 
 ## [Unreleased]
 
-Nothing staged for the next release yet.
+### Added (Phase 2.5 — pool-mode token refresh)
+
+- Proactive token refresh for social-auth accounts in the pool path.
+  Before each request, `TokenGetter.GetToken` checks `metadata.expires_at`
+  and rotates the refresh_token against `prod.us-east-1.auth.desktop.kiro.dev/refreshToken`
+  when within 5 minutes of expiry. Persists new tokens + `expires_at` via
+  `vault.CommitWithMetaPatch` (preserves profile_arn / auth_method).
+  Concurrent requests are coalesced via `golang.org/x/sync/singleflight`;
+  cross-process via vault generation-lock.
+- Reactive refresh via `kiroclient.WithTokenRefresher` installed on the
+  pool path for 403 retry edge cases.
+- `internal/auth.RefreshSocial` standalone helper with typed errors
+  (`ErrRefreshUnauthorized`, `ErrRefreshTransient`, `ErrRefreshMalformed`).
+- `vault.CommitWithMetaPatch` for metadata-preserving commits during
+  refresh.
+
+### Known limitations (Phase 2.5)
+
+- Automated test coverage ships narrower than the plan spec: only
+  `needsRefresh` boundary + `parseAccountMetadata` tolerance unit tests
+  landed. Singleflight / 401-cooldown / 5xx-retry / vault-write soft-fail
+  paths are implemented but untested; tracked as BACKLOG P1
+  "Expand Phase 2.5 refresh test coverage".
+- Non-social accounts (Builder ID / kiro-cli SQLite) are intentionally
+  excluded from the refresh path. Builder ID Phase C.1 blocker unchanged.
+
 
 ## [0.3.0] — 2026-05-12
 
