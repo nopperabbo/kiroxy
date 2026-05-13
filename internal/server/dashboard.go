@@ -44,13 +44,13 @@ type DashboardAccount struct {
 	// gates UI rendering: false means no successful getUsageLimits
 	// poll has completed yet (account just added, or introspection
 	// disabled), so dashboards should show "—" rather than "0 / 0".
-	UsageKnown         bool    `json:"usage_known,omitempty"`
-	UsageCap           int64   `json:"usage_cap,omitempty"`
-	UsageUsed          int64   `json:"usage_used,omitempty"`
-	UsageRemaining     int64   `json:"usage_remaining,omitempty"`
-	UsagePercentUsed   float64 `json:"usage_percent_used,omitempty"`
-	UsageLastPolled    string  `json:"usage_last_polled,omitempty"`
-	UsageDaysUntilRst  int     `json:"usage_days_until_reset,omitempty"`
+	UsageKnown        bool    `json:"usage_known,omitempty"`
+	UsageCap          int64   `json:"usage_cap,omitempty"`
+	UsageUsed         int64   `json:"usage_used,omitempty"`
+	UsageRemaining    int64   `json:"usage_remaining,omitempty"`
+	UsagePercentUsed  float64 `json:"usage_percent_used,omitempty"`
+	UsageLastPolled   string  `json:"usage_last_polled,omitempty"`
+	UsageDaysUntilRst int     `json:"usage_days_until_reset,omitempty"`
 }
 
 // DashboardStateProvider is implemented by whatever owns the pool+vault.

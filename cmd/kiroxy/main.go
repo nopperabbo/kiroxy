@@ -151,11 +151,12 @@ func runServe(ctx context.Context, args []string) error {
 	slog.SetDefault(slog.New(server.NewCapturingHandler(jsonHandler, logSink)))
 
 	var (
-		authMgr    messages.TokenGetter
-		kiroClient kiroclient.Client
-		vault      *tokenvault.Vault
-		poolInst   *pool.Pool
-		stickiness *pool.Stickiness
+		authMgr     messages.TokenGetter
+		kiroClient  kiroclient.Client
+		vault       *tokenvault.Vault
+		poolInst    *pool.Pool
+		stickiness  *pool.Stickiness
+		usagePoller *pool.UsagePoller
 	)
 	startedAt := time.Now()
 	metricsReg := metrics.New(startedAt)
@@ -247,6 +248,32 @@ func runServe(ctx context.Context, args []string) error {
 			clientOpts = append(clientOpts, kiroclient.WithBaseURL(cfg.KiroUpstreamURL))
 		}
 		kiroClient = kiroclient.NewHTTPClient(clientOpts...)
+
+		// Background usage poller: calls getUsageLimits per account
+		// every 60s and surfaces remaining-credit data to the dashboard
+		// + the pool's weighted selection. Disabled via
+		// KIROXY_USAGE_POLL_DISABLED=1 for offline tests / mock setups
+		// where the upstream getUsageLimits endpoint is unreachable.
+		if os.Getenv("KIROXY_USAGE_POLL_DISABLED") != "1" {
+			pollerHTTP := &http.Client{Timeout: 10 * time.Second}
+			usagePoller = pool.NewUsagePoller(pool.UsagePollerConfig{
+				Pool:  poolInst,
+				Vault: vault,
+				PollFn: func(ctx context.Context, token, profileArn, region string) (*kiroclient.UsageLimits, error) {
+					return kiroclient.GetUsageLimits(ctx, pollerHTTP, token, profileArn, region)
+				},
+				Interval:     60 * time.Second,
+				Timeout:      10 * time.Second,
+				StartupDelay: 2 * time.Second,
+			})
+			usagePoller.Start(ctx)
+			slog.Info("usage poller: started",
+				slog.Duration("interval", 60*time.Second),
+				slog.Int("accounts", poolInst.Count()),
+			)
+		} else {
+			slog.Info("usage poller: disabled via KIROXY_USAGE_POLL_DISABLED=1")
+		}
 	}
 
 	srv := server.New(server.Options{
@@ -288,7 +315,7 @@ func runServe(ctx context.Context, args []string) error {
 		slog.Warn("binding to non-loopback address; ensure you have TLS + a reverse proxy in front")
 	}
 
-	done := awaitShutdown(ctx, httpSrv, cfg.ShutdownTimeout, vault, stickiness)
+	done := awaitShutdown(ctx, httpSrv, cfg.ShutdownTimeout, vault, stickiness, usagePoller)
 
 	if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("listen: %w", err)
@@ -300,8 +327,10 @@ func runServe(ctx context.Context, args []string) error {
 // awaitShutdown registers SIGINT/SIGTERM handlers and drains the HTTP server
 // with the configured timeout. Derived from d-kuro/kirocc's cmd/kirocc/main.go.
 // If vault is non-nil, closes it after the HTTP server stops. If stickiness
-// is non-nil, stops its background pruner goroutine.
-func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Duration, vault *tokenvault.Vault, stickiness *pool.Stickiness) <-chan struct{} {
+// is non-nil, stops its background pruner goroutine. If usagePoller is
+// non-nil, stops its 60s background poll goroutine before vault.Close so
+// that an in-flight Vault.Get() does not race the close.
+func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Duration, vault *tokenvault.Vault, stickiness *pool.Stickiness, usagePoller *pool.UsagePoller) <-chan struct{} {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -319,6 +348,9 @@ func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Durat
 		defer cancel()
 		if err := httpSrv.Shutdown(shutdownCtx); err != nil {
 			slog.Error("graceful shutdown failed", slog.String("err", err.Error()))
+		}
+		if usagePoller != nil {
+			usagePoller.Stop()
 		}
 		if stickiness != nil {
 			stickiness.Stop()
