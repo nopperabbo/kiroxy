@@ -151,13 +151,20 @@ func runImportAccountsJSON(ctx context.Context, args []string) error {
 			}
 		}
 
+		// Derive expires_at from the addedAt timestamp, not import time.
+		// addedAt is when the upstream issued the token; import time can be
+		// minutes to days later. Wrong base → Phase 2.5 proactive refresh
+		// window is miscalibrated. RFC3339 + 2006-01-02T15:04:05 (local) both
+		// accepted; falls back to time.Now() on empty / unparseable input.
+		expiresAt := deriveExpiresAt(v.entry.AddedAt, v.entry.ExpiresIn)
+
 		md, _ := json.Marshal(map[string]any{
 			"source":       "import-accounts-json",
 			"provider_sso": v.entry.Provider,
 			"auth_method":  v.entry.AuthMethod,
 			"profile_arn":  v.entry.ProfileArn,
 			"expires_in":   v.entry.ExpiresIn,
-			"expires_at":   time.Now().Unix() + v.entry.ExpiresIn,
+			"expires_at":   expiresAt,
 			"added_at":     v.entry.AddedAt,
 			"id_source":    v.idSource,
 			"email":        strings.ToLower(strings.TrimSpace(v.entry.Email)),
@@ -279,4 +286,23 @@ func tokenHeadForCompare(t string) string {
 		return t[:16]
 	}
 	return t
+}
+
+// deriveExpiresAt parses an `addedAt` timestamp string (RFC3339 first, then
+// the local-time variant `2006-01-02T15:04:05` for legacy kiro_login.py output)
+// and adds expiresIn seconds. On empty input or parse failure it falls back to
+// `time.Now() + expiresIn` and is reflected in Phase 2.5 metadata as a best-
+// effort approximation.
+func deriveExpiresAt(addedAt string, expiresIn int64) int64 {
+	addedAt = strings.TrimSpace(addedAt)
+	if addedAt == "" {
+		return time.Now().Unix() + expiresIn
+	}
+	if t, err := time.Parse(time.RFC3339, addedAt); err == nil {
+		return t.Unix() + expiresIn
+	}
+	if t, err := time.ParseInLocation("2006-01-02T15:04:05", addedAt, time.Local); err == nil {
+		return t.Unix() + expiresIn
+	}
+	return time.Now().Unix() + expiresIn
 }
