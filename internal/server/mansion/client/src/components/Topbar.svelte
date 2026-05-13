@@ -1,18 +1,20 @@
 <!--
   Topbar — the "brass plaque" for the operator desk.
 
-  Three bands:
-    left   — wordmark + vault status sigil + ready state
-    center — total-requests sparkline + headline counters (uptime, errors)
-    right  — search, import button, theme, palette hint
+  Three-band layout:
+    left   — wordmark with trailing amber cursor (amber budget role 1)
+             + live dot (amber budget role 2)
+    center — three-tab nav: Live Stream / Pool / Metrics.
+             The active tab gets the amber underline (amber budget role 3).
+    right  — search, import button, theme, palette hint (⌘K kbd = role 5).
 
-  Responsive: below 780px we collapse center into right so nothing wraps.
+  The old status-pill mid-band moved out to the StatusRibbon at page-bottom,
+  which is where the mockup puts ambient telemetry. That kept the topbar
+  visually quieter and made room for the nav.
 -->
 <script lang="ts">
-  import { store } from "../lib/store.svelte";
+  import { store, type MansionView } from "../lib/store.svelte";
   import { readScheme, setScheme, cycleScheme, type Scheme } from "../lib/theme";
-  import { fmtUptime } from "../lib/format";
-  import Sparkline from "./Sparkline.svelte";
   import Icon from "./Icon.svelte";
 
   interface Props {
@@ -32,94 +34,137 @@
     return "monitor";
   }
 
-  let total = $derived(
-    store.snapshot.total_requests ??
-      store.snapshot.accounts.reduce((n, a) => n + a.requests, 0),
+  let activeCount = $derived(
+    store.snapshot.accounts.filter((a) => a.enabled && !a.cooldown_until).length,
   );
-  let errs = $derived(
-    store.snapshot.total_errors ?? store.snapshot.accounts.reduce((n, a) => n + a.errors, 0),
-  );
-  let errRate = $derived(total > 0 ? errs / total : 0);
-  let errClass = $derived(errRate > 0.1 ? "danger" : errRate > 0.02 ? "warn" : "good");
-  let sparkActive = $derived(store.totalSpark.some((v) => v > 0));
+  let poolCount = $derived(store.snapshot.accounts.length);
+
+  // Rolling rate for Live-tab counter hint: total request delta over the
+  // 5-min spark window, then /300 for per-second. Cheap, adequate.
+  let rate = $derived.by(() => {
+    const sum = store.totalSpark.reduce((a, b) => a + b, 0);
+    if (sum <= 0) return 0;
+    return sum / 300;
+  });
+
+  function switchTo(v: MansionView): void {
+    if (store.view === v) return;
+    // View Transitions API: if supported, wrap the state mutation so the
+    // browser cross-fades between views for free (no JS animation runner).
+    // The fallback is a plain synchronous swap — acceptable in older browsers.
+    type VtDoc = Document & { startViewTransition?: (cb: () => void) => void };
+    const d = document as VtDoc;
+    if (d.startViewTransition) {
+      d.startViewTransition(() => {
+        store.setView(v);
+      });
+    } else {
+      store.setView(v);
+    }
+  }
 </script>
 
 <header class="topbar" aria-label="kiroxy control plane">
   <div class="topbar__inner">
-    <!-- Brand -->
+    <!-- Brand: wordmark + blinking amber cursor (amber role 1). -->
     <div class="brand">
-      <span class="brand__glyph" aria-hidden="true">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <!-- Brass keyhole geometry — a hand-drawn sigil, not a brand icon. -->
-          <rect x="1" y="1" width="20" height="20" rx="3" stroke="currentColor" stroke-width="1.25" />
-          <circle cx="11" cy="8.5" r="2.5" stroke="currentColor" stroke-width="1.25" />
-          <path d="M11 11 L11 15.5 L9 15.5 M11 13.5 L12.5 13.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" />
-        </svg>
+      <span class="brand__word mono">kiroxy</span>
+      <span class="brand__cursor mono" aria-hidden="true">_</span>
+      <span class="brand__version mono faint">
+        {store.snapshot.version || "dev"}
       </span>
-      <div class="brand__stack">
-        <span class="brand__word">kiroxy</span>
-        <span class="brand__sub faint">mansion · operator desk</span>
-      </div>
     </div>
 
-    <!-- Center: state + spark -->
-    <div class="state">
-      <div class="state__sigil state__sigil--{store.snapshot.ready ? 'good' : 'warn'}" aria-hidden="true">
-        <span class="state__pulse"></span>
-      </div>
-      <div class="state__stack">
-        <span class="state__label caps">status</span>
-        <span class="state__value">{store.snapshot.ready ? "ready" : "not ready"}</span>
-      </div>
-      <span class="state__sep" aria-hidden="true"></span>
-      <div class="state__stack" title="total requests observed by this proxy">
-        <span class="state__label caps">requests</span>
-        <span class="state__value mono tabular">{total.toLocaleString()}</span>
-      </div>
-      <div class="state__spark" aria-hidden="true">
-        {#if sparkActive}
-          <Sparkline values={store.totalSpark} width={120} height={28} accent="accent" />
-        {:else}
-          <span class="state__spark-empty mono faint">no traffic yet</span>
-        {/if}
-      </div>
-      <div class="state__stack state__stack--{errClass}" title="error rate over total requests">
-        <span class="state__label caps">errors</span>
-        <span class="state__value mono tabular">{errs.toLocaleString()} · {(errRate * 100).toFixed(1)}%</span>
-      </div>
-      <span class="state__sep" aria-hidden="true"></span>
-      <div class="state__stack" title="uptime since server start">
-        <span class="state__label caps">uptime</span>
-        <span class="state__value mono tabular">{fmtUptime(store.snapshot.uptime_s)}</span>
-      </div>
-    </div>
+    <!-- Center: three-tab nav with amber underline (amber role 3). -->
+    <nav class="nav" role="tablist" aria-label="view">
+      <button
+        type="button"
+        class="nav__tab"
+        class:nav__tab--active={store.view === "live"}
+        role="tab"
+        aria-selected={store.view === "live"}
+        aria-controls="view-live"
+        onclick={() => switchTo("live")}
+        title="Live Stream (Warp-style request feed)"
+      >
+        <span class="nav__glyph" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M1 6h2.5l1.5-4 2 8 1.5-4H11" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span>Live Stream</span>
+        <span class="nav__count mono tabular" aria-hidden="true">
+          {rate > 0 ? `· ${rate.toFixed(1)}/s` : "· idle"}
+        </span>
+      </button>
+      <button
+        type="button"
+        class="nav__tab"
+        class:nav__tab--active={store.view === "pool"}
+        role="tab"
+        aria-selected={store.view === "pool"}
+        aria-controls="view-pool"
+        onclick={() => switchTo("pool")}
+        title="Account pool"
+      >
+        <span class="nav__glyph" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <rect x="1.5" y="1.5" width="3" height="3" stroke="currentColor" stroke-width="1"/>
+            <rect x="7.5" y="1.5" width="3" height="3" stroke="currentColor" stroke-width="1"/>
+            <rect x="1.5" y="7.5" width="3" height="3" stroke="currentColor" stroke-width="1"/>
+            <rect x="7.5" y="7.5" width="3" height="3" stroke="currentColor" stroke-width="1"/>
+          </svg>
+        </span>
+        <span>Pool</span>
+        <span class="nav__count mono tabular" aria-hidden="true">
+          · {activeCount}/{poolCount}
+        </span>
+      </button>
+      <button
+        type="button"
+        class="nav__tab"
+        class:nav__tab--active={store.view === "metrics"}
+        role="tab"
+        aria-selected={store.view === "metrics"}
+        aria-controls="view-metrics"
+        onclick={() => switchTo("metrics")}
+        title="Aggregate metrics"
+      >
+        <span class="nav__glyph" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 10V5m3 5V2m3 8v-4m3 4V7" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span>Metrics</span>
+      </button>
+    </nav>
 
-    <!-- Actions -->
+    <!-- Actions: search, import, theme, palette (⌘K kbd = amber role 5). -->
     <div class="actions">
+      <span class="live-dot mono" aria-label="live stream connection">
+        <span class="live-dot__pulse" aria-hidden="true"></span>LIVE
+      </span>
       <label class="search" aria-label="search accounts and requests">
-        <Icon name="search" size={13} />
+        <Icon name="search" size={12} />
         <input
-          class="search__input"
-          placeholder="search pool / requests"
+          class="search__input mono"
+          placeholder="filter acct / path / id"
           data-search-input
           bind:value={() => store.filters.search, (v) => store.setFilter("search", v)}
         />
         <kbd>/</kbd>
       </label>
       <button class="btn btn--ghost" type="button" onclick={onOpenImport} title="import accounts (i)">
-        <Icon name="download" size={13} /><span>import</span>
+        <Icon name="download" size={12} /><span>import</span>
       </button>
       <button class="btn btn--icon" type="button" onclick={toggleScheme} title="cycle theme" aria-label="cycle theme">
-        <Icon name={schemeIcon(scheme)} size={13} />
+        <Icon name={schemeIcon(scheme)} size={12} />
       </button>
-      <button class="btn btn--ghost btn--palette" type="button" onclick={onOpenPalette} title="command palette (⌘K)">
-        <Icon name="command" size={13} /><span>palette</span><kbd class="kbd-lite">⌘K</kbd>
+      <button class="btn btn--palette" type="button" onclick={onOpenPalette} title="command palette (⌘K)">
+        <Icon name="command" size={12} /><kbd class="kbd-amber">⌘K</kbd>
       </button>
     </div>
   </div>
-
-  <!-- Hairline brass rule — single ledger divider under the plaque. -->
-  <div class="topbar__rule" aria-hidden="true"></div>
 </header>
 
 <style>
@@ -127,163 +172,140 @@
     position: sticky;
     inset-block-start: 0;
     z-index: var(--z-sticky);
-    background: color-mix(in oklch, var(--c-bg), transparent 12%);
-    backdrop-filter: blur(10px) saturate(1.15);
-    -webkit-backdrop-filter: blur(10px) saturate(1.15);
+    background: var(--c-bg);
+    border-block-end: 1px solid var(--c-border);
   }
   .topbar__inner {
     max-inline-size: var(--app-max);
     margin-inline: auto;
-    padding: var(--sp-4) var(--app-pad);
+    padding: 0 var(--app-pad);
     display: grid;
     grid-template-columns: auto 1fr auto;
-    gap: var(--sp-6);
-    align-items: center;
-  }
-  .topbar__rule {
-    height: 1px;
-    background: linear-gradient(
-      to right,
-      transparent,
-      color-mix(in oklch, var(--c-accent), transparent 60%) 15%,
-      color-mix(in oklch, var(--c-accent), transparent 60%) 85%,
-      transparent
-    );
-    opacity: 0.5;
+    align-items: stretch;
+    block-size: 44px;
+    gap: var(--sp-5);
   }
 
   .brand {
     display: inline-flex;
-    align-items: center;
+    align-items: baseline;
     gap: var(--sp-3);
-    color: var(--c-accent);
-  }
-  .brand__glyph {
-    display: inline-grid;
-    place-items: center;
-    inline-size: 30px;
-    block-size: 30px;
-    border: 1px solid color-mix(in oklch, var(--c-accent), transparent 55%);
-    border-radius: var(--r-sm);
-    box-shadow: var(--sh-1);
-    background: color-mix(in oklch, var(--c-accent), transparent 92%);
-  }
-  .brand__stack {
-    display: flex;
-    flex-direction: column;
-    line-height: var(--lh-tight);
+    align-self: center;
   }
   .brand__word {
-    font-family: var(--font-display);
+    font-family: var(--font-mono);
     font-size: var(--fs-md);
-    font-weight: var(--fw-semibold);
-    letter-spacing: var(--tr-tight);
+    font-weight: var(--fw-medium);
+    letter-spacing: 0.01em;
     color: var(--c-text);
   }
-  .brand__sub {
-    font-family: var(--font-mono);
-    font-size: var(--fs-2xs);
-    letter-spacing: var(--tr-wide);
-    text-transform: uppercase;
-    color: var(--c-text-faint);
+  /* amber budget: role 1 of 5 — the trailing brand cursor. */
+  .brand__cursor {
+    color: var(--c-accent);
+    animation: cursor-blink 1.1s steps(1) infinite;
+    font-size: var(--fs-md);
+  }
+  @keyframes cursor-blink {
+    50% { opacity: 0; }
+  }
+  .brand__version {
+    font-size: var(--fs-xs);
+    letter-spacing: 0.03em;
   }
 
-  .state {
+  .nav {
+    display: inline-flex;
+    justify-self: center;
+    gap: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    letter-spacing: 0.02em;
+  }
+  .nav__tab {
     display: inline-flex;
     align-items: center;
-    gap: var(--sp-5);
-    justify-self: center;
-    padding: var(--sp-3) var(--sp-5);
-    border: 1px solid var(--c-border);
-    border-radius: var(--r-md);
-    background: var(--c-surface);
-    box-shadow: var(--sh-1);
+    gap: var(--sp-3);
+    padding: 0 var(--sp-5);
+    block-size: 44px;
+    color: var(--c-text-dim);
+    border-block-end: 1.5px solid transparent;
+    transition:
+      color var(--mo-med) var(--ease-std),
+      border-color var(--mo-med) var(--ease-std);
   }
-  .state__sigil {
-    position: relative;
-    inline-size: 10px;
-    block-size: 10px;
-    border-radius: var(--r-pill);
-  }
-  .state__sigil--good {
-    background: var(--c-success);
-  }
-  .state__sigil--warn {
-    background: var(--c-warn);
-  }
-  .state__pulse {
-    position: absolute;
-    inset: 0;
-    border-radius: var(--r-pill);
-    background: currentColor;
-    animation: pulse-ring 2.2s var(--ease-out) infinite;
-  }
-  .state__stack {
-    display: flex;
-    flex-direction: column;
-    line-height: var(--lh-tight);
-    min-inline-size: 0;
-  }
-  .state__stack--warn .state__value {
-    color: var(--c-warn);
-  }
-  .state__stack--danger .state__value {
-    color: var(--c-danger);
-  }
-  .state__label {
-    font-size: var(--fs-2xs);
-  }
-  .state__value {
-    font-size: var(--fs-sm);
+  .nav__tab:hover {
     color: var(--c-text);
   }
-  .state__sep {
-    inline-size: 1px;
-    block-size: 20px;
-    background: var(--c-rule);
+  /* amber budget: role 3 of 5 — active tab underline. */
+  .nav__tab--active {
+    color: var(--c-text);
+    border-block-end-color: var(--c-accent);
   }
-  .state__spark {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px var(--sp-3);
-    border-left: 1px solid var(--c-rule);
-    border-right: 1px solid var(--c-rule);
-    color: var(--c-accent);
-    min-inline-size: 110px;
-    justify-content: center;
+  .nav__glyph {
+    color: currentColor;
+    display: inline-grid;
+    place-items: center;
   }
-  .state__spark-empty {
-    font-size: var(--fs-2xs);
-    text-transform: uppercase;
-    letter-spacing: var(--tr-wide);
+  .nav__count {
+    color: var(--c-text-faint);
+    font-size: var(--fs-xs);
+    letter-spacing: 0;
+  }
+  .nav__tab--active .nav__count {
+    color: var(--c-accent-dim);
   }
 
   .actions {
     display: inline-flex;
     align-items: center;
     gap: var(--sp-3);
+    align-self: center;
+  }
+
+  /* amber budget: role 2 of 5 — the live pulse in the header. */
+  .live-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 10.5px;
+    color: var(--c-text-dim);
+  }
+  .live-dot__pulse {
+    inline-size: 7px;
+    block-size: 7px;
+    border-radius: var(--r-pill);
+    background: var(--c-accent);
+    box-shadow: 0 0 0 0 var(--c-accent);
+    animation: live-pulse 1.8s var(--motion-easing) infinite;
+  }
+  @keyframes live-pulse {
+    0%   { box-shadow: 0 0 0 0 color-mix(in oklch, var(--c-accent) 60%, transparent); }
+    70%  { box-shadow: 0 0 0 6px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
   }
 
   .search {
     display: inline-flex;
     align-items: center;
-    gap: var(--sp-3);
-    padding: 6px var(--sp-3);
-    min-inline-size: 200px;
+    gap: var(--sp-2);
+    padding: 0 var(--sp-3);
+    min-inline-size: 210px;
+    block-size: 26px;
     background: var(--c-surface);
     border: 1px solid var(--c-border);
-    border-radius: var(--r-md);
+    border-radius: var(--r-xs);
     color: var(--c-text-dim);
     transition: border-color var(--mo-fast) var(--ease-std);
   }
   .search:focus-within {
-    border-color: var(--c-accent);
+    border-color: var(--c-border-strong);
   }
   .search__input {
     flex: 1 1 auto;
     min-inline-size: 0;
     font-size: var(--fs-sm);
-    font-family: var(--font-mono);
     color: var(--c-text);
   }
   .search__input::placeholder {
@@ -294,65 +316,69 @@
     display: inline-flex;
     align-items: center;
     gap: var(--sp-2);
-    padding: 6px var(--sp-3);
-    border: 1px solid var(--c-border);
-    border-radius: var(--r-md);
-    background: var(--c-surface);
+    block-size: 26px;
+    padding: 0 var(--sp-3);
+    border: 1px solid var(--c-border-strong);
+    border-radius: var(--r-xs);
     color: var(--c-text-dim);
     font-size: var(--fs-sm);
     transition:
       color var(--mo-fast) var(--ease-std),
-      border-color var(--mo-fast) var(--ease-std),
-      background var(--mo-fast) var(--ease-std);
+      border-color var(--mo-fast) var(--ease-std);
   }
   .btn:hover {
     color: var(--c-text);
-    border-color: var(--c-border-strong);
-    background: var(--c-surface-hover);
+    border-color: var(--c-text-faint);
   }
   .btn--icon {
-    inline-size: 30px;
-    block-size: 30px;
+    inline-size: 26px;
     padding: 0;
     justify-content: center;
   }
+  /* amber budget: role 5 of 5 — ⌘K kbd pill inside the palette button.
+     The palette *button* itself stays neutral; only the kbd is amber. */
   .btn--palette {
-    color: var(--c-accent);
-    border-color: color-mix(in oklch, var(--c-accent), transparent 60%);
-    background: var(--c-accent-wash);
-  }
-  .kbd-lite {
-    padding: 1px var(--sp-2);
-    font-size: var(--fs-2xs);
     color: var(--c-text-dim);
+  }
+  .btn--palette:hover {
+    color: var(--c-text);
+  }
+  .kbd-amber {
+    color: var(--c-accent);
+    border: 1px solid color-mix(in oklch, var(--c-accent), transparent 60%);
     background: transparent;
-    border: 1px solid var(--c-border);
-    border-radius: var(--r-sm);
+    padding: 0 4px;
+    font-size: var(--fs-xs);
+    border-radius: var(--r-xs);
+    letter-spacing: 0.02em;
   }
 
-  @media (max-width: 900px) {
+  @media (max-width: 960px) {
     .topbar__inner {
       grid-template-columns: auto 1fr;
+      block-size: auto;
+      padding-block: var(--sp-3);
+      gap: var(--sp-3);
     }
-    .state {
+    .nav {
       grid-column: 1 / -1;
       order: 3;
-      justify-self: stretch;
+      justify-self: start;
       overflow-x: auto;
     }
     .actions {
       order: 2;
       justify-self: end;
     }
-    .brand__sub {
-      display: none;
+    .nav__tab {
+      block-size: 34px;
     }
-    .btn--palette span,
-    .btn--ghost span {
+    .btn--ghost span,
+    .brand__version {
       display: none;
     }
     .search {
-      min-inline-size: 160px;
+      min-inline-size: 140px;
     }
   }
 </style>

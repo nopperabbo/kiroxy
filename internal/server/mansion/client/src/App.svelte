@@ -1,9 +1,11 @@
 <!--
   App — root. Orchestrates:
     - Mounting LiveSource + wiring callbacks to the store
-    - Global hotkeys (cmd-k, i, /, ?, Esc)
+    - Global hotkeys (⌘K, i, /, ?, Space, Esc)
     - URL-hash sync for filters
-    - Layout scaffolding: Topbar, split-pane main, status ribbon
+    - Three top-level views as tabs: Live Stream / Pool / Metrics
+      (Topbar owns the tab nav; App just renders whichever view is active.)
+    - View Transitions API cross-fade between tab switches
 -->
 <script lang="ts">
   import { onMount } from "svelte";
@@ -12,7 +14,6 @@
   import { readHash, writeHash } from "./lib/urlstate";
   import Topbar from "./components/Topbar.svelte";
   import AccountBoard from "./components/AccountBoard.svelte";
-  import RequestStream from "./components/RequestStream.svelte";
   import StatusRibbon from "./components/StatusRibbon.svelte";
   import CommandPalette from "./components/CommandPalette.svelte";
   import ImportDrawer from "./components/ImportDrawer.svelte";
@@ -21,6 +22,9 @@
   import Toasts from "./components/Toasts.svelte";
   import PoolPulse from "./components/PoolPulse.svelte";
   import ActivityLedger from "./components/ActivityLedger.svelte";
+  import LiveStream from "./components/LiveStream.svelte";
+  import LiveRail from "./components/LiveRail.svelte";
+  import MetricsView from "./components/MetricsView.svelte";
 
   let paletteOpen = $state(false);
   let importOpen = $state(false);
@@ -28,7 +32,6 @@
   let live: LiveSource | null = null;
 
   onMount(() => {
-    // Hydrate filters from URL hash so shareable-view links work.
     const fromHash = readHash();
     if (fromHash.search !== undefined) store.setFilter("search", fromHash.search);
     if (fromHash.onlyErrors !== undefined) store.setFilter("onlyErrors", fromHash.onlyErrors);
@@ -37,7 +40,11 @@
 
     live = new LiveSource({
       onSnapshot: (s) => store.applySnapshot(s),
-      onRequest: (r) => store.appendRequest(r),
+      onRequest: (r) => {
+        // Respect stream pause: snapshot data still arrives (so pool stats
+        // stay current), but the request ring ignores new rows while paused.
+        if (!store.streamPaused) store.appendRequest(r);
+      },
       onStatus: (s) => (store.liveStatus = s),
     });
     live.start();
@@ -52,28 +59,16 @@
         paletteOpen = !paletteOpen;
         return;
       }
-      // Esc always works, even while typing in the palette or search.
       if (e.key === "Escape") {
-        if (paletteOpen) {
-          paletteOpen = false;
-          return;
-        }
-        if (importOpen) {
-          importOpen = false;
-          return;
-        }
-        if (sheetOpen) {
-          sheetOpen = false;
-          return;
-        }
+        if (paletteOpen) { paletteOpen = false; return; }
+        if (importOpen) { importOpen = false; return; }
+        if (sheetOpen) { sheetOpen = false; return; }
         if (store.selectedRequestId || store.selectedAccountId) {
           store.selectRequest(null);
           store.selectAccount(null);
           return;
         }
-        if (inEdit) {
-          (t as HTMLElement).blur();
-        }
+        if (inEdit) (t as HTMLElement).blur();
         return;
       }
       if (inEdit) return;
@@ -86,6 +81,12 @@
       } else if (e.key === "?") {
         e.preventDefault();
         sheetOpen = !sheetOpen;
+      } else if (e.key === " ") {
+        // Space pauses the request feed when we're on Live.
+        if (store.view === "live") {
+          e.preventDefault();
+          store.togglePause();
+        }
       }
     };
     window.addEventListener("keydown", onKey);
@@ -96,7 +97,6 @@
     };
   });
 
-  // URL hash sync — write whenever filters change.
   $effect(() => {
     writeHash(store.filters);
   });
@@ -135,6 +135,16 @@
       store.setFilter("onlyCooldown", false);
       store.setFilter("statusRange", "all");
       store.pushToast("ok", "filters cleared");
+    } else if (id === "view:live" || id === "view:pool" || id === "view:metrics") {
+      paletteOpen = false;
+      const v = id.slice("view:".length) as "live" | "pool" | "metrics";
+      type VtDoc = Document & { startViewTransition?: (cb: () => void) => void };
+      const d = document as VtDoc;
+      if (d.startViewTransition) d.startViewTransition(() => store.setView(v));
+      else store.setView(v);
+    } else if (id === "action:pause-feed") {
+      paletteOpen = false;
+      store.togglePause();
     } else if (id.startsWith("account:")) {
       paletteOpen = false;
       store.selectAccount(id.slice("account:".length));
@@ -149,16 +159,21 @@
   <Topbar onOpenPalette={() => (paletteOpen = true)} onOpenImport={() => (importOpen = true)} />
 
   <main class="shell__main" id="main">
-    <section class="shell__pulse">
-      <PoolPulse />
-    </section>
-    <section class="shell__board">
-      <AccountBoard />
-      <ActivityLedger />
-    </section>
-    <section class="shell__stream">
-      <RequestStream />
-    </section>
+    {#if store.view === "live"}
+      <LiveStream>
+        {#snippet rail()}<LiveRail />{/snippet}
+      </LiveStream>
+    {:else if store.view === "pool"}
+      <section class="view view--pool" id="view-pool" aria-label="account pool">
+        <div class="view__pool-inner">
+          <PoolPulse />
+          <AccountBoard />
+          <ActivityLedger />
+        </div>
+      </section>
+    {:else}
+      <MetricsView />
+    {/if}
   </main>
 
   <StatusRibbon />
@@ -177,31 +192,30 @@
     grid-template-rows: auto 1fr auto;
   }
   .shell__main {
+    min-block-size: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .view--pool {
+    flex: 1;
+    min-block-size: 0;
+    overflow-y: auto;
+    view-transition-name: main-view;
+  }
+  .view__pool-inner {
     max-inline-size: var(--app-max);
     inline-size: 100%;
     margin-inline: auto;
     padding: var(--sp-5) var(--app-pad) var(--sp-8);
-    display: grid;
-    gap: var(--sp-5);
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .shell__pulse {
-    grid-column: 1 / -1;
-  }
-  @media (min-width: 1120px) {
-    .shell__main {
-      grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-      gap: var(--sp-5) var(--sp-6);
-    }
-    .shell__pulse {
-      grid-column: 1 / -1;
-    }
-  }
-  .shell__board,
-  .shell__stream {
-    min-inline-size: 0;
     display: flex;
     flex-direction: column;
     gap: var(--sp-5);
+  }
+
+  /* View Transitions — 240ms cross-fade the three top-level views. */
+  :global(::view-transition-old(main-view)),
+  :global(::view-transition-new(main-view)) {
+    animation-duration: var(--motion-duration);
+    animation-timing-function: var(--motion-easing);
   }
 </style>

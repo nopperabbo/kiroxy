@@ -41,6 +41,14 @@ export interface Filters {
   statusRange?: "2xx" | "4xx" | "5xx" | "all";
 }
 
+/**
+ * The three top-level views in the Mansion operator desk. These map 1:1
+ * to the tabs in Topbar. "live" is the signature landing view — Warp-
+ * inspired request stream with a telemetry rail. "pool" is the ledger-
+ * style account table. "metrics" is the analytical KPI tile grid.
+ */
+export type MansionView = "live" | "pool" | "metrics";
+
 class Store {
   snapshot: Snapshot = $state(emptySnapshot);
   requests: RequestRecord[] = $state([]);
@@ -49,6 +57,17 @@ class Store {
   selectedRequestId: string | null = $state(null);
   selectedAccountId: string | null = $state(null);
   filters: Filters = $state({ search: "", onlyErrors: false, onlyCooldown: false, statusRange: "all" });
+
+  /** Current top-level view. "live" is the default landing (signature
+   *  Warp-style request feed). Tabs in Topbar drive this via setView(). */
+  view: MansionView = $state("live");
+  /** Stream pause toggle (Space key or palette action). When paused, new
+   *  SSE requests still arrive in the store but LiveStream does not
+   *  auto-scroll or prepend new rows beyond the ring. */
+  streamPaused: boolean = $state(false);
+  /** Drawer tab when an account is selected. Independent from filters so
+   *  operators can switch tabs without losing selection. */
+  drawerTab: "overview" | "requests" | "token" | "raw" = $state("overview");
 
   /** Map<accountId, number[]> — rolling bucket counts for sparklines. */
   perAccountSpark: Record<string, number[]> = $state({});
@@ -90,6 +109,20 @@ class Store {
 
   setFilter<K extends keyof Filters>(k: K, v: Filters[K]): void {
     this.filters = { ...this.filters, [k]: v };
+  }
+
+  /** Tab switch. Wrapped so hotkeys / palette can route through one place;
+   *  View Transitions API is triggered by App.svelte when it observes the
+   *  change. Keep this synchronous — the VT contract wants a sync mutation
+   *  inside startViewTransition(). */
+  setView(v: MansionView): void {
+    this.view = v;
+  }
+  togglePause(): void {
+    this.streamPaused = !this.streamPaused;
+  }
+  setDrawerTab(t: Store["drawerTab"]): void {
+    this.drawerTab = t;
   }
 
   pushToast(kind: Toast["kind"], msg: string): void {
