@@ -137,6 +137,7 @@ func (s *Server) Handler() http.Handler {
 	s.registerInboundKeyHandlers(mux)
 	s.registerSettingsHandler(mux)
 	s.registerToolsHandlers(mux)
+	s.registerModelsHandler(mux)
 	next.Register(mux)    // /_variants/dashboard-next (legacy /dashboard-next 302s)
 	mansion.Register(mux) // /dashboard-mansion: canonical operator dashboard (post-v1.0.0)
 	// Phase V taste-exploration variants, archived under /_variants/<slug>
