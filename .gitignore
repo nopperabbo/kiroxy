@@ -37,3 +37,7 @@ tools/onboard/kiro_tokens.json
 /refresh_tokens_single.txt
 /refresh_token_smoke.txt
 /*.triplet.txt
+
+# enowxai UI reference capture (credentials-bearing; do NOT commit)
+research-v3/enowx-reference/
+
