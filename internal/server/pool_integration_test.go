@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -94,7 +95,10 @@ func setupPoolServer(t *testing.T, ids ...string) (*httptest.Server, *trackingKi
 	return ts, stub, p, v
 }
 
-func postMessages(t *testing.T, baseURL string) *http.Response {
+// postMessages exercises the /v1/messages endpoint. The sessionID arg
+// lets callers vary the X-Claude-Code-Session-Id header so session
+// stickiness doesn't pin every request in the test to one account.
+func postMessages(t *testing.T, baseURL, sessionID string) *http.Response {
 	t.Helper()
 	body := `{
 		"model":"claude-sonnet-4-5",
@@ -103,7 +107,7 @@ func postMessages(t *testing.T, baseURL string) *http.Response {
 	}`
 	req, _ := http.NewRequest("POST", baseURL+"/v1/messages", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Claude-Code-Session-Id", "m5-pool")
+	req.Header.Set("X-Claude-Code-Session-Id", sessionID)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("post: %v", err)
@@ -111,13 +115,20 @@ func postMessages(t *testing.T, baseURL string) *http.Response {
 	return resp
 }
 
-// TestM5_LRURotationAcross3AccountsViaHTTP is the M5 gate test.
-func TestM5_LRURotationAcross3AccountsViaHTTP(t *testing.T) {
+// TestM5_WeightedPickDistributesAcross3AccountsViaHTTP is the M5 gate
+// test. Post-v1.1 pool uses weighted random selection (equal weights
+// for fresh accounts), so distribution is statistical rather than
+// strict LRU. Every account must be picked; the spread must stay
+// within ±50% of the uniform expectation across N=60 calls.
+func TestM5_WeightedPickDistributesAcross3AccountsViaHTTP(t *testing.T) {
 	ts, stub, _, _ := setupPoolServer(t, "a", "b", "c")
 
-	const N = 30
-	for range N {
-		resp := postMessages(t, ts.URL)
+	const N = 60
+	for i := 0; i < N; i++ {
+		// Distinct session IDs so stickiness doesn't pin every call to
+		// the same account. With 60 unique IDs each writes its own pin
+		// at the weighted-selector's fallback account.
+		resp := postMessages(t, ts.URL, fmt.Sprintf("sess-%d", i))
 		if resp.StatusCode != 200 {
 			t.Fatalf("status=%d", resp.StatusCode)
 		}
@@ -135,13 +146,13 @@ func TestM5_LRURotationAcross3AccountsViaHTTP(t *testing.T) {
 	}
 	for _, id := range []string{"at-a", "at-b", "at-c"} {
 		if counts[id] == 0 {
-			t.Errorf("LRU never picked token %s", id)
+			t.Errorf("weighted pick never chose token %s; counts=%v", id, counts)
 		}
 	}
-	want := N / 3
+	// Uniform expectation = 20 per account; ±50% = [10, 30].
 	for tok, n := range counts {
-		if n < want-1 || n > want+1 {
-			t.Errorf("LRU imbalance: %s picked %d times, want ~%d", tok, n, want)
+		if n < 10 || n > 30 {
+			t.Errorf("weighted distribution imbalance: %s picked %d times, want 10-30", tok, n)
 		}
 	}
 }
@@ -158,8 +169,8 @@ func TestM5_FailedAccountSkippedAfter3Errors(t *testing.T) {
 	p.RecordFailure("b", pool.FailureQuota, "429 quota")
 
 	counts := map[string]int{}
-	for range 30 {
-		resp := postMessages(t, ts.URL)
+	for i := 0; i < 30; i++ {
+		resp := postMessages(t, ts.URL, fmt.Sprintf("sess-%d", i))
 		_ = resp.Body.Close()
 	}
 	for _, tok := range stub.seenTokens() {

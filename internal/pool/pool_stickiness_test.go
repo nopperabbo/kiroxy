@@ -54,16 +54,18 @@ func TestPool_DifferentSessionsCanHitDifferentAccounts(t *testing.T) {
 	}
 }
 
-func TestPool_EmptySessionIDUsesLRU(t *testing.T) {
+func TestPool_EmptySessionIDUsesWeighted(t *testing.T) {
 	p, v := newPoolWithVault(t)
 	seed(t, p, v, "a", "b", "c")
 	stick := NewStickiness(time.Minute)
 	t.Cleanup(stick.Stop)
 	p.SetStickiness(stick)
 
-	// Context without session ID: behavior must match legacy LRU rotation.
+	// Context without session ID: behavior must exercise the weighted-
+	// selection path. With equal fresh weights all 3 accounts must be
+	// picked at least once across 60 calls (P(missing one) ≈ (2/3)^60 ≈ 1e-11).
 	counts := map[string]int{}
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 60; i++ {
 		r, err := p.Pick(context.Background(), v)
 		if err != nil {
 			t.Fatalf("pick %d: %v", i, err)
@@ -72,7 +74,7 @@ func TestPool_EmptySessionIDUsesLRU(t *testing.T) {
 	}
 	for _, id := range []string{"a", "b", "c"} {
 		if counts[id] == 0 {
-			t.Fatalf("empty session must exercise full LRU; account %s never picked; counts=%v", id, counts)
+			t.Fatalf("empty session must exercise full account set; account %s never picked; counts=%v", id, counts)
 		}
 	}
 }

@@ -52,28 +52,29 @@ func TestPick_EmptyPoolReturnsErrNoAccount(t *testing.T) {
 	}
 }
 
-func TestPick_LRUOrderAcross3Accounts(t *testing.T) {
+func TestPick_DistributesAcross3Accounts(t *testing.T) {
+	// Under weighted random (equal weights for fresh accounts), selection
+	// is non-deterministic per call, but every account must be picked
+	// somewhat evenly over a large sample. With 3 accounts and 300 picks,
+	// each account should land near 100 picks (chi² well within tolerance).
 	p, v := newPoolWithVault(t)
 	seed(t, p, v, "a", "b", "c")
 
-	pickID := func() string {
+	counts := map[string]int{}
+	for i := 0; i < 300; i++ {
 		r, err := p.Pick(context.Background(), v)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return r.ID
+		counts[r.ID]++
 	}
-
-	first := pickID()
-	second := pickID()
-	third := pickID()
-	if first == second || first == third || second == third {
-		t.Fatalf("LRU gave duplicate picks across 3 accounts: %s %s %s", first, second, third)
+	if len(counts) != 3 {
+		t.Fatalf("expected all 3 accounts exercised, got %v", counts)
 	}
-
-	fourth := pickID()
-	if fourth != first {
-		t.Fatalf("4th pick should cycle back to LRU-oldest (%s), got %s", first, fourth)
+	for _, id := range []string{"a", "b", "c"} {
+		if counts[id] < 50 || counts[id] > 150 {
+			t.Errorf("account %s share %d out of 300 drifts outside [50,150]; counts=%v", id, counts[id], counts)
+		}
 	}
 }
 
@@ -95,8 +96,12 @@ func TestRecordFailure_QuotaCooldownSkipsAccount(t *testing.T) {
 
 	time.Sleep(150 * time.Millisecond)
 
+	// After QuotaCooldown the hard gate lifts, but the health ring still
+	// records the recent rate-limit event. Give it a larger window to
+	// pick 'a' via weighted random: with weight(a) ≈ 0.1 * low-rate and
+	// weight(b) ≈ 1.0, P(a) ≈ 0.1; 60 trials gives P(never picked) ≈ 0.002.
 	sawA := false
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 60; i++ {
 		r, err := p.Pick(context.Background(), v)
 		if err != nil {
 			t.Fatal(err)
@@ -175,14 +180,14 @@ func TestList_StableOrder(t *testing.T) {
 	}
 }
 
-func TestM5_LoadTestLRURotationAndFailedSkip(t *testing.T) {
+func TestM5_WeightedPickSkipsFailedAccount(t *testing.T) {
 	p, v := newPoolWithVault(t)
 	seed(t, p, v, "a", "b", "c")
 
 	p.RecordFailure("b", FailureQuota, "429")
 
 	counts := map[string]int{}
-	for range 30 {
+	for range 60 {
 		r, err := p.Pick(context.Background(), v)
 		if err != nil {
 			t.Fatalf("pick: %v", err)
@@ -196,7 +201,9 @@ func TestM5_LoadTestLRURotationAndFailedSkip(t *testing.T) {
 	if counts["a"] == 0 || counts["c"] == 0 {
 		t.Errorf("expected a and c each picked at least once; counts=%+v", counts)
 	}
-	if diff := counts["a"] - counts["c"]; diff < -1 || diff > 1 {
-		t.Errorf("expected LRU to balance a vs c within 1; counts=%+v", counts)
+	// Under weighted random with equal fresh weights, a vs c should
+	// balance within statistical tolerance ±50% across 60 trials.
+	if diff := counts["a"] - counts["c"]; diff < -30 || diff > 30 {
+		t.Errorf("a vs c imbalance beyond ±50%% of 60 picks; counts=%+v", counts)
 	}
 }

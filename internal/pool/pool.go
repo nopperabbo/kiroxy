@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"sort"
 	"sync"
 	"time"
@@ -73,6 +74,11 @@ type Pool struct {
 	health   map[string]*HealthState
 	policy   Policy
 
+	// ext holds rolling AccountHealth used for the weighted-random
+	// selection path. Sibling to `health`, not a replacement: `health`
+	// drives cooldown gating, `ext` drives soft weighting.
+	ext map[string]*AccountHealth
+
 	// metricsSink is nil-safe. When set, cooldown transitions emit
 	// account_cooldowns_total increments keyed by reason.
 	metricsSink *metrics.Sink
@@ -80,6 +86,10 @@ type Pool struct {
 	// stickiness pins session ID -> account for a short TTL. Nil when
 	// disabled; Pool.Pick falls back to the normal LRU scan.
 	stickiness *Stickiness
+
+	// rng is used by the weighted-pick path. Not concurrency-safe on its
+	// own; every access must hold p.mu.
+	rng *rand.Rand
 }
 
 // New returns an empty Pool with the given policy.
@@ -87,7 +97,11 @@ func New(policy Policy) *Pool {
 	return &Pool{
 		accounts: make(map[string]*Account),
 		health:   make(map[string]*HealthState),
+		ext:      make(map[string]*AccountHealth),
 		policy:   policy,
+		// Seed is process-unique; deterministic tests override via
+		// Pool.setRNGForTest.
+		rng: rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano()>>32))),
 	}
 }
 
@@ -118,6 +132,7 @@ func (p *Pool) Add(a Account) {
 	cp := a
 	p.accounts[a.ID] = &cp
 	p.health[a.ID] = &HealthState{}
+	p.ext[a.ID] = newAccountHealth()
 }
 
 // Remove deletes an account. No-op if absent. Also releases any
@@ -127,6 +142,7 @@ func (p *Pool) Remove(id string) {
 	stick := p.stickiness
 	delete(p.accounts, id)
 	delete(p.health, id)
+	delete(p.ext, id)
 	p.mu.Unlock()
 	if stick != nil {
 		stick.Release(id)
@@ -202,10 +218,74 @@ func (p *Pool) Pick(ctx context.Context, vault *tokenvault.Vault) (*PickResult, 
 	p.mu.Lock()
 	now := time.Now()
 
-	// selectLRU scans the current account set for the LRU-oldest healthy
-	// candidate. Called under p.mu; may be invoked twice in the stickiness
-	// path (once as fallback inside Stickiness.Pick, once on stale-pin
-	// re-pick) but p.mu is held throughout so the scan is consistent.
+	// selectWeighted scans the current account set, computes each
+	// candidate's health weight, and returns one by weighted random
+	// selection. Falls back to LRU-oldest when every live candidate has
+	// collapsed to the weight floor (so we still pick SOMETHING
+	// deterministic-ish rather than RNG-tossing among weight=0.01s).
+	// Called under p.mu.
+	selectWeighted := func() *Account {
+		type cand struct {
+			a *Account
+			w float64
+		}
+		var cands []cand
+		for _, a := range p.accounts {
+			if !a.Enabled {
+				continue
+			}
+			h := p.health[a.ID]
+			if h != nil && h.CooldownUntil.After(now) {
+				continue
+			}
+			w := weightCeil
+			if ah := p.ext[a.ID]; ah != nil {
+				w = ah.Weight(now)
+			}
+			cands = append(cands, cand{a: a, w: w})
+		}
+		if len(cands) == 0 {
+			return nil
+		}
+
+		// Total weight sanity check: if every candidate is at or near the
+		// floor (0.01), weighted random would effectively be uniform
+		// random with high variance. Prefer deterministic LRU in that
+		// degenerate case.
+		var sumW float64
+		degenerate := true
+		for _, c := range cands {
+			sumW += c.w
+			if c.w > weightFloor*2 {
+				degenerate = false
+			}
+		}
+		if degenerate {
+			var best *Account
+			for _, c := range cands {
+				if best == nil || c.a.LastUsed.Before(best.LastUsed) {
+					best = c.a
+				}
+			}
+			return best
+		}
+
+		target := p.rng.Float64() * sumW
+		for _, c := range cands {
+			target -= c.w
+			if target <= 0 {
+				return c.a
+			}
+		}
+		// Floating-point drift can leave target > 0 after the loop;
+		// return the last candidate for correctness.
+		return cands[len(cands)-1].a
+	}
+
+	// selectLRU is kept for the stickiness fallback path so a fresh
+	// session writes its pin at an account with predictable semantics.
+	// Once the pin exists, all subsequent picks for that session bypass
+	// this scan entirely.
 	selectLRU := func() *Account {
 		var best *Account
 		for _, a := range p.accounts {
@@ -249,7 +329,7 @@ func (p *Pool) Pick(ctx context.Context, vault *tokenvault.Vault) (*PickResult, 
 			}
 		}
 	} else {
-		best = selectLRU()
+		best = selectWeighted()
 	}
 
 	if best == nil {
@@ -274,8 +354,15 @@ func (p *Pool) Pick(ctx context.Context, vault *tokenvault.Vault) (*PickResult, 
 	return result, nil
 }
 
-// RecordSuccess clears consecutive errors and cooldown for the account.
+// RecordSuccess clears consecutive errors and cooldown for the account
+// and pushes a success into the rolling health ring.
 func (p *Pool) RecordSuccess(id string) {
+	p.RecordSuccessWithLatency(id, 0)
+}
+
+// RecordSuccessWithLatency is RecordSuccess that also feeds the EWMA
+// latency tracker. Pass 0 to skip the latency update.
+func (p *Pool) RecordSuccessWithLatency(id string, latency time.Duration) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	h := p.health[id]
@@ -285,6 +372,9 @@ func (p *Pool) RecordSuccess(id string) {
 	h.Consecutive = 0
 	h.CooldownUntil = time.Time{}
 	h.LastError = ""
+	if ah := p.ext[id]; ah != nil {
+		ah.recordSuccess(time.Now(), latency)
+	}
 }
 
 // FailureKind classifies an upstream error for cooldown purposes.
@@ -297,7 +387,9 @@ const (
 
 // RecordFailure increments the account's error counters and sets a cooldown.
 // Quota errors use the longer QuotaCooldown; transient errors accumulate
-// toward ConsecutiveErrorThreshold before cooling down.
+// toward ConsecutiveErrorThreshold before cooling down. Also feeds the
+// rolling health ring so subsequent weighted selection biases away from
+// the failing account even before the cooldown threshold trips.
 func (p *Pool) RecordFailure(id string, kind FailureKind, reason string) {
 	p.mu.Lock()
 	a := p.accounts[id]
@@ -313,6 +405,9 @@ func (p *Pool) RecordFailure(id string, kind FailureKind, reason string) {
 	}
 	h.Consecutive++
 	h.LastError = reason
+	if ah := p.ext[id]; ah != nil {
+		ah.recordFailure(time.Now(), kind)
+	}
 	// Cooldown was either already present or newly set; we only want to
 	// emit the metric on the transition from "no cooldown" (or expired)
 	// to a fresh future cooldown, so stash the previous value.
@@ -356,6 +451,45 @@ func (p *Pool) RecordFailure(id string, kind FailureKind, reason string) {
 	if stick != nil {
 		stick.Release(id)
 	}
+}
+
+// RecordLatency blends one latency sample into the per-account EWMA
+// without altering success/failure state. Useful for tracking
+// first-byte / time-to-first-event before the final outcome is
+// known. No-op if the account has no health slot.
+func (p *Pool) RecordLatency(id string, latency time.Duration) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if ah := p.ext[id]; ah != nil {
+		ah.recordLatency(latency)
+	}
+}
+
+// HealthSnapshots returns a slice of per-account HealthSnapshot for
+// the dashboard / debug endpoints. Ordered by account ID for stable
+// output. O(N) over the account map; not intended for hot paths.
+func (p *Pool) HealthSnapshots() []HealthSnapshot {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	now := time.Now()
+	out := make([]HealthSnapshot, 0, len(p.accounts))
+	for id := range p.accounts {
+		ah := p.ext[id]
+		if ah == nil {
+			out = append(out, HealthSnapshot{AccountID: id, SuccessRate: 1.0, Weight: weightCeil})
+			continue
+		}
+		out = append(out, HealthSnapshot{
+			AccountID:        id,
+			SuccessRate:      ah.SuccessRate(),
+			Weight:           ah.Weight(now),
+			RequestsInWindow: ah.RequestsInWindow(now),
+			AvgLatency:       ah.AvgLatency,
+			LastRateLimit:    ah.LastRateLimit,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].AccountID < out[j].AccountID })
+	return out
 }
 
 // ---- TokenGetter glue ----
