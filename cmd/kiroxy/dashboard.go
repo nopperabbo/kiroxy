@@ -57,6 +57,17 @@ func (d *dashboardProvider) DashboardSnapshot(ctx context.Context) server.Dashbo
 				if !hs.LastRateLimit.IsZero() {
 					row.LastRateLimit = hs.LastRateLimit.Format(time.RFC3339)
 				}
+				if hs.UsageKnown {
+					row.UsageKnown = true
+					row.UsageCap = hs.UsageCap
+					row.UsageUsed = hs.UsageUsed
+					row.UsageRemaining = hs.UsageRemaining
+					row.UsagePercentUsed = hs.UsagePercentUsed
+					row.UsageDaysUntilRst = hs.UsageDaysUntilRst
+					if !hs.UsageLastPolled.IsZero() {
+						row.UsageLastPolled = hs.UsageLastPolled.Format(time.RFC3339)
+					}
+				}
 			}
 			state.Accounts = append(state.Accounts, row)
 		}
