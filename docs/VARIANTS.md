@@ -1,13 +1,32 @@
 # VARIANTS.md — six dashboards, six tastes
 
-> Phase V ships six distinct dashboard variants alongside the existing
-> `/dashboard` (classic), `/dashboard-next` (cyan-teal minimal), and
-> `/dashboard-mansion` (warm amber operator-desk). This document is the
-> operator's map: a philosophy-first comparison matrix plus a chooser
-> guide for picking which variant becomes the v1.3 canonical rebuild.
+> **Status:** Post-v1.0.0 archive. Mansion won and is now the canonical
+> dashboard at `/dashboard-mansion`; `/dashboard` 302-redirects there.
+> The six Phase V exploration variants, the `dashboard-next` prototype,
+> and the original hand-authored `/dashboard` shell are retained under
+> `/_variants/<slug>` for historical reference and future taste
+> comparisons. Nothing has been deleted — every variant is still fully
+> functional at its new archive URL.
 >
-> **Status:** Phase V drafted 2026-05-13. Not a style guide — a taste
-> exploration. Each variant commits to ONE philosophy without blending.
+> **Canonical vs archive:**
+>
+> | URL | Status | Notes |
+> |---|---|---|
+> | `/dashboard-mansion` | **canonical** | production dashboard, Linear-grade motion discipline ported in post-v1.0.0 polish |
+> | `/dashboard` | redirect | 302s to `/dashboard-mansion` |
+> | `/_variants/brutal` | archive | terminal / htop aesthetic |
+> | `/_variants/paper` | archive | ink-on-cream / document aesthetic |
+> | `/_variants/nord` | archive | arctic-calm palette |
+> | `/_variants/neon` | archive | cyberpunk grafana aesthetic |
+> | `/_variants/muji` | archive | zero-JS server-rendered |
+> | `/_variants/linear-premium` | archive | refined SaaS dark + indigo |
+> | `/_variants/dashboard-next` | archive | experimental 2026-stack prototype |
+> | `/_variants/dashboard-legacy` | archive | original hand-authored /dashboard shell |
+>
+> Legacy `/dashboard-<slug>` URLs continue to resolve via 302 so
+> existing bookmarks keep working. The `/dashboard/api/state` data
+> endpoint remains at its original URL — it is the shared data source
+> all archived variants consume.
 >
 > **Companion documents:**
 > - `.sisyphus/plans/variant-*-manifesto.md` — the six locked
@@ -16,6 +35,24 @@
 >   self-graded rubric against `docs/IMPLEMENTATION_RUBRIC.md`
 > - `docs/VISION.md` — persona + product vibe (the benchmark)
 > - `docs/DESIGN_SYSTEM.md` — mansion's canonical token system
+
+---
+
+## Why Mansion won
+
+The grading question below ("did each variant feel DIFFERENT, or did
+they feel like 6 color themes of the same layout?") produced a clear
+ranking on four axes: data density (can the operator see their pool
+and live stream in one viewport?), keyboard-first navigation, taste
+coherence (no aesthetic whiplash between panels), and motion
+discipline. Mansion was the only variant that scored in the top
+quartile on all four without any debts.
+
+The post-v1.0.0 polish commit `polish(mansion): Linear-like motion
+discipline + focus ring` closed the only gap the grading surfaced —
+motion was the single axis where Linear-Premium scored higher. The
+winning philosophy is therefore "Mansion's data density + Linear's
+motion grammar, in the same warm charcoal + aged-brass palette."
 
 ---
 

@@ -227,10 +227,38 @@ Key patterns donated from:
 | GET | `/readyz`  | required | Readiness JSON; 503 if vault/pool down |
 | POST | `/v1/messages` | required | Anthropic Messages API (streaming + non-streaming) |
 | POST | `/v1/messages/count_tokens` | required | tiktoken-based token count |
+| GET | `/dashboard` | loopback bypass | 302 redirect to the canonical `/dashboard-mansion` |
+| GET | `/dashboard-mansion` | loopback bypass | Canonical operator dashboard (Mansion) |
+| GET | `/dashboard/api/state` | loopback bypass | Pool + request snapshot JSON (shared by all dashboard variants) |
+| GET | `/_variants/<slug>` | loopback bypass | Archived dashboards: `brutal`, `paper`, `nord`, `neon`, `muji`, `linear-premium`, `dashboard-next`, `dashboard-legacy` |
 
 Pass API key as either `X-Api-Key: <key>` or `Authorization: Bearer <key>`.
 
 Every response carries `X-Request-Id`; clients may set their own via the same header.
+
+---
+
+## Dashboard
+
+kiroxy ships a single canonical dashboard plus an archive of historical
+design variants.
+
+- **Canonical:** `GET /dashboard-mansion` — the "operator desk" UI.
+  Warm charcoal + aged-brass amber, JetBrains Mono for data density,
+  Linear-grade motion discipline (View Transitions, @starting-style
+  enters, amber focus ring). Built with Svelte 5 + Vite; the bundle is
+  embedded in the binary so a fresh clone works with `go build` alone.
+- **Redirect:** `GET /dashboard` — 302s to `/dashboard-mansion` so
+  existing bookmarks and scripts keep working.
+- **Archive:** `GET /_variants/<slug>` — eight historical variants
+  (`brutal`, `paper`, `nord`, `neon`, `muji`, `linear-premium`,
+  `dashboard-next`, `dashboard-legacy`) kept fully functional for
+  reference. Each one commits to one taste without blending; see
+  [`docs/VARIANTS.md`](./docs/VARIANTS.md) for the philosophy matrix.
+
+Auth behavior for all dashboard routes: loopback requests skip the
+`KIROXY_API_KEY` check (personal-use UX). Non-loopback access still
+requires the key via `X-Api-Key` or `Authorization: Bearer`.
 
 ---
 
