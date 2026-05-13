@@ -113,5 +113,9 @@
     <path d="M8 8 L14 8 L14 10 M12 8 L12 10" />
   {:else if name === "shield"}
     <path d="M8 2 L13 4 L13 8 A6 6 0 0 1 8 14 A6 6 0 0 1 3 8 L3 4 Z" />
+  {:else if name === "book"}
+    <path d="M3 3 L3 13 Q3 12 4 12 L13 12 L13 2 L4 2 Q3 2 3 3 Z" />
+    <path d="M3 12 Q3 13 4 13 L13 13" />
+    <path d="M6 5 L11 5" />
   {/if}
 </svg>
