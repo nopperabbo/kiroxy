@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en" data-theme="brutal">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="kiroxy dashboard — brutal/terminal variant">
+  <title>kiroxy · BRUTAL</title>
+  <link rel="stylesheet" href="/dashboard-brutal/assets/app.css">
+</head>
+<body>
+  <!--
+    brutal variant — terminal/htop aesthetic.
+    Philosophy: information is the product, chrome is the enemy.
+    Pure black canvas + phosphor green, monospace everywhere, 0px radii,
+    ASCII box-drawing characters as dividers. Status is a single glyph.
+    See .sisyphus/plans/variant-brutal-manifesto.md for the full spec.
+  -->
+  <main id="app" role="main" aria-label="kiroxy brutal dashboard">
+    <header class="head">
+      <h1>KIROXY // <span class="sig">POOL MONITOR</span></h1>
+      <div class="meta">
+        <span data-ver>VER -</span><span class="sep">│</span>
+        <span data-upt>UPT -</span><span class="sep">│</span>
+        <span data-ready>RDY <em data-ready-glyph>·</em></span><span class="sep">│</span>
+        <span data-vault>VLT <em data-vault-glyph>·</em></span><span class="sep">│</span>
+        <span data-live>LIVE <em class="cursor" aria-hidden="true">▌</em></span>
+      </div>
+    </header>
+
+    <hr class="rule">
+
+    <section class="panel" aria-labelledby="pool-head">
+      <h2 id="pool-head">POOL ── ACCOUNTS</h2>
+      <pre class="ascii-head" aria-hidden="true">┌────────────────────────────────┬─────────┬────────┬────────┬──────────────────────────────┐</pre>
+      <div class="tbl-head" role="row">
+        <span>ID</span>
+        <span>ENABLED</span>
+        <span>REQS</span>
+        <span>ERRS</span>
+        <span>STATE / COOLDOWN</span>
+      </div>
+      <pre class="ascii-head" aria-hidden="true">├────────────────────────────────┼─────────┼────────┼────────┼──────────────────────────────┤</pre>
+      <div id="tbl" class="tbl" role="table" aria-label="account pool" aria-live="polite"></div>
+      <pre class="ascii-head" aria-hidden="true">└────────────────────────────────┴─────────┴────────┴────────┴──────────────────────────────┘</pre>
+      <p class="empty" id="empty" hidden>NO ACCOUNTS. RUN: kiroxy import-json &lt; tokens.json</p>
+    </section>
+
+    <hr class="rule">
+
+    <section class="panel" aria-labelledby="sys-head">
+      <h2 id="sys-head">SYSTEM ── HEALTH</h2>
+      <div class="sys">
+        <span>READINESS</span><span class="dot" aria-hidden="true">...</span><span data-sys-ready>·</span>
+        <span>VAULT</span><span class="dot" aria-hidden="true">...</span><span data-sys-vault>·</span>
+        <span>TOTAL REQ</span><span class="dot" aria-hidden="true">...</span><span data-sys-req>0</span>
+        <span>TOTAL ERR</span><span class="dot" aria-hidden="true">...</span><span data-sys-err>0</span>
+      </div>
+    </section>
+
+    <hr class="rule">
+
+    <section class="panel" aria-labelledby="cmd-head">
+      <h2 id="cmd-head">COMMANDS ── (k) PALETTE · (i) IMPORT · (r) REFRESH · (?) HELP</h2>
+      <p class="hint">SHORTCUTS ARE SINGLE KEYS. NO MODIFIERS.</p>
+    </section>
+
+    <!-- Command palette (no backdrop, full replacement of the viewport). -->
+    <dialog id="palette" class="palette" aria-label="command palette">
+      <form method="dialog" class="palette-form">
+        <label>
+          <span class="prompt">&gt;</span>
+          <input id="palette-input" name="q" autocomplete="off"
+                 spellcheck="false" placeholder="command..." />
+        </label>
+        <ul id="palette-list" class="palette-list" role="listbox"></ul>
+        <p class="hint">[enter] run · [esc] close</p>
+      </form>
+    </dialog>
+
+    <!-- Import pane: static instructions only (backend /api/import is v1.1). -->
+    <dialog id="import" class="palette" aria-label="import instructions">
+      <form method="dialog" class="palette-form">
+        <h3>IMPORT ── ACCOUNTS</h3>
+        <p>BACKEND /dashboard/api/import IS v1.1 (404 TODAY). USE CLI:</p>
+        <pre class="code">$ kiroxy import-json &lt; tokens.json</pre>
+        <p class="hint">[esc] close</p>
+      </form>
+    </dialog>
+
+    <!-- Help pane -->
+    <dialog id="help" class="palette" aria-label="keyboard shortcuts">
+      <form method="dialog" class="palette-form">
+        <h3>SHORTCUTS</h3>
+        <pre class="code">
+ k  open command palette
+ i  open import pane
+ r  refresh snapshot
+ ?  toggle this help
+ESC close any pane
+        </pre>
+        <p class="hint">[esc] close</p>
+      </form>
+    </dialog>
+
+    <footer class="foot">
+      <span>kiroxy brutal // data: /dashboard/api/state poll 2s</span>
+      <span class="sep">│</span>
+      <span>cf. htop, plan9/acme, aws cli --output table</span>
+    </footer>
+  </main>
+
+  <script type="module" src="/dashboard-brutal/assets/app.js"></script>
+</body>
+</html>

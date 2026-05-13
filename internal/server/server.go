@@ -12,6 +12,7 @@ import (
 	"local/kiroxy/internal/metrics"
 	"local/kiroxy/internal/server/mansion"
 	"local/kiroxy/internal/server/next"
+	"local/kiroxy/internal/server/variants/brutal"
 )
 
 // Options is how main constructs a Server.
@@ -107,6 +108,10 @@ func (s *Server) Handler() http.Handler {
 	s.registerDashboard(mux)
 	next.Register(mux)    // /dashboard-next: experimental 2026-stack alt to /dashboard
 	mansion.Register(mux) // /dashboard-mansion: signature "operator desk" dashboard
+	// Phase V taste-exploration variants. Each is a separate package so the
+	// philosophies stay isolated — see .sisyphus/plans/variant-*-manifesto.md
+	// and docs/VARIANTS.md.
+	brutal.Register(mux) // /dashboard-brutal: terminal / htop aesthetic
 
 	if s.msgSvc != nil {
 		mux.HandleFunc("POST /v1/messages", s.msgSvc.HandleMessages)

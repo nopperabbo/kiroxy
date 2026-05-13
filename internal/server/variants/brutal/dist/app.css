@@ -1,0 +1,248 @@
+/*
+ * brutal variant — terminal aesthetic.
+ *
+ * Philosophy: information is the product, chrome is the enemy.
+ * No gradients, no shadows, no rounded corners, no color beyond
+ * grayscale + a single phosphor-green signal color. Monospace
+ * everywhere, single weight, single size for body. Dividers are
+ * ASCII box-drawing characters in the HTML, not CSS borders.
+ *
+ * See .sisyphus/plans/variant-brutal-manifesto.md for the full spec.
+ */
+
+/* ---- Reset ---- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: "JetBrains Mono", "SF Mono", "Menlo", "Consolas", ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: #d0d0d0;
+  background: #000;
+  font-feature-settings: "tnum", "zero";
+  font-variant-numeric: tabular-nums slashed-zero;
+  min-height: 100dvh;
+  padding: 16px;
+}
+
+/* ---- Tokens ---- */
+:root {
+  --sig: #00ff88;            /* phosphor green — single signal color */
+  --fg: #d0d0d0;             /* body text */
+  --fg-dim: #909090;         /* labels */
+  --fg-xdim: #606060;        /* separators, ASCII glyphs */
+  --fg-ghost: #404040;       /* disabled */
+  --warn: #e0e0e0;           /* warn stays grayscale, prefixed ! */
+  --err: var(--sig);         /* errors are still green: prefix with ✗ not color */
+}
+
+/* Link styling: green, no underline unless hovered. */
+a { color: var(--sig); text-decoration: none; }
+a:hover, a:focus-visible { text-decoration: underline; }
+
+/* Focus ring: square, thick, green — fits the aesthetic. */
+:focus-visible {
+  outline: 2px solid var(--sig);
+  outline-offset: 0;
+  border-radius: 0;
+}
+
+/* ---- Layout ---- */
+#app {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.head h1 {
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg);
+}
+.head h1 .sig { color: var(--sig); }
+.head .meta {
+  margin-top: 4px;
+  color: var(--fg-dim);
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  font-size: 13px;
+}
+.head .meta .sep { color: var(--fg-xdim); }
+.head em { color: var(--sig); font-style: normal; }
+.cursor { animation: cursor-blink 1s steps(2, end) infinite; }
+@keyframes cursor-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .cursor { animation: none; }
+}
+
+.rule {
+  border: 0;
+  height: 0;
+  margin: 16px 0 12px 0;
+  border-top: 0;
+  position: relative;
+}
+.rule::before {
+  content: "─────────────────────────────────────────────────────────────────────────────────────────────────────";
+  color: var(--fg-xdim);
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  display: block;
+}
+
+/* ---- Panels ---- */
+.panel { padding: 0; }
+.panel h2 {
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg);
+  margin-bottom: 6px;
+}
+
+/* ---- Table (ASCII grid) ---- */
+.ascii-head {
+  color: var(--fg-xdim);
+  white-space: pre;
+  overflow: hidden;
+  font-family: inherit;
+  font-size: 13px;
+}
+.tbl-head, .row {
+  display: grid;
+  grid-template-columns: 32ch 9ch 8ch 8ch 1fr;
+  gap: 0;
+  padding: 2px 0;
+  align-items: baseline;
+  border: 0;
+}
+.tbl-head span {
+  color: var(--fg-dim);
+  text-transform: uppercase;
+  padding: 0 2ch;
+}
+.row {
+  color: var(--fg);
+  padding: 3px 0;
+}
+.row > span {
+  padding: 0 2ch;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row .glyph { color: var(--sig); }
+.row .err   { color: var(--sig); }      /* ✗ in green — intentional */
+.row .warn  { color: var(--warn); }
+.row .disabled { color: var(--fg-ghost); }
+
+/* New-row arrival: single-shot 600ms green flash. */
+.row[data-new="1"] {
+  animation: row-flash 0.6s steps(3, end);
+}
+@keyframes row-flash {
+  0%, 100% { background: transparent; }
+  50%      { background: rgba(0, 255, 136, 0.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .row[data-new="1"] { animation: none; }
+}
+
+/* ---- Sys panel ---- */
+.sys {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 6px 12px;
+  align-items: baseline;
+  color: var(--fg-dim);
+}
+.sys > :nth-child(3n+3) { color: var(--sig); }
+.sys .dot { color: var(--fg-xdim); letter-spacing: 2px; }
+
+/* ---- Footer / hint ---- */
+.foot {
+  margin-top: 20px;
+  color: var(--fg-xdim);
+  font-size: 13px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.hint { color: var(--fg-xdim); font-size: 13px; }
+.empty { color: var(--fg-dim); padding: 8px 0; }
+
+/* ---- Palette / dialogs ----
+   Use <dialog>, not custom overlays. No rounded corners, no shadow.
+   Fills viewport minimally; single line input, green prompt. */
+dialog {
+  background: #000;
+  color: var(--fg);
+  border: 1px solid var(--sig);
+  border-radius: 0;
+  padding: 0;
+  min-width: min(560px, 90vw);
+  max-width: 90vw;
+  font-family: inherit;
+  font-size: 13px;
+}
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.75);
+}
+.palette-form { padding: 12px 16px; }
+.palette-form label { display: flex; align-items: center; gap: 6px; }
+.palette-form .prompt { color: var(--sig); }
+.palette-form input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  color: var(--fg);
+  font: inherit;
+  padding: 4px 0;
+  outline: none;
+}
+.palette-form input::placeholder { color: var(--fg-xdim); }
+.palette-list { list-style: none; margin-top: 8px; }
+.palette-list li {
+  padding: 2px 0 2px 14px;
+  color: var(--fg-dim);
+  cursor: pointer;
+}
+.palette-list li[aria-selected="true"] {
+  color: var(--sig);
+  position: relative;
+}
+.palette-list li[aria-selected="true"]::before {
+  content: "▸";
+  color: var(--sig);
+  position: absolute;
+  left: 0;
+}
+.palette-form h3 {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sig);
+  margin-bottom: 6px;
+}
+.code {
+  white-space: pre;
+  color: var(--fg);
+  padding: 6px 0;
+  font-family: inherit;
+}
+
+/* Responsive: on narrow screens, collapse the pool table to stacked. */
+@media (max-width: 760px) {
+  .tbl-head, .row {
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: minmax(20px, auto);
+  }
+  .ascii-head { display: none; }
+}
