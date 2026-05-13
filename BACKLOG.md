@@ -2,9 +2,36 @@
 
 Moved from the build brief / caught by anti-scope-creep during MVP.
 
-Last triaged: 2026-05-12 (post-Phase I).
+Last triaged: 2026-05-13 (post-Phase FEATURE-BOOST).
 
 ---
+
+## Closed in v1.1.0-candidate (Phase FEATURE-BOOST, 2026-05-13)
+
+- **CLOSED: Session stickiness for X-Claude-Code-Session-Id** —
+  `internal/pool/stickiness.go` pins (session’id → account_id) for 60s.
+  Same client conversation stays on one upstream account, preserving
+  prompt-cache locality and Kiro session-state continuity. Pin is
+  released on RecordFailure cooldown, on Pool.Remove, and on Pick-time
+  staleness (cooldown set after the pin was written). Wired into
+  `cmd/kiroxy/main.go` with default 60s TTL; pruner goroutine stopped
+  on graceful shutdown. 16 tests (10 unit + 6 integration). Race-clean.
+- **CLOSED: Weighted LRU pool with health score** —
+  `internal/pool/health.go` adds AccountHealth: 100-slot rolling success
+  ring, 30s-bucket 5min request counter, EWMA latency, rate-limit stamp
+  with 30min cooldown window. Pool.Pick uses weighted-random selection
+  on healthy candidates (LRU fallback when all collapse to floor). Was
+  P3 in the previous list ("Weighted round-robin pool alternative to
+  LRU"). Now active. 12 health unit tests + 4 weighted-pick distribution
+  tests. /dashboard/api/state surfaces success_rate, weight,
+  requests_last_5m, avg_latency_ms, last_rate_limit per account.
+- **CLOSED: Kiro CLI request-shape audit** —
+  `.sisyphus/plans/kiro-cli-shape-audit.md`. 30+ fields across headers,
+  envelope, conversationState, userInputMessage, history, and tools all
+  rate MATCH against research-v4/PROTOCOL.md reference. No drift; no
+  reqconv/kiroclient changes needed. Confirms operator hypothesis ("enowX
+  matches Kiro CLI shape to mitigate rate limits") is moot — shape parity
+  exists; the rate-limit gap is addressed by stickiness + weighted pool.
 
 ## P0 — next release (v1.0.1)
 
@@ -29,7 +56,7 @@ Last triaged: 2026-05-12 (post-Phase I).
 - **P2: Workspace dedupe documentation** (FAIL-008 mitigated, but operators need to know). README + OPERATIONS.md note: "if you're in a Workspace org, use `--email` explicitly".
 - **P2: Optional vault at-rest encryption** (SECURITY.md §4.1 / §10 item 10). User-supplied passphrase, argon2id + XChaCha20-Poly1305 or libsodium SecretBox. Not v1.0.1; target v1.1.
 - **P2: Cosign keyless signatures on releases** (SECURITY.md §4.7). Today checksums only; integrity ≠ authenticity. Target v1.1.
-- **P3: Weighted round-robin pool alternative to LRU** (FAIL-029). Only needed if usage grows; LRU's imbalance is negligible for personal use.
+- **P3: Weighted round-robin pool alternative to LRU** (FAIL-029) — **CLOSED v1.1.0-candidate** (Phase FEATURE-BOOST, 2026-05-13). See top of file.
 - **P3: Request body size metric / warning** (FAIL-016). Operator visibility into payloads approaching Kiro's server-side limit.
 - **P3: Re-run SMOKE_TEST.md or prepend superseded banner** (READINESS.md §5). Current v0.2.1 FAIL report misleads first-time readers.
 - **P3: Wire `DashboardControlProvider` actions** (READINESS.md §1.5). Currently defined but unwired; dashboards read-only. v1.1 target.
@@ -134,4 +161,11 @@ Honest reliability band (documented in `tools/onboard/README.md`):
 - Race-condition test covers account-swap-mid-stream
 - Refactor kirocc's reqconv into smaller files (most are already small but some test files are huge)
 - **Phase 2.5.2: wire singleflight.Group.Do around refreshOne** (SURFACED 2026-05-12 Phase 2.5.1 concurrency test). Current state: `RefreshConfig.group singleflight.Group` field exists at `internal/pool/refresh.go:60` but is NEVER invoked. Concurrent `TokenGetter.GetToken` calls against an expired account all call `refreshOne` independently — first to `vault.Reserve` wins; losing callers receive a wrapped `tokenvault.ErrLockHeld` error instead of waiting for the winner's result. Observable symptom: under sudden burst load (e.g. Claude Code parallel tool calls), N-1 requests of a batch fail with "reserve: another reservation in-flight". Fix: wrap `refreshOne` invocation in `cfg.group.Do(key, func() ...)` inside `TokenGetter.GetToken`; N-1 waiters get the winner's refreshed bundle instead of attempting their own Reserve. `refresh_concurrent_test.go::TestRefreshFn_ConcurrentCallsAreSerialized` logs the observed failure and should tighten from "at least 1 succeeded" to "all 50 succeeded" after the fix. LoC: 10-20 in pool.go + test assertion tightening.
+
+## Engineering hygiene — surfaced by Phase FEATURE-BOOST (2026-05-13)
+
+- **P3: Wire RecordLatency from kiroclient request path.** `Pool.RecordLatency(id, dur)` exists for EWMA tracking but is never called today. Adding it after a successful Kiro response would feed the AvgLatency dashboard field and could power future P3 latency-aware weighting (currently AvgLatency is informational only; Weight() doesn’t consume it). LoC: ~10 in `internal/messages/execute.go` or `internal/kiroclient/client.go` after the response succeeds.
+- **P3: Capture-tool stickiness state in /dashboard/api/state.** `Pool.stickiness.Snapshot()` exists; nothing exposes it. Useful when debugging “my session keeps hitting account X”. Add `sticky_sessions_count` and a per-row `sticky_for_session_count` to DashboardAccount. LoC: ~20.
+- **P3: Stickiness golden test against live capture.** `.sisyphus/plans/kiro-cli-shape-audit.md` documents the audit method; a `scripts/audit/shape_diff.sh` that captures outbound bytes via KIROXY_TAP and diffs against a stored golden file would let CI guard against future shape drift. LoC: ~50 + checked-in golden fixture.
+- **P3: Per-session stickiness TTL override via header.** `X-Claude-Code-Stickiness-TTL: 0` (or `-1`) would let advanced operators temporarily disable pinning for debugging. Today the only escape is to omit the session ID header, which has other side effects (every request is treated as a new session in logs/metrics). LoC: ~15.
 
