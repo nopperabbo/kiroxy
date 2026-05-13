@@ -36,19 +36,45 @@ type invocation struct {
 }
 
 // upstreamPoolRetries caps how many different accounts we rotate through when
-// the upstream returns a retryable AWS exception before the first response
-// byte has been written. Kept small so a genuine outage still fails fast.
+// the upstream returns a retryable error before the first response byte has
+// been written. Kept small so a genuine outage still fails fast.
 const upstreamPoolRetries = 3
+
+// isRotatableUpstreamError returns true when an error from the kiroclient is
+// worth rotating to a different pool account. Covers:
+//
+//   - Retryable AWS exception types (ThrottlingException, InternalServer*,
+//     ServiceUnavailable*, TooManyRequests) regardless of HTTP status.
+//   - Raw HTTP 502 / 503 / 504 from the Bedrock gateway. These can arrive
+//     with an empty or unparseable body (no AWS exception type), which
+//     IsRetryableAWSException alone would miss. Treating them as rotatable
+//     captures transient upstream gateway hiccups where a different account
+//     routed through a different edge is likely to succeed.
+func isRotatableUpstreamError(err error) (*kiroclient.UpstreamError, bool) {
+	var ue *kiroclient.UpstreamError
+	if !errors.As(err, &ue) {
+		return nil, false
+	}
+	if kiroclient.IsRetryableAWSException(ue.Exception) {
+		return ue, true
+	}
+	switch ue.Status {
+	case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return ue, true
+	}
+	return ue, false
+}
 
 // callAndHandle performs one upstream call for the invocation and streams or
 // buffers the response to w. Returns a non-empty reason if the request failed
 // with a retryable invalidStateEvent before any bytes were written to w.
 //
 // When the upstream returns a retryable AWS exception (ThrottlingException,
-// ServiceUnavailableException, ...) and nothing has been written to w yet, we
-// rotate to a fresh account from the pool and retry up to upstreamPoolRetries
-// times. This makes INSUFFICIENT_MODEL_CAPACITY on one account transparent to
-// the caller as long as another account in the pool has capacity.
+// ServiceUnavailableException, ...) or a raw HTTP 502/503/504 gateway error
+// and nothing has been written to w yet, we rotate to a fresh account from
+// the pool and retry up to upstreamPoolRetries times. This makes
+// INSUFFICIENT_MODEL_CAPACITY on one account transparent to the caller as
+// long as another account in the pool has capacity.
 func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv *invocation, attempt int) string {
 	_, short := logging.TraceIDs(ctx)
 	capture := newUpstreamAttemptCapture(ctx, s.captureEnabled, inv.payload, inv.model, inv.thinking, inv.req.Stream, attempt)
@@ -56,8 +82,8 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 	upstreamStart := time.Now()
 	apiResp, err := s.client.GenerateAssistantResponse(ctx, inv.creds.AccessToken, inv.payload, inv.creds.Region)
 	for poolAttempt := 0; err != nil && poolAttempt < upstreamPoolRetries; poolAttempt++ {
-		var ue *kiroclient.UpstreamError
-		if !errors.As(err, &ue) || !kiroclient.IsRetryableAWSException(ue.Exception) {
+		ue, ok := isRotatableUpstreamError(err)
+		if !ok {
 			break
 		}
 		newCreds, tokErr := s.auth.GetToken(ctx)
@@ -67,8 +93,8 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 				"pool_attempt", poolAttempt+1, "max", upstreamPoolRetries)
 			break
 		}
-		slog.WarnContext(ctx, "kiro: rotating account after retryable upstream exception",
-			"trace_id", short, "exception", ue.Exception,
+		slog.WarnContext(ctx, "kiro: rotating account after retryable upstream error",
+			"trace_id", short, "exception", ue.Exception, "status", ue.Status,
 			"pool_attempt", poolAttempt+1, "max", upstreamPoolRetries,
 			"new_client_id", newCreds.ClientID)
 		inv.creds = newCreds
