@@ -80,6 +80,10 @@ type Options struct {
 	// info, env vars (with redaction), vault stats, and inbound-key
 	// counts. When nil, the endpoint returns 404.
 	SettingsProvider SettingsProvider
+
+	// ToolsProvider, when set, powers /dashboard/api/tools/* — currently
+	// just doctor (diagnostic). When nil, the endpoints return 404.
+	ToolsProvider ToolsProvider
 }
 
 // Server bundles the process-wide handler tree.
@@ -132,6 +136,7 @@ func (s *Server) Handler() http.Handler {
 	s.registerLogsHandlers(mux)
 	s.registerInboundKeyHandlers(mux)
 	s.registerSettingsHandler(mux)
+	s.registerToolsHandlers(mux)
 	next.Register(mux)    // /_variants/dashboard-next (legacy /dashboard-next 302s)
 	mansion.Register(mux) // /dashboard-mansion: canonical operator dashboard (post-v1.0.0)
 	// Phase V taste-exploration variants, archived under /_variants/<slug>

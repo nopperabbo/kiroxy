@@ -304,6 +304,12 @@ func runServe(ctx context.Context, args []string) error {
 			pool:      poolInst,
 			startedAt: startedAt,
 		},
+		ToolsProvider: &toolsProvider{
+			vaultPath:   cfg.DBPath,
+			upstreamURL: cfg.KiroUpstreamURL,
+			vault:       vault,
+			pool:        poolInst,
+		},
 	})
 
 	addr := net.JoinHostPort(cfg.Bind, strconv.Itoa(cfg.Port))
