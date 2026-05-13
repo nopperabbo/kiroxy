@@ -513,6 +513,33 @@ type TokenGetter struct {
 	Refresh *RefreshConfig
 }
 
+// RecordFailure forwards to Pool.RecordFailure so callers holding only a
+// *TokenGetter (the messages.Service does) can mark an account as failed
+// without needing a direct *Pool reference. accountID is the ID returned
+// on the auth.Credentials struct; a nil/unknown id is tolerated by the
+// pool (the underlying RecordFailure returns silently).
+//
+// The quota flag maps to FailureKind:
+//   - quota=true:  FailureQuota (immediate QuotaCooldown, default 1h),
+//     for throttling / rate-limit / quota-exhausted errors.
+//   - quota=false: FailureTransient (accumulates toward
+//     ConsecutiveErrorThreshold before cooldown),
+//     for 5xx gateway / InternalServer* / network blips.
+//
+// This signature satisfies messages.FailureRecorder so *TokenGetter is
+// usable as both a TokenGetter and a FailureRecorder via duck-typing,
+// without either package importing the other's types.
+func (tg *TokenGetter) RecordFailure(accountID string, quota bool, reason string) {
+	if accountID == "" || tg.Pool == nil {
+		return
+	}
+	kind := FailureTransient
+	if quota {
+		kind = FailureQuota
+	}
+	tg.Pool.RecordFailure(accountID, kind, reason)
+}
+
 // GetToken implements messages.TokenGetter. It picks an account from the
 // pool, loads the current access_token from the vault, and enriches the
 // returned Credentials with any Kiro-specific fields stored in
@@ -546,6 +573,7 @@ func (tg *TokenGetter) GetToken(ctx context.Context) (*auth.Credentials, error) 
 		AccessToken: p.Token,
 		Region:      p.Region,
 		AuthType:    p.Provider,
+		AccountID:   p.ID,
 	}
 	if b != nil {
 		creds.AccessToken = b.AccessToken

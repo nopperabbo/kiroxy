@@ -102,6 +102,31 @@ func isRotatableUpstreamError(err error) (*kiroclient.UpstreamError, bool) {
 	return ue, false
 }
 
+// isQuotaFailure classifies an upstream error for the FailureRecorder. Quota
+// failures (throttling / rate-limit / too-many-requests) should cool down the
+// account immediately; everything else (5xx gateway, internal errors) is
+// treated as transient and only cools down after repeated consecutive hits.
+func isQuotaFailure(ue *kiroclient.UpstreamError) bool {
+	switch ue.Exception {
+	case "ThrottlingException", "TooManyRequestsException":
+		return true
+	}
+	return ue.Status == http.StatusTooManyRequests
+}
+
+// rotationFailureReason builds a short, structured reason string suitable for
+// the pool's cooldown logs and metrics. Kept concise so the pool's bounded
+// reason field doesn't truncate useful info.
+func rotationFailureReason(ue *kiroclient.UpstreamError) string {
+	if ue.Exception != "" {
+		return "upstream_exception:" + ue.Exception
+	}
+	if ue.Status != 0 {
+		return "upstream_status:" + http.StatusText(ue.Status)
+	}
+	return "upstream_error"
+}
+
 // callAndHandle performs one upstream call for the invocation and streams or
 // buffers the response to w. Returns a non-empty reason if the request failed
 // with a retryable invalidStateEvent before any bytes were written to w.
@@ -123,6 +148,14 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 		if !ok {
 			break
 		}
+		// Before rotating, tell the pool which account just failed so
+		// subsequent Pick calls bias away from it. This is a hint — the
+		// FailureRecorder interface is optional and a stale or unknown
+		// account ID is tolerated by the implementation.
+		if rec, ok := s.auth.(FailureRecorder); ok && inv.creds != nil && inv.creds.AccountID != "" {
+			reason := rotationFailureReason(ue)
+			rec.RecordFailure(inv.creds.AccountID, isQuotaFailure(ue), reason)
+		}
 		if delay := poolRotationBackoff(poolAttempt); delay > 0 {
 			if waitErr := rotationSleep(ctx, delay); waitErr != nil {
 				slog.WarnContext(ctx, "kiro: pool rotation aborted by ctx",
@@ -141,6 +174,8 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 		slog.WarnContext(ctx, "kiro: rotating account after retryable upstream error",
 			"trace_id", short, "exception", ue.Exception, "status", ue.Status,
 			"pool_attempt", poolAttempt+1, "max", upstreamPoolRetries,
+			"prev_account_id", inv.creds.AccountID,
+			"new_account_id", newCreds.AccountID,
 			"new_client_id", newCreds.ClientID)
 		inv.creds = newCreds
 		inv.payload.ProfileARN = newCreds.ProfileARN
