@@ -186,6 +186,16 @@
     --ease-in: cubic-bezier(0.4, 0, 1, 1);
     --ease-out: cubic-bezier(0, 0, 0.2, 1);
 
+    /* Canonical motion tokens — use these in new code. The --mo-*/
+    /* --ease-* pairs above are preserved for components that depend on  */
+    /* them (back-compat), but every new enter/flash/transition should    */
+    /* reach for --motion-duration + --motion-easing so the curve stays   */
+    /* uniform across the whole operator desk. Duration chosen to match  */
+    /* Linear's published 240ms "settled" feel. */
+    --motion-duration-instant: 100ms;
+    --motion-duration: 240ms;
+    --motion-easing: cubic-bezier(0.22, 1, 0.36, 1);
+
     /* ─── Layers ─────────────────────────────────────────────────── */
     --z-base: 0;
     --z-sticky: 50;
@@ -220,6 +230,8 @@
       --mo-fast: 1ms;
       --mo-med: 1ms;
       --mo-slow: 1ms;
+      --motion-duration: 1ms;
+      --motion-duration-instant: 1ms;
     }
   }
 }

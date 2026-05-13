@@ -47,7 +47,7 @@
 
 {#if open}
   <button class="det-scrim" type="button" aria-label="close details" onclick={closeAll}></button>
-  <aside class="det" aria-label="details">
+  <aside class="det drawer-panel" aria-label="details">
     <header class="det__head">
       {#if request}
         <div>

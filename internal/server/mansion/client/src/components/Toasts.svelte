@@ -9,7 +9,7 @@
 {#if store.toasts.length > 0}
   <div class="toasts" aria-live="polite" aria-label="notifications">
     {#each store.toasts as t (t.id)}
-      <div class="toast toast--{t.kind}" role="status">
+      <div class="toast toast-item toast--{t.kind}" role="status">
         <Icon name={t.kind === "ok" ? "check" : t.kind === "err" ? "alert" : "dot"} size={12} />
         <span>{t.msg}</span>
       </div>

@@ -13,7 +13,31 @@
 
 @import "./tokens.css";
 
-@layer reset, tokens, elements, utilities;
+@layer reset, tokens, elements, utilities, motion;
+
+/*
+ * View Transitions API — lets the browser cross-fade discrete state
+ * changes (route swaps, component remounts) without a JS animation
+ * runner. Cheap on the GPU, free on the CPU. Honoured by the
+ * prefers-reduced-motion guard at the bottom of this file.
+ *
+ * Pattern borrowed from internal/server/variants/linearpremium/dist/app.css
+ * (line 16). We declare it once, globally; opt-out is per-component when a
+ * fast data-cell update would look worse with a fade than with the raw flip.
+ */
+@view-transition {
+  navigation: auto;
+}
+
+/* @property declarations register custom properties as animatable scalars,
+ * unlocking transition/animation on a value the browser would otherwise
+ * treat as opaque. Used by [data-flash="1"] rows below to fade an amber
+ * wash without a JS rAF loop. Pattern from linearpremium app.css L376-L389. */
+@property --row-flash {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
 
 @layer reset {
   *,
@@ -50,9 +74,14 @@
     outline: none;
   }
   :focus-visible {
-    outline: none;
-    box-shadow: var(--ring);
+    outline: 2px solid var(--c-accent);
+    outline-offset: 2px;
     border-radius: var(--r-sm);
+    /* Keep the soft inset glow for elements that prefer the box-shadow look
+     * (the original ring contract, used by some buttons + chips). The
+     * 2px solid outline is the "unmissable" amber that a keyboard user can
+     * track through dense data tables — Linear-Premium pattern, app.css L458. */
+    box-shadow: var(--ring);
   }
   [hidden] {
     display: none !important;
@@ -221,5 +250,107 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+/*
+ * Motion layer — enter transitions, data flashes, reduced-motion guards.
+ *
+ * Discipline (cribbed from Linear-Premium): we don't animate everything.
+ * Only the moments where state genuinely changes — a drawer arriving,
+ * a toast appearing, a fresh row from SSE — get a single 240ms cubic.
+ * Steady-state hovers and active states keep the fast --mo-fast pair so
+ * the UI stays responsive to operator input.
+ */
+@layer motion {
+  /* Drawer enter: slide in from the right edge. The .drawer-panel class
+   * is set on the panel element of DetailDrawer + ImportDrawer; the
+   * @starting-style only fires on first paint so re-renders don't replay. */
+  .drawer-panel {
+    transition:
+      transform var(--motion-duration) var(--motion-easing),
+      opacity var(--motion-duration) var(--motion-easing);
+    transform: translateX(0);
+    opacity: 1;
+  }
+  @starting-style {
+    .drawer-panel {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
+  /* Toast enter: small lift + fade. Used by the global Toasts mount. */
+  .toast-item {
+    transition:
+      transform var(--motion-duration) var(--motion-easing),
+      opacity var(--motion-duration) var(--motion-easing);
+    transform: translateY(0);
+    opacity: 1;
+  }
+  @starting-style {
+    .toast-item {
+      transform: translateY(8px);
+      opacity: 0;
+    }
+  }
+
+  /* Table row enter: subtle slide for SSE-streamed inserts. data-new="1"
+   * is a one-shot attribute set by the live store when a row arrives;
+   * the cleanup happens after the transition lands. */
+  tr[data-new="1"],
+  [data-row-new="1"] {
+    transition:
+      transform var(--motion-duration) var(--motion-easing),
+      opacity var(--motion-duration) var(--motion-easing);
+  }
+  @starting-style {
+    tr[data-new="1"],
+    [data-row-new="1"] {
+      transform: translateY(6px);
+      opacity: 0;
+    }
+  }
+
+  /* Row flash on data change: a short amber wash that decays back to
+   * transparent. Driven by @property --row-flash (declared at file head)
+   * so the percentage interpolates without a JS rAF loop. The :where()
+   * keeps specificity at 0 so component scoped styles can override. */
+  :where(tr[data-flash="1"], [data-row-flash="1"]) {
+    background:
+      linear-gradient(
+        90deg,
+        var(--c-accent-bg) var(--row-flash),
+        transparent var(--row-flash)
+      );
+    animation: row-flash var(--motion-duration) var(--motion-easing) forwards;
+  }
+  @keyframes row-flash {
+    0%   { --row-flash: 100%; }
+    100% { --row-flash: 0%; }
+  }
+
+  /* prefers-reduced-motion: kill enter/flash/view-transitions globally.
+   * The token-level reduce branch (tokens.css) already collapses durations
+   * to 1ms; this disables the choreography itself so users with vestibular
+   * sensitivity get a static UI. Linear-Premium pattern, app.css L390-L392. */
+  @media (prefers-reduced-motion: reduce) {
+    @view-transition { navigation: none; }
+    .drawer-panel,
+    .toast-item,
+    tr[data-new="1"],
+    [data-row-new="1"] {
+      transition: none;
+    }
+    :where(tr[data-flash="1"], [data-row-flash="1"]) {
+      animation: none;
+      background: transparent;
+    }
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0ms !important;
+      animation-duration: 0ms !important;
+    }
   }
 }

@@ -96,7 +96,7 @@
 
 {#if open}
   <div class="drawer-scrim" onclick={onClose} role="presentation"></div>
-  <aside class="drawer" role="dialog" aria-modal="true" aria-label="import accounts">
+  <aside class="drawer drawer-panel" role="dialog" aria-modal="true" aria-label="import accounts">
     <header class="drawer__head">
       <div>
         <h2 class="drawer__title">import accounts</h2>
