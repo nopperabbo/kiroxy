@@ -41,6 +41,13 @@ type Config struct {
 	// auth manager will read. M2 uses this as the credential source until the
 	// tokenvault + pool land in M4/M5.
 	KiroDBPath string
+
+	// KiroUpstreamURL overrides the Kiro API base URL. When empty, kiroclient
+	// picks via its region-based default (runtime.{region}.kiro.dev or the
+	// legacy q.{region}.amazonaws.com if KIROXY_USE_LEGACY_ENDPOINT=1).
+	// Intended for pointing kiroxy at a local mock_kiro during integration
+	// tests, or at a region-specific endpoint when experimenting.
+	KiroUpstreamURL string
 }
 
 // LogLevel returns the slog.Level parsed from LogLevelRaw.
@@ -99,6 +106,7 @@ func FromEnvAndFlags(args []string) (Config, error) {
 	}
 
 	cfg.KiroDBPath = os.Getenv("KIROXY_KIRO_DB_PATH")
+	cfg.KiroUpstreamURL = os.Getenv("KIROXY_UPSTREAM_URL")
 
 	// Flag overrides (thin layer)
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)

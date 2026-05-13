@@ -156,7 +156,7 @@ func runServe(ctx context.Context, args []string) error {
 	metricsSink := metricsReg.Sink()
 	if cfg.KiroDBPath != "" {
 		authMgr = auth.NewAuthManager(cfg.KiroDBPath)
-		kiroClient = kiroclient.NewHTTPClient(
+		clientOpts := []kiroclient.HTTPClientOption{
 			kiroclient.WithTokenRefresher(func(ctx context.Context) (string, error) {
 				authMgr.(*auth.AuthManager).InvalidateCache()
 				creds, err := authMgr.GetToken(ctx)
@@ -165,7 +165,11 @@ func runServe(ctx context.Context, args []string) error {
 				}
 				return creds.AccessToken, nil
 			}),
-		)
+		}
+		if cfg.KiroUpstreamURL != "" {
+			clientOpts = append(clientOpts, kiroclient.WithBaseURL(cfg.KiroUpstreamURL))
+		}
+		kiroClient = kiroclient.NewHTTPClient(clientOpts...)
 		slog.Info("upstream auth: kiro-cli SQLite",
 			slog.String("db_path", cfg.KiroDBPath),
 		)
@@ -224,7 +228,7 @@ func runServe(ctx context.Context, args []string) error {
 			},
 		}
 		authMgr = tg
-		kiroClient = kiroclient.NewHTTPClient(
+		clientOpts := []kiroclient.HTTPClientOption{
 			kiroclient.WithTokenRefresher(func(ctx context.Context) (string, error) {
 				creds, err := tg.GetToken(ctx)
 				if err != nil {
@@ -232,7 +236,11 @@ func runServe(ctx context.Context, args []string) error {
 				}
 				return creds.AccessToken, nil
 			}),
-		)
+		}
+		if cfg.KiroUpstreamURL != "" {
+			clientOpts = append(clientOpts, kiroclient.WithBaseURL(cfg.KiroUpstreamURL))
+		}
+		kiroClient = kiroclient.NewHTTPClient(clientOpts...)
 	}
 
 	srv := server.New(server.Options{
