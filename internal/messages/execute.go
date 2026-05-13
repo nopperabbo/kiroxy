@@ -7,6 +7,7 @@ package messages
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"local/kiroxy/internal/anthropic"
 	"local/kiroxy/internal/auth"
 	"local/kiroxy/internal/httpx"
+	"local/kiroxy/internal/kiroclient"
 	"local/kiroxy/internal/kiroproto"
 	"local/kiroxy/internal/logging"
 	"local/kiroxy/internal/metrics"
@@ -33,15 +35,46 @@ type invocation struct {
 	metrics           *requestMetrics
 }
 
+// upstreamPoolRetries caps how many different accounts we rotate through when
+// the upstream returns a retryable AWS exception before the first response
+// byte has been written. Kept small so a genuine outage still fails fast.
+const upstreamPoolRetries = 3
+
 // callAndHandle performs one upstream call for the invocation and streams or
 // buffers the response to w. Returns a non-empty reason if the request failed
 // with a retryable invalidStateEvent before any bytes were written to w.
+//
+// When the upstream returns a retryable AWS exception (ThrottlingException,
+// ServiceUnavailableException, ...) and nothing has been written to w yet, we
+// rotate to a fresh account from the pool and retry up to upstreamPoolRetries
+// times. This makes INSUFFICIENT_MODEL_CAPACITY on one account transparent to
+// the caller as long as another account in the pool has capacity.
 func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv *invocation, attempt int) string {
 	_, short := logging.TraceIDs(ctx)
 	capture := newUpstreamAttemptCapture(ctx, s.captureEnabled, inv.payload, inv.model, inv.thinking, inv.req.Stream, attempt)
 
 	upstreamStart := time.Now()
 	apiResp, err := s.client.GenerateAssistantResponse(ctx, inv.creds.AccessToken, inv.payload, inv.creds.Region)
+	for poolAttempt := 0; err != nil && poolAttempt < upstreamPoolRetries; poolAttempt++ {
+		var ue *kiroclient.UpstreamError
+		if !errors.As(err, &ue) || !kiroclient.IsRetryableAWSException(ue.Exception) {
+			break
+		}
+		newCreds, tokErr := s.auth.GetToken(ctx)
+		if tokErr != nil {
+			slog.WarnContext(ctx, "kiro: pool rotation token fetch failed",
+				"trace_id", short, "err", tokErr,
+				"pool_attempt", poolAttempt+1, "max", upstreamPoolRetries)
+			break
+		}
+		slog.WarnContext(ctx, "kiro: rotating account after retryable upstream exception",
+			"trace_id", short, "exception", ue.Exception,
+			"pool_attempt", poolAttempt+1, "max", upstreamPoolRetries,
+			"new_client_id", newCreds.ClientID)
+		inv.creds = newCreds
+		inv.payload.ProfileARN = newCreds.ProfileARN
+		apiResp, err = s.client.GenerateAssistantResponse(ctx, newCreds.AccessToken, inv.payload, newCreds.Region)
+	}
 	if err != nil {
 		logUpstreamError(ctx, short, err)
 		inv.metrics.errKind(metrics.RequestKindUpstream)
