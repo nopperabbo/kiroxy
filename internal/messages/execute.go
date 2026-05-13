@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"time"
 
@@ -39,6 +40,42 @@ type invocation struct {
 // the upstream returns a retryable error before the first response byte has
 // been written. Kept small so a genuine outage still fails fast.
 const upstreamPoolRetries = 3
+
+// poolRotationBaseDelay is the base inter-rotation backoff. We back off
+// between rotations to avoid hammering the upstream when several accounts
+// share the same regional capacity squeeze: the second rotation sleeps
+// ~500ms, the third ~1s (with ±25% jitter). Total worst-case added latency
+// stays under 2s for the common case where rotation #1 succeeds.
+const poolRotationBaseDelay = 500 * time.Millisecond
+
+// poolRotationBackoff returns an exponential backoff delay with ±25% jitter
+// for the given rotation attempt number (0-indexed). attempt=0 returns 0
+// because the first rotation is the response to the original failure and
+// should fire immediately.
+func poolRotationBackoff(attempt int) time.Duration {
+	if attempt <= 0 {
+		return 0
+	}
+	base := poolRotationBaseDelay << (attempt - 1)
+	jitter := time.Duration(rand.Int64N(int64(base)/2)) - base/4
+	return base + jitter
+}
+
+// rotationSleep waits for delay, respecting ctx cancellation. Returns the
+// ctx error if cancelled mid-wait.
+func rotationSleep(ctx context.Context, delay time.Duration) error {
+	if delay <= 0 {
+		return nil
+	}
+	t := time.NewTimer(delay)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
 
 // isRotatableUpstreamError returns true when an error from the kiroclient is
 // worth rotating to a different pool account. Covers:
@@ -85,6 +122,14 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 		ue, ok := isRotatableUpstreamError(err)
 		if !ok {
 			break
+		}
+		if delay := poolRotationBackoff(poolAttempt); delay > 0 {
+			if waitErr := rotationSleep(ctx, delay); waitErr != nil {
+				slog.WarnContext(ctx, "kiro: pool rotation aborted by ctx",
+					"trace_id", short, "err", waitErr,
+					"pool_attempt", poolAttempt+1, "max", upstreamPoolRetries)
+				break
+			}
 		}
 		newCreds, tokErr := s.auth.GetToken(ctx)
 		if tokErr != nil {
