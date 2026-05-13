@@ -116,10 +116,10 @@ func (s *Server) Handler() http.Handler {
 	// Phase V taste-exploration variants. Each is a separate package so the
 	// philosophies stay isolated — see .sisyphus/plans/variant-*-manifesto.md
 	// and docs/VARIANTS.md.
-	brutal.Register(mux) // /dashboard-brutal: terminal / htop aesthetic
-	paper.Register(mux)  // /dashboard-paper: ink on cream / document aesthetic
-	nord.Register(mux)   // /dashboard-nord: arctic calm palette
-	neon.Register(mux)   // /dashboard-neon: cyberpunk grafana aesthetic
+	brutal.Register(mux)           // /dashboard-brutal: terminal / htop aesthetic
+	paper.Register(mux)            // /dashboard-paper: ink on cream / document aesthetic
+	nord.Register(mux)             // /dashboard-nord: arctic calm palette
+	neon.Register(mux)             // /dashboard-neon: cyberpunk grafana aesthetic
 	muji.Register(mux, s.mujiSnap) // /dashboard-muji: zero-JS server-rendered
 	linearpremium.Register(mux)    // /dashboard-linear-premium: refined SaaS dark + indigo
 
