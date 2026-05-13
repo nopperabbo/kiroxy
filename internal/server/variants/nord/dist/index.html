@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en" data-theme="nord">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="kiroxy dashboard — nord / arctic calm variant">
+  <title>kiroxy · nord</title>
+  <link rel="stylesheet" href="/dashboard-nord/assets/app.css">
+</head>
+<body>
+  <!--
+    nord variant — arctic calm.
+    Palette is literal Nord (nordtheme.com, MIT). Every CSS var is named
+    after its Nord original so provenance is visible in app.css.
+    Philosophy: cold, composed, predictable, calibrated for long sessions.
+    See .sisyphus/plans/variant-nord-manifesto.md.
+  -->
+  <main id="app" class="page">
+    <header class="topbar">
+      <a class="brand" href="/dashboard-nord">kiroxy <em>· nord</em></a>
+      <div class="live">
+        <span class="dot" data-live-dot aria-hidden="true"></span>
+        <span data-stamp>connecting…</span>
+      </div>
+      <button type="button" class="palette-trigger" data-palette-trigger>
+        Command palette <kbd>⌘K</kbd>
+      </button>
+    </header>
+
+    <dl class="summary" aria-label="system summary">
+      <div>
+        <dt>Version</dt>
+        <dd data-ver>—</dd>
+      </div>
+      <div>
+        <dt>Uptime</dt>
+        <dd data-upt>—</dd>
+      </div>
+      <div>
+        <dt>Readiness</dt>
+        <dd data-ready>—</dd>
+      </div>
+      <div>
+        <dt>Vault</dt>
+        <dd data-vault>—</dd>
+      </div>
+      <div>
+        <dt>Total requests</dt>
+        <dd data-totreq>—</dd>
+      </div>
+      <div>
+        <dt>Total errors</dt>
+        <dd data-toterr>—</dd>
+      </div>
+    </dl>
+
+    <section aria-labelledby="pool-head">
+      <header>
+        <h2 id="pool-head">Account pool</h2>
+        <span class="subtle">polled every 2s</span>
+      </header>
+      <table class="pool" aria-describedby="pool-head">
+        <thead>
+          <tr>
+            <th scope="col">Account</th>
+            <th scope="col">State</th>
+            <th scope="col" class="num">Requests</th>
+            <th scope="col" class="num">Errors</th>
+            <th scope="col">Note</th>
+          </tr>
+        </thead>
+        <tbody id="rows" aria-live="polite"></tbody>
+      </table>
+      <p class="empty" id="empty" hidden>
+        The pool is empty. Import accounts with
+        <code>kiroxy import-json &lt; tokens.json</code>.
+      </p>
+      <p class="stamp">Backend endpoint: <code>GET /dashboard/api/state</code></p>
+    </section>
+
+    <footer>
+      <span>nord variant · calibrated for long sessions · nordtheme.com</span>
+      <span>·</span>
+      <span>other variants: <a href="/dashboard">classic</a>, <a href="/dashboard-next">next</a>, <a href="/dashboard-mansion">mansion</a>, <a href="/dashboard-brutal">brutal</a>, <a href="/dashboard-paper">paper</a></span>
+    </footer>
+  </main>
+
+  <dialog id="palette" class="palette" aria-label="command palette">
+    <form method="dialog">
+      <label class="palette-label">
+        <span aria-hidden="true" class="prompt">›</span>
+        <input id="palette-input" type="text" autocomplete="off"
+               spellcheck="false" placeholder="Search actions…">
+      </label>
+      <ul id="palette-list" class="palette-list" role="listbox"></ul>
+      <p class="palette-hint">
+        <kbd>↑</kbd><kbd>↓</kbd> move · <kbd>↵</kbd> run · <kbd>esc</kbd> close
+      </p>
+    </form>
+  </dialog>
+
+  <script type="module" src="/dashboard-nord/assets/app.js"></script>
+</body>
+</html>

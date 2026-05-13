@@ -13,6 +13,7 @@ import (
 	"local/kiroxy/internal/server/mansion"
 	"local/kiroxy/internal/server/next"
 	"local/kiroxy/internal/server/variants/brutal"
+	"local/kiroxy/internal/server/variants/nord"
 	"local/kiroxy/internal/server/variants/paper"
 )
 
@@ -114,6 +115,7 @@ func (s *Server) Handler() http.Handler {
 	// and docs/VARIANTS.md.
 	brutal.Register(mux) // /dashboard-brutal: terminal / htop aesthetic
 	paper.Register(mux)  // /dashboard-paper: ink on cream / document aesthetic
+	nord.Register(mux)   // /dashboard-nord: arctic calm palette
 
 	if s.msgSvc != nil {
 		mux.HandleFunc("POST /v1/messages", s.msgSvc.HandleMessages)
