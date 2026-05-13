@@ -113,4 +113,3 @@ func TestContentTypeFor(t *testing.T) {
 		})
 	}
 }
-
