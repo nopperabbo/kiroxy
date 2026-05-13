@@ -63,8 +63,9 @@ SCREENSHOT_DIR = BASE_DIR / "screenshots"
 # ──────────────────────────────────────────────────────────────────────────────
 
 _GOOGLE_EMAIL_SELECTORS = [
-    'input[type="email"]',
-    'input[name="identifier"]',
+    # Same hidden-decoy concern as password: filter aria-hidden variants.
+    'input[type="email"]:not([aria-hidden="true"])',
+    'input[name="identifier"]:not([aria-hidden="true"])',
     'input#identifierId',
 ]
 _GOOGLE_EMAIL_NEXT_SELECTORS = [
@@ -74,9 +75,13 @@ _GOOGLE_EMAIL_NEXT_SELECTORS = [
     'button:has-text("Berikutnya")',  # id
 ]
 _GOOGLE_PASSWORD_SELECTORS = [
-    'input[type="password"]',
-    'input[name="Passwd"]',
-    'input[name="password"]',
+    # Google's signin page injects a hidden honeypot password input
+    # (<input type="password" name="hiddenPassword" aria-hidden="true">) to
+    # trap selectors that don't filter for visibility. Both selectors below
+    # exclude that decoy: the first by name, the second by aria-hidden.
+    'input[type="password"]:not([name="hiddenPassword"]):not([aria-hidden="true"])',
+    'input[type="password"][name="Passwd"]',
+    'input[name="password"]:not([aria-hidden="true"])',
 ]
 _GOOGLE_PASSWORD_NEXT_SELECTORS = [
     "#passwordNext button",
@@ -234,9 +239,21 @@ def _try_selectors_fill_humanized(drv, selectors: list, text: str) -> bool:
     for sel in selectors:
         try:
             loc = drv.page.locator(sel).first
-            if loc.is_visible(timeout=1500):
-                drv.human_type(sel, text)
-                return True
+            if not loc.is_visible(timeout=1500):
+                continue
+            # Defense in depth against Google's honeypot inputs:
+            # is_visible() can return True for elements with width=0 or
+            # opacity=0 in some Playwright versions. Cross-check element
+            # state explicitly before typing.
+            try:
+                aria_hidden = loc.get_attribute("aria-hidden") or ""
+                name_attr = loc.get_attribute("name") or ""
+                if aria_hidden.lower() == "true" or name_attr.lower().startswith("hidden"):
+                    continue
+            except Exception:
+                pass
+            drv.human_type(sel, text)
+            return True
         except Exception:
             continue
     return False
@@ -518,6 +535,18 @@ def main(argv: Optional[List[str]] = None) -> int:
             proxy=proxy_dict,
             geoip=proxy_geoip,
         ) as drv:
+            # Persistent profiles can restore a session that points at a
+            # kiro:// URL from a previous successful run. Camoufox/Firefox
+            # tries to honor that on first navigation and crashes the goto
+            # with NS_ERROR_UNKNOWN_PROTOCOL. Navigating to about:blank
+            # first clears the restored target without invoking the
+            # protocol handler.
+            try:
+                drv.navigate("about:blank")
+                drv.page.wait_for_timeout(200)
+            except Exception:
+                pass
+
             if warmup_needed:
                 completed, attempted = run_warmup(drv, log=_log)
                 if completed > 0:
