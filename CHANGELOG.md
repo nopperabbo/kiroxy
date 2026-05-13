@@ -4,6 +4,40 @@ All notable changes to kiroxy will be documented in this file. Format loosely fo
 
 ## [Unreleased]
 
+
+### Fixed (Track-1 v1.0.1 foundation — 3 P0 bugs)
+
+- **BUG 1: Upstream 403 loop with fresh credentials (compounded).** Two
+  root causes: (a) `internal/models.Resolve` didn't recognize Anthropic's
+  dashed forms (`claude-sonnet-4-5`, `claude-haiku-4-5`, `claude-opus-4-5`)
+  so they fell through to pass-through and upstream returned `400 Invalid
+  model ID (INVALID_MODEL_ID)`. (b) Because metadata.expires_at was
+  miscalculated (see BUG 2), Phase 2.5 proactive refresh never fired, so
+  the reactive 403-retry path returned the same stale token 3 times before
+  giving up as a 502. Fix (a) is in `internal/models/models.go`; fix (b)
+  is in the BUG 2 entry below. Verified end-to-end: `POST /v1/messages`
+  with `model=claude-sonnet-4-5` now returns 200 with a real Anthropic
+  response body.
+
+- **BUG 2: `expires_at` miscalc in import-accounts-json.** Previously set
+  to `time.Now().Unix() + ExpiresIn` at import time; should be derived
+  from the entry's `addedAt` timestamp (token issue time) + `expiresIn`.
+  When a token is imported hours after issue, the computed expiry was
+  hours beyond the true expiry, suppressing Phase 2.5 proactive refresh.
+  Added `deriveExpiresAt` helper parsing RFC3339 first, then the legacy
+  local-time format `2006-01-02T15:04:05` emitted by `kiro_login.py`,
+  with `time.Now()` fallback on empty/unparseable input. 5 table-driven
+  subtests in `cmd/kiroxy/import_json_expires_test.go`.
+
+- **BUG 3: `KIROXY_UPSTREAM_URL` env override.** New `Config.KiroUpstreamURL`
+  field parsed from the eponymous env var. When set, `main.go` threads it
+  into `kiroclient.WithBaseURL` for both the `KIROXY_KIRO_DB_PATH` path
+  and the pool-mode path. Unblocks pointing kiroxy at Phase L `mock_kiro`
+  for integration tests or at experimental regional endpoints without
+  code changes. Tests in `internal/config/config_test.go` cover the env
+  wiring; the `WithBaseURL` behavior itself is already tested by
+  `internal/kiroclient :: TestHTTPClient_EndpointURL`.
+
 ### Added (Phase 2.5.1 — pool refresh test coverage)
 
 - 7 new tests close the Phase 2.5 test gap:
