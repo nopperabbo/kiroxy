@@ -100,8 +100,9 @@
     <header class="drawer__head">
       <div>
         <h2 class="drawer__title">import accounts</h2>
-        <p class="drawer__sub faint">
-          paste a JSON array — same schema as the <code class="mono">kiroxy add-account --json</code> CLI.
+        <p class="drawer__sub">
+          <span class="drawer__sub-italic">Paste accounts or drop a .jsonl.</span>
+          <span class="drawer__sub-mono mono faint">Existing IDs are updated in place.</span>
         </p>
       </div>
       <button type="button" class="iconbtn" onclick={onClose} aria-label="close">
@@ -200,8 +201,20 @@
     font-weight: var(--fw-semibold);
   }
   .drawer__sub {
-    margin: 2px 0 0;
+    margin: 4px 0 0;
     font-size: var(--fs-sm);
+    display: flex;
+    gap: var(--sp-3);
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+  .drawer__sub-italic {
+    font-family: var(--font-text);
+    font-style: italic;
+    color: var(--c-text);
+  }
+  .drawer__sub-mono {
+    font-size: var(--fs-xs);
   }
   .iconbtn {
     display: inline-grid;

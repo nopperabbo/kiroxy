@@ -96,7 +96,8 @@
 
     {#if accounts.length === 0}
       <div class="pulse__empty">
-        <span class="faint">the vault is empty. press <kbd>i</kbd> to import an identity.</span>
+        <p class="pulse__empty-copy">Seventy-six lamps. None lit yet.</p>
+        <p class="pulse__empty-hint mono faint">Press <kbd>i</kbd> to paste a vault export.</p>
       </div>
     {/if}
 
@@ -251,7 +252,22 @@
     grid-column: 1 / -1;
     padding: var(--sp-6);
     text-align: center;
-    font-size: var(--fs-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    align-items: center;
+  }
+  .pulse__empty-copy {
+    margin: 0;
+    font-family: var(--font-text);
+    font-style: italic;
+    font-size: var(--fs-md);
+    color: var(--c-text);
+  }
+  .pulse__empty-hint {
+    margin: 0;
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
   }
   .card--ghost {
     background: transparent;

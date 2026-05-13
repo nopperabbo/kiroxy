@@ -113,7 +113,7 @@
     {#if events.length === 0}
       <li class="ledger__quiet">
         <span class="ledger__dot" aria-hidden="true"></span>
-        <span class="faint">awaiting first signal — operator desk lies in wait</span>
+        <span class="ledger__quiet-copy">No errors in view. The wire stays clean.</span>
       </li>
     {/if}
     {#each events as e (e.id)}
@@ -244,8 +244,12 @@
     align-items: center;
     gap: var(--sp-3);
     padding: var(--sp-4) 0;
-    font-family: var(--font-mono);
-    font-size: var(--fs-xs);
+    font-size: var(--fs-sm);
+  }
+  .ledger__quiet-copy {
+    font-family: var(--font-text);
+    font-style: italic;
+    color: var(--c-text-faint);
   }
   .ledger__ghost {
     display: grid;
