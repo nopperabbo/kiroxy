@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en" data-theme="neon">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="kiroxy dashboard — neon / cyberpunk grafana variant">
+  <title>kiroxy::NEON</title>
+  <link rel="stylesheet" href="/dashboard-neon/assets/app.css">
+</head>
+<body>
+  <!--
+    neon variant — cyberpunk grafana.
+    Philosophy: night-shift ops, data-dense, one committed accent (magenta).
+    Grid-as-chrome, canvas sparklines with drop-shadow glow.
+    See .sisyphus/plans/variant-neon-manifesto.md.
+  -->
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <main id="app" role="main">
+    <header class="top">
+      <h1>KIROXY<span class="cursor">_</span></h1>
+      <nav class="hud" aria-label="session status">
+        <span class="chip"><em>VER</em><b data-ver>—</b></span>
+        <span class="chip"><em>UPT</em><b data-upt>—</b></span>
+        <span class="chip" data-chip-rdy><em>RDY</em><b data-ready>—</b></span>
+        <span class="chip" data-chip-vlt><em>VLT</em><b data-vault>—</b></span>
+      </nav>
+      <button class="palette-trigger" type="button" data-palette-trigger>
+        <span>⌘</span> SEARCH <kbd>⌘K</kbd>
+      </button>
+    </header>
+
+    <section class="hero" aria-label="traffic overview">
+      <div class="hero-stat">
+        <em>TOTAL.REQUESTS</em>
+        <b class="big" data-totreq>—</b>
+        <canvas data-spark-total width="600" height="80" aria-label="total request sparkline"></canvas>
+      </div>
+      <div class="hero-stat alt" data-hero-err>
+        <em>TOTAL.ERRORS</em>
+        <b class="big" data-toterr>—</b>
+        <canvas data-spark-err width="600" height="80" aria-label="total error sparkline"></canvas>
+      </div>
+    </section>
+
+    <section class="pool" aria-labelledby="pool-h">
+      <header class="panel-head">
+        <h2 id="pool-h">ACCOUNT.POOL</h2>
+        <div class="stamp" data-stamp>initializing</div>
+      </header>
+      <table class="grid" aria-describedby="pool-h">
+        <thead>
+          <tr>
+            <th scope="col">ID</th>
+            <th scope="col">STATE</th>
+            <th scope="col" class="n">REQ</th>
+            <th scope="col" class="n">ERR</th>
+            <th scope="col">TRAFFIC</th>
+            <th scope="col">NOTE</th>
+          </tr>
+        </thead>
+        <tbody id="rows" aria-live="polite"></tbody>
+      </table>
+      <p id="empty" class="empty" hidden>
+        [ POOL.EMPTY ] &mdash; run
+        <code>kiroxy import-json &lt; tokens.json</code>
+      </p>
+    </section>
+
+    <footer class="bottom">
+      <span>kiroxy.neon // ref: grafana.dark + tron-legacy.hud</span>
+      <span class="sep">·</span>
+      <span>alt:
+        <a href="/dashboard">classic</a> ·
+        <a href="/dashboard-next">next</a> ·
+        <a href="/dashboard-mansion">mansion</a> ·
+        <a href="/dashboard-brutal">brutal</a> ·
+        <a href="/dashboard-paper">paper</a> ·
+        <a href="/dashboard-nord">nord</a>
+      </span>
+    </footer>
+  </main>
+
+  <dialog id="palette" class="palette" aria-label="command palette">
+    <form method="dialog">
+      <label class="palette-label">
+        <span class="prompt" aria-hidden="true">⌘</span>
+        <input id="palette-input" type="text" autocomplete="off"
+               spellcheck="false" placeholder="SEARCH ACTIONS…">
+      </label>
+      <ul id="palette-list" class="palette-list" role="listbox"></ul>
+      <p class="palette-hint">
+        <kbd>↑</kbd><kbd>↓</kbd> MOVE · <kbd>↵</kbd> RUN · <kbd>ESC</kbd> CLOSE
+      </p>
+    </form>
+  </dialog>
+
+  <script type="module" src="/dashboard-neon/assets/app.js"></script>
+</body>
+</html>
