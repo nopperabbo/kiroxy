@@ -62,6 +62,13 @@ type Options struct {
 	// Metrics is the Prometheus registry exposed at /metrics. When nil,
 	// the endpoint returns 503 and no request instrumentation is emitted.
 	Metrics *metrics.Registry
+
+	// LogSink, when set, powers the /dashboard/api/logs and
+	// /dashboard/api/logs/stream endpoints (Logs view). Population is the
+	// caller's job — typically by wrapping slog's handler with
+	// NewCapturingHandler before SetDefault. When nil, both endpoints
+	// return 404.
+	LogSink *LogSink
 }
 
 // Server bundles the process-wide handler tree.
@@ -111,6 +118,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /readyz", s.ready.handle)
 	s.registerDashboard(mux)
+	s.registerLogsHandlers(mux)
 	next.Register(mux)    // /_variants/dashboard-next (legacy /dashboard-next 302s)
 	mansion.Register(mux) // /dashboard-mansion: canonical operator dashboard (post-v1.0.0)
 	// Phase V taste-exploration variants, archived under /_variants/<slug>

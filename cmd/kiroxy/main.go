@@ -140,9 +140,15 @@ func runServe(ctx context.Context, args []string) error {
 	}
 
 	// TODO(M7): swap for structured json handler with request_id middleware.
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+	// Wrap the stderr JSON handler with a capturing handler so the Mansion
+	// Logs view (/dashboard/api/logs) can tail the same records the process
+	// writes to stderr. Capacity 2048 is ~3–5 minutes of normal traffic at
+	// a low hundreds of req/sec and costs ~1 MB RAM in the worst case.
+	logSink := server.NewLogSink(2048)
+	jsonHandler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
 		Level: cfg.LogLevel(),
-	})))
+	})
+	slog.SetDefault(slog.New(server.NewCapturingHandler(jsonHandler, logSink)))
 
 	var (
 		authMgr    messages.TokenGetter
@@ -251,6 +257,7 @@ func runServe(ctx context.Context, args []string) error {
 		Logger:          slog.Default(),
 		ReadinessChecks: buildReadinessChecks(vault, poolInst),
 		Metrics:         metricsReg,
+		LogSink:         logSink,
 		DashboardStateProvider: &dashboardProvider{
 			version:   version,
 			vaultPath: cfg.DBPath,
