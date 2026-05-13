@@ -10,7 +10,9 @@
  * inspectable in the URL bar.
  */
 
-import type { Filters } from "./store.svelte";
+import type { Filters, MansionView } from "./store.svelte";
+
+const KNOWN_VIEWS: MansionView[] = ["live", "pool", "metrics", "logs", "settings", "tools", "models"];
 
 export function filtersToHash(f: Filters): string {
   const parts: string[] = [];
@@ -39,11 +41,30 @@ export function filtersFromHash(hash: string): Partial<Filters> {
   return out;
 }
 
-export function writeHash(f: Filters): void {
-  const next = filtersToHash(f);
+/**
+ * Read the "view=..." parameter from the location hash. Unknown values
+ * are ignored so an injected or typo'd hash can't break the UI.
+ */
+export function viewFromHash(hash: string): MansionView | null {
+  const raw = hash.startsWith("#") ? hash.slice(1) : hash;
+  for (const pair of raw.split("&")) {
+    const [k, v = ""] = pair.split("=");
+    if (k === "view" && (KNOWN_VIEWS as string[]).includes(v)) {
+      return v as MansionView;
+    }
+  }
+  return null;
+}
+
+export function writeHash(f: Filters, view?: MansionView): void {
+  const parts: string[] = [];
+  if (view && view !== "live") parts.push(`view=${view}`);
+  const filters = filtersToHash(f);
+  if (filters) parts.push(filters);
+  const next = parts.join("&");
   const target = next ? `#${next}` : "";
   if (window.location.hash !== target) {
-    // Use replaceState to avoid spamming history on every keystroke.
+    // replaceState avoids spamming history on every keystroke.
     window.history.replaceState(null, "", window.location.pathname + window.location.search + target);
   }
 }

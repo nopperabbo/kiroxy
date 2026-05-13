@@ -11,7 +11,7 @@
   import { onMount } from "svelte";
   import { LiveSource } from "./lib/live";
   import { store } from "./lib/store.svelte";
-  import { readHash, writeHash } from "./lib/urlstate";
+  import { readHash, writeHash, viewFromHash } from "./lib/urlstate";
   import Topbar from "./components/Topbar.svelte";
   import AccountBoard from "./components/AccountBoard.svelte";
   import StatusRibbon from "./components/StatusRibbon.svelte";
@@ -25,6 +25,10 @@
   import LiveStream from "./components/LiveStream.svelte";
   import LiveRail from "./components/LiveRail.svelte";
   import MetricsView from "./components/MetricsView.svelte";
+  import LogsView from "./components/LogsView.svelte";
+  import SettingsView from "./components/SettingsView.svelte";
+  import ToolsView from "./components/ToolsView.svelte";
+  import ModelsView from "./components/ModelsView.svelte";
 
   let paletteOpen = $state(false);
   let importOpen = $state(false);
@@ -37,6 +41,8 @@
     if (fromHash.onlyErrors !== undefined) store.setFilter("onlyErrors", fromHash.onlyErrors);
     if (fromHash.onlyCooldown !== undefined) store.setFilter("onlyCooldown", fromHash.onlyCooldown);
     if (fromHash.statusRange !== undefined) store.setFilter("statusRange", fromHash.statusRange);
+    const initialView = viewFromHash(window.location.hash);
+    if (initialView) store.setView(initialView);
 
     live = new LiveSource({
       onSnapshot: (s) => store.applySnapshot(s),
@@ -98,7 +104,7 @@
   });
 
   $effect(() => {
-    writeHash(store.filters);
+    writeHash(store.filters, store.view);
   });
 
   function onPaletteAction(id: string): void {
@@ -135,9 +141,24 @@
       store.setFilter("onlyCooldown", false);
       store.setFilter("statusRange", "all");
       store.pushToast("ok", "filters cleared");
-    } else if (id === "view:live" || id === "view:pool" || id === "view:metrics") {
+    } else if (
+      id === "view:live" ||
+      id === "view:pool" ||
+      id === "view:metrics" ||
+      id === "view:logs" ||
+      id === "view:settings" ||
+      id === "view:tools" ||
+      id === "view:models"
+    ) {
       paletteOpen = false;
-      const v = id.slice("view:".length) as "live" | "pool" | "metrics";
+      const v = id.slice("view:".length) as
+        | "live"
+        | "pool"
+        | "metrics"
+        | "logs"
+        | "settings"
+        | "tools"
+        | "models";
       type VtDoc = Document & { startViewTransition?: (cb: () => void) => void };
       const d = document as VtDoc;
       if (d.startViewTransition) d.startViewTransition(() => store.setView(v));
@@ -171,8 +192,32 @@
           <ActivityLedger />
         </div>
       </section>
-    {:else}
+    {:else if store.view === "metrics"}
       <MetricsView />
+    {:else if store.view === "logs"}
+      <section class="view view--utility" aria-label="logs">
+        <div class="view__utility-inner">
+          <LogsView />
+        </div>
+      </section>
+    {:else if store.view === "settings"}
+      <section class="view view--utility" aria-label="settings">
+        <div class="view__utility-inner">
+          <SettingsView />
+        </div>
+      </section>
+    {:else if store.view === "tools"}
+      <section class="view view--utility" aria-label="tools">
+        <div class="view__utility-inner">
+          <ToolsView />
+        </div>
+      </section>
+    {:else if store.view === "models"}
+      <section class="view view--utility" aria-label="models">
+        <div class="view__utility-inner">
+          <ModelsView />
+        </div>
+      </section>
     {/if}
   </main>
 
@@ -203,6 +248,21 @@
     view-transition-name: main-view;
   }
   .view__pool-inner {
+    max-inline-size: var(--app-max);
+    inline-size: 100%;
+    margin-inline: auto;
+    padding: var(--sp-5) var(--app-pad) var(--sp-8);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-5);
+  }
+  .view--utility {
+    flex: 1;
+    min-block-size: 0;
+    overflow-y: auto;
+    view-transition-name: main-view;
+  }
+  .view__utility-inner {
     max-inline-size: var(--app-max);
     inline-size: 100%;
     margin-inline: auto;

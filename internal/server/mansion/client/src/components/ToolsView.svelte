@@ -62,7 +62,7 @@
 <section class="tools" aria-label="tools">
   <header class="tools__head">
     <span class="caps">tools</span>
-    <nav class="tabs" role="tablist">
+    <nav class="tabs" aria-label="tools tabs">
       {#each ["diagnostic", "backup", "restore", "onboarder"] as t}
         <button
           type="button"

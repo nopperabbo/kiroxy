@@ -112,7 +112,7 @@
 <section class="settings" aria-label="settings">
   <header class="settings__head">
     <span class="caps">settings</span>
-    <nav class="tabs" role="tablist">
+    <nav class="tabs" aria-label="settings tabs">
       {#each ["general", "env", "keys", "vault"] as t}
         <button
           type="button"

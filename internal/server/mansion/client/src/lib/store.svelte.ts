@@ -47,7 +47,7 @@ export interface Filters {
  * inspired request stream with a telemetry rail. "pool" is the ledger-
  * style account table. "metrics" is the analytical KPI tile grid.
  */
-export type MansionView = "live" | "pool" | "metrics";
+export type MansionView = "live" | "pool" | "metrics" | "logs" | "settings" | "tools" | "models";
 
 class Store {
   snapshot: Snapshot = $state(emptySnapshot);

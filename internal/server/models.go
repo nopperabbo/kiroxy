@@ -59,7 +59,7 @@ func (s *Server) handleModels(w http.ResponseWriter, _ *http.Request) {
 // flow into the dashboard automatically without touching models.go.
 func BuildModelTable() []ModelEntry {
 	out := make([]ModelEntry, 0, 8)
-	seenAnthropic := make(map[string]bool, 8)
+	seen := make(map[string]bool, 8)
 
 	// The curated Anthropic IDs we advertise. The resolver accepts many
 	// dashed/dotted aliases; we show only the canonical form most Claude
@@ -76,13 +76,17 @@ func BuildModelTable() []ModelEntry {
 	}
 
 	for _, aid := range anthropicIDs {
-		if seenAnthropic[aid] {
+		// Dedup on the input ID, NOT the resolver's echoed form: the
+		// resolver appends [1m] to always-1M models so two distinct
+		// inputs (claude-opus-4-7 vs claude-opus-4-7[1m]) collapse to
+		// the same echoed name.
+		if seen[aid] {
 			continue
 		}
-		seenAnthropic[aid] = true
+		seen[aid] = true
 		kiro, thinking, ctxWindow, echoed := models.Resolve(aid, false)
 		entry := ModelEntry{
-			Anthropic:         echoed,
+			Anthropic:         aid,
 			Kiro:              kiro,
 			ContextWindowSize: ctxWindow,
 			Family:            familyOf(aid),
