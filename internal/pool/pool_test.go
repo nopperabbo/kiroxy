@@ -96,23 +96,21 @@ func TestRecordFailure_QuotaCooldownSkipsAccount(t *testing.T) {
 
 	time.Sleep(150 * time.Millisecond)
 
-	// After QuotaCooldown the hard gate lifts, but the health ring still
-	// records the recent rate-limit event. Give it a larger window to
-	// pick 'a' via weighted random: with weight(a) ≈ 0.1 * low-rate and
-	// weight(b) ≈ 1.0, P(a) ≈ 0.1; 60 trials gives P(never picked) ≈ 0.002.
-	sawA := false
-	for i := 0; i < 60; i++ {
-		r, err := p.Pick(context.Background(), v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if r.ID == "a" {
-			sawA = true
-			break
-		}
+	// After QuotaCooldown the hard gate lifts, so the deterministic
+	// post-condition is that 'a' BECOMES eligible. We don't insist on
+	// observing a pick of 'a' — the new weighted pool deliberately keeps
+	// rate-limited accounts at the weight floor for the rate-limit
+	// cooldown window (30min by default), so the probability of
+	// observing 'a' in any small batch is intentionally low. Verify the
+	// gate lifted by removing 'b' (so 'a' is the only candidate) and
+	// confirming Pick returns 'a' rather than ErrNoAccount.
+	p.Remove("b")
+	r, err := p.Pick(context.Background(), v)
+	if err != nil {
+		t.Fatalf("after cooldown lift, only candidate 'a' should be pickable; got err=%v", err)
 	}
-	if !sawA {
-		t.Fatalf("account a never came back after QuotaCooldown expired")
+	if r.ID != "a" {
+		t.Fatalf("expected 'a' after cooldown, got %s", r.ID)
 	}
 }
 

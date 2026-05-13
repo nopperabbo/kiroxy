@@ -30,6 +30,15 @@ type DashboardAccount struct {
 	Errors        int64  `json:"errors"`
 	CooldownUntil string `json:"cooldown_until,omitempty"`
 	LastError     string `json:"last_error,omitempty"`
+
+	// v1.1+ pool health fields. Zero values when the provider has no
+	// health tracker (e.g. legacy auth-manager path). Dashboards must
+	// treat these as optional.
+	SuccessRate    float64 `json:"success_rate,omitempty"`
+	Weight         float64 `json:"weight,omitempty"`
+	RequestsLast5m int     `json:"requests_last_5m,omitempty"`
+	AvgLatencyMs   int64   `json:"avg_latency_ms,omitempty"`
+	LastRateLimit  string  `json:"last_rate_limit,omitempty"`
 }
 
 // DashboardStateProvider is implemented by whatever owns the pool+vault.
