@@ -49,6 +49,14 @@ const (
 
 	// weightCeil is the maximum weight. A fresh account starts here.
 	weightCeil = 1.0
+
+	// usageDrainedThreshold is the PercentRemaining cutoff below which
+	// an account is treated as "effectively drained": weighted selection
+	// collapses it to the floor so we don't exhaust the last ~10% of
+	// credits with latency-inducing retries. Aligns with the enowX
+	// finding that Kiro's 60-minute rolling window typically trips
+	// before the monthly cap is fully spent.
+	usageDrainedThreshold = 0.10
 )
 
 // AccountHealth holds rolling metrics for one account. All access goes
@@ -169,6 +177,10 @@ func (h *AccountHealth) RequestsInWindow(now time.Time) int {
 //   - rate-limit penalty: 0.1x within rateLimitCooldownWindow, else 1.0
 //   - recent-load decay: scales from 1.0 to 0.3 as reqs-in-window goes
 //     from 0 to 100+
+//   - usage-remaining penalty: linear above usageDrainedThreshold,
+//     collapsed to the floor below it. Nil UsageLimits means "unknown",
+//     which gets full credit so an introspection failure never makes
+//     an account unpickable.
 //
 // Callers MUST hold p.mu when invoking; the ring/counter are not
 // concurrent-safe on their own.
@@ -186,6 +198,8 @@ func (h *AccountHealth) Weight(now time.Time) float64 {
 	}
 	w *= load
 
+	w *= usageFactor(h.UsageLimits)
+
 	if w < weightFloor {
 		w = weightFloor
 	}
@@ -193,6 +207,25 @@ func (h *AccountHealth) Weight(now time.Time) float64 {
 		w = weightCeil
 	}
 	return w
+}
+
+// usageFactor translates the UsageLimits snapshot into a [0..1]
+// multiplier for the composite weight. Nil or unknown-cap accounts
+// return 1.0 (no penalty). Accounts below usageDrainedThreshold
+// (< 10% remaining) are treated as drained and collapse to the floor
+// fraction so weighted selection effectively skips them. Above the
+// threshold the factor scales linearly — a 50%-remaining account
+// competes at roughly half the strength of a fresh one, which spreads
+// load across the fleet instead of exhausting one account at a time.
+func usageFactor(u *kiroclient.UsageLimits) float64 {
+	if u == nil || u.MonthlyCap <= 0 {
+		return 1.0
+	}
+	r := u.PercentRemaining()
+	if r <= usageDrainedThreshold {
+		return weightFloor / weightCeil
+	}
+	return r
 }
 
 // ---- recentCounter: time-bucketed sliding window ----
@@ -270,4 +303,13 @@ type HealthSnapshot struct {
 	RequestsInWindow int           `json:"requests_last_5m"`
 	AvgLatency       time.Duration `json:"avg_latency_ns,omitempty"`
 	LastRateLimit    time.Time     `json:"last_rate_limit,omitempty"`
+
+	// Usage fields. Zero / empty when no successful poll has landed yet.
+	UsageKnown        bool      `json:"usage_known"`
+	UsageCap          int64     `json:"usage_cap,omitempty"`
+	UsageUsed         int64     `json:"usage_used,omitempty"`
+	UsageRemaining    int64     `json:"usage_remaining,omitempty"`
+	UsagePercentUsed  float64   `json:"usage_percent_used,omitempty"`
+	UsageLastPolled   time.Time `json:"usage_last_polled,omitempty"`
+	UsageDaysUntilRst int       `json:"usage_days_until_reset,omitempty"`
 }

@@ -479,14 +479,24 @@ func (p *Pool) HealthSnapshots() []HealthSnapshot {
 			out = append(out, HealthSnapshot{AccountID: id, SuccessRate: 1.0, Weight: weightCeil})
 			continue
 		}
-		out = append(out, HealthSnapshot{
+		hs := HealthSnapshot{
 			AccountID:        id,
 			SuccessRate:      ah.SuccessRate(),
 			Weight:           ah.Weight(now),
 			RequestsInWindow: ah.RequestsInWindow(now),
 			AvgLatency:       ah.AvgLatency,
 			LastRateLimit:    ah.LastRateLimit,
-		})
+		}
+		if u := ah.UsageLimits; u != nil && u.MonthlyCap > 0 {
+			hs.UsageKnown = true
+			hs.UsageCap = u.MonthlyCap
+			hs.UsageUsed = u.MonthlyCreditsUsed
+			hs.UsageRemaining = u.MonthlyCreditsRemaining
+			hs.UsagePercentUsed = u.PercentUsed
+			hs.UsageLastPolled = u.LastQueryTime
+			hs.UsageDaysUntilRst = u.DaysUntilReset
+		}
+		out = append(out, hs)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].AccountID < out[j].AccountID })
 	return out

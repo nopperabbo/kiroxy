@@ -21,6 +21,7 @@
   import CountdownRing from "./CountdownRing.svelte";
   import Sparkline from "./Sparkline.svelte";
   import StatusDot from "./StatusDot.svelte";
+  import EmptyState from "./EmptyState.svelte";
   import Icon from "./Icon.svelte";
 
   let sortKey: "status" | "requests" | "errors" | "cooldown" | "id" = $state("status");
@@ -146,15 +147,17 @@
     {#if sorted.length === 0}
       <div class="empty" role="row">
         {#if store.snapshot.accounts.length === 0}
-          <div class="empty__icon" aria-hidden="true">
-            <Icon name="layers" size={28} strokeWidth={1.25} />
-          </div>
-          <div class="empty__title">no accounts in the vault</div>
-          <div class="empty__hint faint">
-            paste a <code>.json</code> export or run <code class="mono">kiroxy add-account</code> to onboard your first identity.
-          </div>
+          <EmptyState
+            glyph="◇"
+            title="Pool is empty. No accounts imported."
+            hint="Press i to paste a JSON export, or run kiroxy import-accounts-json to fill the lamps from the CLI."
+          />
         {:else}
-          <div class="empty__title faint">no accounts match the current filter</div>
+          <EmptyState
+            density="tight"
+            title="No accounts match the current filter."
+            hint="Loosen the filter chips above to see the full pool."
+          />
         {/if}
       </div>
     {/if}
@@ -434,29 +437,12 @@
 
   .empty {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--sp-3);
-    padding: var(--sp-8) var(--sp-6);
-    text-align: center;
-    color: var(--c-text-dim);
+    justify-content: center;
+    padding: var(--sp-3) var(--sp-5);
     border-block-end: 1px solid var(--c-rule);
   }
   .empty:last-child {
     border-block-end: none;
-  }
-  .empty__icon {
-    color: var(--c-accent);
-    opacity: 0.55;
-  }
-  .empty__title {
-    font-family: var(--font-display);
-    font-size: var(--fs-lg);
-    color: var(--c-text);
-  }
-  .empty__hint {
-    font-size: var(--fs-sm);
-    max-inline-size: 40ch;
   }
 
   @media (max-width: 720px) {

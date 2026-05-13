@@ -14,6 +14,7 @@
 <script lang="ts">
   import { store } from "../lib/store.svelte";
   import { shortTime, fmtMs, abbrId, truncate } from "../lib/format";
+  import EmptyState from "./EmptyState.svelte";
   import Icon from "./Icon.svelte";
 
   const VISIBLE = 120;
@@ -81,19 +82,27 @@
   <div class="stream__body" role="table">
     {#if visible.length === 0}
       <div class="stream__empty" role="row">
-        <div class="stream__empty-icon" aria-hidden="true">
-          <span class="stream__cursor">▍</span>
-        </div>
-        <div>
-          <div class="stream__empty-title">no requests yet</div>
-          <div class="stream__empty-hint faint">
-            {#if store.filters.search || range !== "all" || store.filters.onlyErrors}
-              your filters are hiding everything. <button type="button" class="stream__empty-btn" onclick={() => { store.setFilter('search',''); store.setFilter('onlyErrors', false); setRange('all'); }}>clear filters</button>
-            {:else}
-              the proxy hasn't served a request yet. try <code class="mono">curl -H "x-api-key: $KIROXY_API_KEY" http://127.0.0.1:8787/v1/models</code>
-            {/if}
-          </div>
-        </div>
+        {#if store.filters.search || range !== "all" || store.filters.onlyErrors}
+          <EmptyState
+            density="tight"
+            title="Nothing matches the current filter."
+            hint="The wire is moving but your filter is hiding it."
+          >
+            <button
+              type="button"
+              class="stream__empty-btn"
+              onclick={() => { store.setFilter('search',''); store.setFilter('onlyErrors', false); setRange('all'); }}
+            >clear filters</button>
+          </EmptyState>
+        {:else}
+          <EmptyState
+            glyph="▍"
+            title="Wire quiet. Nothing moves."
+            hint="The proxy hasn't served a request yet. Send one to wake the stream."
+          >
+            <code class="stream__empty-cmd mono">curl -H "x-api-key: $KIROXY_API_KEY" http://127.0.0.1:8787/v1/models</code>
+          </EmptyState>
+        {/if}
       </div>
     {/if}
     {#each visible as r (r.id)}
@@ -284,44 +293,22 @@
 
   .stream__empty {
     display: flex;
-    align-items: flex-start;
-    gap: var(--sp-4);
-    padding: var(--sp-7) var(--sp-5);
+    align-items: stretch;
+    justify-content: center;
+    padding: var(--sp-3) var(--sp-5);
     color: var(--c-text-faint);
   }
-  .stream__empty-icon {
-    color: var(--c-accent);
-  }
-  .stream__cursor {
+  .stream__empty-cmd {
     display: inline-block;
-    font-family: var(--font-mono);
-    font-size: var(--fs-xl);
-    line-height: 1;
-    animation: blink 1.1s steps(2, end) infinite;
-  }
-  @keyframes blink {
-    from { opacity: 1; }
-    50%  { opacity: 0.1; }
-    to   { opacity: 1; }
-  }
-  .stream__empty-title {
-    font-family: var(--font-display);
-    font-size: var(--fs-md);
-    color: var(--c-text);
-    margin-block-end: 3px;
-  }
-  .stream__empty-hint {
-    font-size: var(--fs-sm);
-    max-inline-size: 44ch;
-    line-height: var(--lh-snug);
-  }
-  .stream__empty-hint code {
     font-size: var(--fs-2xs);
     color: var(--c-accent);
     background: var(--c-accent-wash);
-    padding: 1px 6px;
+    padding: 4px 8px;
     border-radius: var(--r-sm);
     border: 1px solid color-mix(in oklch, var(--c-accent), transparent 70%);
+    max-inline-size: 100%;
+    overflow-x: auto;
+    white-space: pre;
   }
   .stream__empty-btn {
     color: var(--c-accent);
