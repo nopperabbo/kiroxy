@@ -86,5 +86,32 @@
     <path d="M7 5 L5 5 A3 3 0 0 0 5 11 L7 11" />
     <path d="M9 5 L11 5 A3 3 0 0 1 11 11 L9 11" />
     <path d="M6 8 L10 8" />
+  {:else if name === "play"}
+    <path d="M4 3 L12 8 L4 13 Z" fill="currentColor" />
+  {:else if name === "pause"}
+    <rect x="4" y="3" width="3" height="10" fill="currentColor" />
+    <rect x="9" y="3" width="3" height="10" fill="currentColor" />
+  {:else if name === "trash"}
+    <path d="M3 5 L13 5" />
+    <path d="M5 5 L5 3 A1 1 0 0 1 6 2 L10 2 A1 1 0 0 1 11 3 L11 5" />
+    <path d="M5 5 L5 13 A1 1 0 0 0 6 14 L10 14 A1 1 0 0 0 11 13 L11 5" />
+  {:else if name === "settings"}
+    <circle cx="8" cy="8" r="2" />
+    <path d="M8 1 L8 3 M8 13 L8 15 M1 8 L3 8 M13 8 L15 8 M3 3 L4.5 4.5 M11.5 11.5 L13 13 M3 13 L4.5 11.5 M11.5 4.5 L13 3" />
+  {:else if name === "tool"}
+    <path d="M11 3 A3 3 0 1 1 9 9 L3 15 L1 13 L7 7 A3 3 0 0 1 11 3 Z" />
+  {:else if name === "terminal"}
+    <path d="M2 4 L6 8 L2 12" />
+    <path d="M7 12 L12 12" />
+  {:else if name === "server"}
+    <rect x="2" y="3" width="12" height="4" rx="1" />
+    <rect x="2" y="9" width="12" height="4" rx="1" />
+    <circle cx="5" cy="5" r="0.6" fill="currentColor" />
+    <circle cx="5" cy="11" r="0.6" fill="currentColor" />
+  {:else if name === "key"}
+    <circle cx="5" cy="8" r="3" />
+    <path d="M8 8 L14 8 L14 10 M12 8 L12 10" />
+  {:else if name === "shield"}
+    <path d="M8 2 L13 4 L13 8 A6 6 0 0 1 8 14 A6 6 0 0 1 3 8 L3 4 Z" />
   {/if}
 </svg>

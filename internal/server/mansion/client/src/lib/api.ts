@@ -21,6 +21,46 @@ export type Result<T> =
   | { ok: true; data: T }
   | { ok: false; status: number; error: string };
 
+export interface DocEntry {
+  path: string;
+  title: string;
+  content: string;
+  bytes: number;
+}
+
+/**
+ * One captured slog record from /dashboard/api/logs. Mirrors Go's
+ * internal/server/logsink.go LogRecord. ID is monotonic across the
+ * process so SSE reconnect can fast-forward via Last-Event-ID.
+ */
+export interface LogRecord {
+  id: number;
+  time: string;
+  level: "DEBUG" | "INFO" | "WARN" | "ERROR" | string;
+  source?: string;
+  message: string;
+  fields?: Record<string, string>;
+}
+
+export interface LogCounters {
+  total: number;
+  buffered: number;
+  capacity: number;
+}
+
+export interface LogsSnapshot {
+  records: LogRecord[];
+  counters: LogCounters;
+}
+
+export interface LogsQuery {
+  level?: string;
+  source?: string;
+  search?: string;
+  since_id?: number;
+  max?: number;
+}
+
 async function jsonFetch<T>(input: RequestInfo, init?: RequestInit): Promise<Result<T>> {
   try {
     const res = await fetch(input, {
@@ -79,4 +119,17 @@ export const api = {
   opencodeConfig(): Promise<Result<unknown>> {
     return jsonFetch<unknown>("/dashboard/api/opencode-config");
   },
+  docsIndex(): Promise<Result<{ docs: DocEntry[] }>> {
+    return jsonFetch<{ docs: DocEntry[] }>("/dashboard/api/docs/index");
+  },
 };
+
+function buildQuery(q: LogsQuery): string {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(q)) {
+    if (v == null || v === "") continue;
+    params.set(k, String(v));
+  }
+  const s = params.toString();
+  return s ? "?" + s : "";
+}
