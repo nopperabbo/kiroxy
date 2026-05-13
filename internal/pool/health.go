@@ -14,6 +14,8 @@ package pool
 
 import (
 	"time"
+
+	"local/kiroxy/internal/kiroclient"
 )
 
 const (
@@ -70,6 +72,15 @@ type AccountHealth struct {
 	// AvgLatency is an EWMA (alpha=defaultEWMAAlpha) over request
 	// round-trip durations. Zero until the first RecordLatency call.
 	AvgLatency time.Duration
+
+	// UsageLimits is the last-known credit ledger snapshot for this
+	// account, populated by the background UsagePoller. Nil until the
+	// first successful poll; treated by Weight() as "unknown, full
+	// credit" so an introspection failure never makes an account
+	// unusable for chat. Package 3 factors UsageLimits.PercentRemaining
+	// into the composite weight to bias traffic away from accounts
+	// nearing their monthly cap.
+	UsageLimits *kiroclient.UsageLimits
 }
 
 // newAccountHealth returns a health tracker sized to defaultRingSize.
