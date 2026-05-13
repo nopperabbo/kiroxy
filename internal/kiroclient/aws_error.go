@@ -54,9 +54,9 @@ func parseAWSExceptionType(body string) string {
 	return normalizeAWSExceptionType(t)
 }
 
-// isRetryableAWSException reports whether an AWS exception type is transient
+// IsRetryableAWSException reports whether an AWS exception type is transient
 // and worth retrying (modeled after the AWS SDK retry policy).
-func isRetryableAWSException(exType string) bool {
+func IsRetryableAWSException(exType string) bool {
 	switch exType {
 	case "ThrottlingException",
 		"TooManyRequestsException",

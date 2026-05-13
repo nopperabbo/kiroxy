@@ -265,7 +265,7 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 				exType := resolveAWSException(errBody, resp.Header)
 				// Retry transient AWS exceptions (throttling / internal / 5xx-equivalent)
 				// even though the HTTP status is 200.
-				if attempt < maxRetries && isRetryableAWSException(exType) {
+				if attempt < maxRetries && IsRetryableAWSException(exType) {
 					delay := backoffDelay(attempt)
 					slog.WarnContext(ctx, "kiro: 200 with non-eventstream exception, retrying",
 						"trace_id", short, "content_type", ct, "exception", exType,
@@ -335,10 +335,27 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 
 		default:
 			errBody := readLimitedBody(resp.Body, upstreamBodyLimit)
+			ex := resolveAWSException(errBody, resp.Header)
+			// Kiro upstream returns AWS exceptions like ThrottlingException with
+			// HTTP 400 (application/x-amz-json-1.0). Treat retryable ones the same
+			// way we already do for 429/5xx so a transient capacity hiccup does
+			// not surface as a 502 to the caller.
+			if IsRetryableAWSException(ex) && attempt < maxRetries {
+				delay := backoffDelay(attempt)
+				slog.WarnContext(ctx, "kiro: retryable AWS exception, retrying",
+					"trace_id", short, "status", resp.StatusCode,
+					"exception", ex,
+					"attempt", attempt+1, "max", maxRetries+1,
+					"delay", delay, "body", errBody)
+				if waitErr := retryWait(ctx, delay); waitErr != nil {
+					return nil, waitErr
+				}
+				continue
+			}
 			ue := &UpstreamError{
 				Status:      resp.StatusCode,
 				ContentType: resp.Header.Get("Content-Type"),
-				Exception:   resolveAWSException(errBody, resp.Header),
+				Exception:   ex,
 				Body:        errBody,
 			}
 			c.recordError(ctx, ue)

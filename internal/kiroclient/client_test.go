@@ -408,13 +408,13 @@ func TestIsRetryableAWSException(t *testing.T) {
 		"InternalServerError",
 	}
 	for _, e := range retryable {
-		if !isRetryableAWSException(e) {
+		if !IsRetryableAWSException(e) {
 			t.Errorf("%q should be retryable", e)
 		}
 	}
 	nonRetryable := []string{"", "ValidationException", "AccessDeniedException", "ResourceNotFoundException"}
 	for _, e := range nonRetryable {
-		if isRetryableAWSException(e) {
+		if IsRetryableAWSException(e) {
 			t.Errorf("%q should NOT be retryable", e)
 		}
 	}
