@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en" data-theme="linear-premium">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="kiroxy dashboard — linear-premium variant">
+  <title>kiroxy</title>
+  <link rel="stylesheet" href="/dashboard-linear-premium/assets/app.css">
+</head>
+<body>
+  <!--
+    linear-premium variant — signature SaaS done right.
+    Refined dark + indigo accent. View Transitions API for nav,
+    @starting-style for enter, @property for row flash. No motion lib.
+    See .sisyphus/plans/variant-linear-premium-manifesto.md.
+  -->
+  <div id="app">
+    <aside class="sidebar" aria-label="navigation">
+      <a class="brand" href="/dashboard-linear-premium" aria-label="kiroxy home">
+        <span class="brand-mark" aria-hidden="true">k</span>
+        <span class="brand-text">kiroxy</span>
+      </a>
+      <nav class="side-nav" aria-label="primary">
+        <a href="#pool" class="nav-item is-current">
+          <span class="nav-dot" aria-hidden="true"></span>
+          Pool
+        </a>
+        <a href="#health" class="nav-item">
+          <span class="nav-dot" aria-hidden="true"></span>
+          Health
+        </a>
+        <a href="#import" class="nav-item">
+          <span class="nav-dot" aria-hidden="true"></span>
+          Import
+        </a>
+      </nav>
+      <div class="side-foot">
+        <button type="button" class="palette-trigger" data-palette-trigger>
+          <span aria-hidden="true">⌘</span> Search
+          <span class="kbd-pair"><kbd>⌘</kbd><kbd>K</kbd></span>
+        </button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="bread">
+          <span class="bread-prev">kiroxy</span>
+          <span aria-hidden="true">/</span>
+          <span class="bread-cur">Pool</span>
+        </div>
+        <div class="hud">
+          <span class="pill" data-pill-rdy>
+            <span class="pill-dot" aria-hidden="true"></span>
+            <span class="pill-text">connecting</span>
+          </span>
+          <span class="pill" data-pill-vlt>
+            <span class="pill-dot" aria-hidden="true"></span>
+            <span class="pill-text">vault</span>
+          </span>
+          <span class="meta-stamp" data-stamp>—</span>
+        </div>
+      </header>
+
+      <section class="hero" aria-labelledby="hero-h">
+        <div class="hero-card">
+          <h2 id="hero-h" class="card-eyebrow">Requests served</h2>
+          <p class="card-num" data-totreq>—</p>
+          <p class="card-foot">Across all accounts since startup.</p>
+        </div>
+        <div class="hero-card">
+          <h2 class="card-eyebrow">Errors observed</h2>
+          <p class="card-num" data-toterr>—</p>
+          <p class="card-foot">Includes upstream 4xx/5xx and timeouts.</p>
+        </div>
+        <div class="hero-card">
+          <h2 class="card-eyebrow">Uptime</h2>
+          <p class="card-num" data-upt>—</p>
+          <p class="card-foot">Since the proxy started serving.</p>
+        </div>
+      </section>
+
+      <section id="pool" class="panel" aria-labelledby="pool-h">
+        <header class="panel-head">
+          <div>
+            <h2 id="pool-h">Account pool</h2>
+            <p class="panel-sub">Live snapshot — polled every 2 seconds.</p>
+          </div>
+          <span class="badge badge-soft" data-acct-count>0 accounts</span>
+        </header>
+        <table class="rows">
+          <thead>
+            <tr>
+              <th scope="col">Account</th>
+              <th scope="col">State</th>
+              <th scope="col" class="num">Requests</th>
+              <th scope="col" class="num">Errors</th>
+              <th scope="col">Note</th>
+            </tr>
+          </thead>
+          <tbody id="rows" aria-live="polite"></tbody>
+        </table>
+        <div id="empty" class="empty" hidden>
+          <svg viewBox="0 0 80 60" width="80" height="60" aria-hidden="true">
+            <path d="M10 40 Q30 10 70 30" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            <circle cx="70" cy="30" r="3" fill="currentColor"/>
+          </svg>
+          <p>The pool is empty.</p>
+          <p class="empty-sub">
+            Add accounts via CLI:
+            <code>kiroxy import-json &lt; tokens.json</code>.
+            Dashboard import lands in v1.1.
+          </p>
+        </div>
+      </section>
+
+      <footer class="meta">
+        Other variants:
+        <a href="/dashboard">classic</a> ·
+        <a href="/dashboard-next">next</a> ·
+        <a href="/dashboard-mansion">mansion</a> ·
+        <a href="/dashboard-brutal">brutal</a> ·
+        <a href="/dashboard-paper">paper</a> ·
+        <a href="/dashboard-nord">nord</a> ·
+        <a href="/dashboard-neon">neon</a> ·
+        <a href="/dashboard-muji">muji</a>
+      </footer>
+    </main>
+  </div>
+
+  <dialog id="palette" class="palette" aria-label="command palette">
+    <form method="dialog">
+      <label class="palette-label">
+        <svg class="palette-icon" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M11 11 L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <input id="palette-input" type="text" autocomplete="off"
+               spellcheck="false" placeholder="Type a command or search…">
+      </label>
+      <ul id="palette-list" class="palette-list" role="listbox"></ul>
+      <p class="palette-hint">
+        <kbd>↑</kbd><kbd>↓</kbd> navigate
+        · <kbd>↵</kbd> run
+        · <kbd>esc</kbd> close
+      </p>
+    </form>
+  </dialog>
+
+  <script type="module" src="/dashboard-linear-premium/assets/app.js"></script>
+</body>
+</html>

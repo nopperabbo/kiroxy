@@ -13,6 +13,7 @@ import (
 	"local/kiroxy/internal/server/mansion"
 	"local/kiroxy/internal/server/next"
 	"local/kiroxy/internal/server/variants/brutal"
+	"local/kiroxy/internal/server/variants/linearpremium"
 	"local/kiroxy/internal/server/variants/muji"
 	"local/kiroxy/internal/server/variants/neon"
 	"local/kiroxy/internal/server/variants/nord"
@@ -120,6 +121,7 @@ func (s *Server) Handler() http.Handler {
 	nord.Register(mux)   // /dashboard-nord: arctic calm palette
 	neon.Register(mux)   // /dashboard-neon: cyberpunk grafana aesthetic
 	muji.Register(mux, s.mujiSnap) // /dashboard-muji: zero-JS server-rendered
+	linearpremium.Register(mux)    // /dashboard-linear-premium: refined SaaS dark + indigo
 
 	if s.msgSvc != nil {
 		mux.HandleFunc("POST /v1/messages", s.msgSvc.HandleMessages)
