@@ -130,24 +130,23 @@ func buildDocsCatalog() ([]byte, error) {
 }
 
 // extractTitle pulls the first H1 out of a markdown body. We tolerate
-// blank leading lines and trim trailing annotations like "— kiroxy" so
-// the palette label stays short.
+// blank leading lines, trim trailing annotations like "— kiroxy", and
+// strip a trailing ".md" (some docs use their filename as the H1 for
+// symmetry) so the palette label stays short and human.
 func extractTitle(body, fallback string) string {
 	for _, line := range strings.Split(body, "\n") {
 		trim := strings.TrimSpace(line)
 		if strings.HasPrefix(trim, "# ") {
 			title := strings.TrimSpace(strings.TrimPrefix(trim, "# "))
-			// Strip any trailing " — <thing>" decoration kept for
-			// humans reading the raw file.
 			if idx := strings.Index(title, " — "); idx >= 0 {
 				title = strings.TrimSpace(title[:idx])
 			}
+			title = strings.TrimSuffix(title, ".md")
 			if title != "" {
 				return title
 			}
 		}
 	}
-	// Fall back to the filename without extension.
 	name := strings.TrimSuffix(fallback, ".md")
 	return name
 }

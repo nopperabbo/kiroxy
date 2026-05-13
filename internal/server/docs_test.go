@@ -87,6 +87,8 @@ func TestExtractTitle_HandlesH1AndFallback(t *testing.T) {
 		{"\n\n# Hello World — subtitle\nbody", "x.md", "Hello World"},
 		{"no heading here", "readme.md", "readme"},
 		{"# \nempty h1", "z.md", "z"},
+		{"# VISION.md — kiroxy\nbody", "VISION.md", "VISION"},
+		{"# docs.md\nbody", "docs.md", "docs"},
 	}
 	for _, c := range cases {
 		if got := extractTitle(c.in, c.fallback); got != c.want {
