@@ -8,9 +8,19 @@
              The active tab gets the amber underline (amber budget role 3).
     right  — search, import button, theme, palette hint (⌘K kbd = role 5).
 
-  The old status-pill mid-band moved out to the StatusRibbon at page-bottom,
-  which is where the mockup puts ambient telemetry. That kept the topbar
-  visually quieter and made room for the nav.
+  Amber budget (5 roles, enforced across the app):
+    1. Wordmark trailing cursor (this file)
+    2. Live dot pulse           (this file)
+    3. Active tab underline     (this file + DetailDrawer tab bar)
+    4. Primary CTA              (DetailDrawer 'Refresh token')
+    5. Keyboard shortcut pills  (this file ⌘K + CommandPalette ↵)
+
+  Nothing else carries amber — not data, tables, charts, dividers,
+  timestamps, or IDs. Errors use --c-danger, success uses --c-success.
+
+  The old status-pill mid-band moved out to the StatusRibbon at page-
+  bottom, which is where the mockup puts ambient telemetry. That kept
+  the topbar visually quieter and made room for the nav.
 -->
 <script lang="ts">
   import { store, type MansionView } from "../lib/store.svelte";

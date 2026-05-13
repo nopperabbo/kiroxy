@@ -459,10 +459,14 @@
     max-inline-size: 56ch;
     margin: 0;
   }
+  /* Inline code in the empty-state hint stays neutral — this is
+     documentation text, not a UI accent role. Amber budget guards us
+     from creeping amber into every <code> tag. */
   .stream-empty__hint code {
     font-size: var(--fs-2xs);
-    color: var(--c-accent);
-    background: var(--c-accent-wash);
+    color: var(--c-text-dim);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
     padding: 1px 6px;
     border-radius: var(--r-sm);
   }
