@@ -112,6 +112,25 @@ export interface SettingsSnapshot {
   };
 }
 
+/**
+ * One doctor check result. Mirrors Go's internal/doctor.Result.
+ */
+export interface DoctorResult {
+  name: string;
+  status: "ok" | "warn" | "error" | "skip";
+  detail: string;
+  hint?: string;
+  elapsed_ns?: number;
+}
+
+export interface DoctorReport {
+  ok: boolean;
+  started_at: string;
+  elapsed: string;
+  results: DoctorResult[];
+  go_version?: string;
+}
+
 async function jsonFetch<T>(input: RequestInfo, init?: RequestInit): Promise<Result<T>> {
   try {
     const res = await fetch(input, {
@@ -200,6 +219,9 @@ export const api = {
     return jsonFetch<void>(`/dashboard/api/inbound-keys/${encodeURIComponent(id)}`, {
       method: "DELETE",
     });
+  },
+  doctor(): Promise<Result<DoctorReport>> {
+    return jsonFetch<DoctorReport>("/dashboard/api/tools/doctor", { method: "POST" });
   },
 };
 
