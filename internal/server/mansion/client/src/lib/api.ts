@@ -61,6 +61,57 @@ export interface LogsQuery {
   max?: number;
 }
 
+/**
+ * Mirrors Go's server.InboundKeyView. Plaintext NEVER appears here —
+ * it is returned only by createInboundKey() and shown to the operator
+ * exactly once.
+ */
+export interface InboundKeyView {
+  id: string;
+  label?: string;
+  tail: string;
+  created_at?: string;
+  last_used_at?: string;
+  revoked: boolean;
+}
+
+export interface CreatedInboundKey extends InboundKeyView {
+  plaintext: string;
+}
+
+/**
+ * Mirrors Go's server.SettingsSnapshot. The bundled settings response
+ * contains everything the SettingsView needs to render its 4 tabs in
+ * one fetch.
+ */
+export interface SettingsSnapshot {
+  general: {
+    version: string;
+    uptime_s: number;
+    started_at: string;
+    vault_path?: string;
+    log_level?: string;
+  };
+  env_vars: Array<{
+    key: string;
+    value: string;
+    redacted?: boolean;
+    present: boolean;
+  }>;
+  vault: {
+    path?: string;
+    size_bytes?: number;
+    healthy: number;
+    cooldown: number;
+    disabled: number;
+    total: number;
+  };
+  inbound_keys: {
+    active: number;
+    total: number;
+  };
+}
+
 async function jsonFetch<T>(input: RequestInfo, init?: RequestInit): Promise<Result<T>> {
   try {
     const res = await fetch(input, {
@@ -121,6 +172,34 @@ export const api = {
   },
   docsIndex(): Promise<Result<{ docs: DocEntry[] }>> {
     return jsonFetch<{ docs: DocEntry[] }>("/dashboard/api/docs/index");
+  },
+  logs(q: LogsQuery = {}): Promise<Result<LogsSnapshot>> {
+    return jsonFetch<LogsSnapshot>("/dashboard/api/logs" + buildQuery(q));
+  },
+  /**
+   * Returns the SSE URL (callers wrap in EventSource themselves so the
+   * lifecycle stays explicit). Filter params are applied server-side.
+   */
+  logsStreamURL(q: LogsQuery = {}): string {
+    return "/dashboard/api/logs/stream" + buildQuery(q);
+  },
+  settings(): Promise<Result<SettingsSnapshot>> {
+    return jsonFetch<SettingsSnapshot>("/dashboard/api/settings");
+  },
+  listInboundKeys(): Promise<Result<{ keys: InboundKeyView[] }>> {
+    return jsonFetch<{ keys: InboundKeyView[] }>("/dashboard/api/inbound-keys");
+  },
+  createInboundKey(label: string): Promise<Result<CreatedInboundKey>> {
+    return jsonFetch<CreatedInboundKey>("/dashboard/api/inbound-keys", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label }),
+    });
+  },
+  revokeInboundKey(id: string): Promise<Result<void>> {
+    return jsonFetch<void>(`/dashboard/api/inbound-keys/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
   },
 };
 
