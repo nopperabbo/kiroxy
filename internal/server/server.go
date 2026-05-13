@@ -13,6 +13,7 @@ import (
 	"local/kiroxy/internal/server/mansion"
 	"local/kiroxy/internal/server/next"
 	"local/kiroxy/internal/server/variants/brutal"
+	"local/kiroxy/internal/server/variants/paper"
 )
 
 // Options is how main constructs a Server.
@@ -112,6 +113,7 @@ func (s *Server) Handler() http.Handler {
 	// philosophies stay isolated — see .sisyphus/plans/variant-*-manifesto.md
 	// and docs/VARIANTS.md.
 	brutal.Register(mux) // /dashboard-brutal: terminal / htop aesthetic
+	paper.Register(mux)  // /dashboard-paper: ink on cream / document aesthetic
 
 	if s.msgSvc != nil {
 		mux.HandleFunc("POST /v1/messages", s.msgSvc.HandleMessages)

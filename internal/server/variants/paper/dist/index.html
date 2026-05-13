@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en" data-theme="paper">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="kiroxy dashboard — paper / ink-on-cream variant">
+  <title>kiroxy · Pool report</title>
+  <link rel="stylesheet" href="/dashboard-paper/assets/app.css">
+</head>
+<body>
+  <!--
+    paper variant — ink on cream.
+    Philosophy: this isn't a tool, it's a document. Serif headings, sans data,
+    narrow column, no sidebar, no dark mode toggle. Reference: Stripe docs,
+    NYT reading mode, tufte-css. See .sisyphus/plans/variant-paper-manifesto.md.
+  -->
+  <main id="app" class="page">
+    <nav class="topnav" aria-label="primary">
+      <a class="wordmark" href="/dashboard-paper">kiroxy <em>· paper</em></a>
+      <ul>
+        <li><a href="#pool">Pool</a></li>
+        <li><a href="#health">Health</a></li>
+        <li><a href="#import">Import</a></li>
+      </ul>
+    </nav>
+
+    <header class="lede">
+      <p class="eyebrow">Proxy report</p>
+      <h1>Pool status as of <span data-stamp>—</span></h1>
+      <p class="dek">
+        A live snapshot of the kiroxy account pool — read it like a report,
+        not a dashboard. Data refreshes every two seconds in place.
+        <button type="button" class="palette-open" data-palette-open>
+          Open command palette <kbd>⌘K</kbd>
+        </button>
+      </p>
+    </header>
+
+    <section id="health" aria-labelledby="health-head">
+      <h2 id="health-head">System</h2>
+      <dl class="summary">
+        <div>
+          <dt>Version</dt>
+          <dd data-ver>—</dd>
+        </div>
+        <div>
+          <dt>Uptime</dt>
+          <dd data-upt>—</dd>
+        </div>
+        <div>
+          <dt>Readiness</dt>
+          <dd data-ready>—</dd>
+        </div>
+        <div>
+          <dt>Vault</dt>
+          <dd data-vault>—</dd>
+        </div>
+        <div>
+          <dt>Total requests</dt>
+          <dd data-totreq>—</dd>
+        </div>
+        <div>
+          <dt>Total errors</dt>
+          <dd data-toterr>—</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section id="pool" aria-labelledby="pool-head">
+      <h2 id="pool-head">Pool</h2>
+      <p class="byline" data-byline>
+        Every account in the vault, in order of last activity.
+      </p>
+      <table class="ledger" aria-describedby="pool-head">
+        <thead>
+          <tr>
+            <th scope="col">Account</th>
+            <th scope="col">State</th>
+            <th scope="col" class="n">Requests</th>
+            <th scope="col" class="n">Errors</th>
+            <th scope="col">Note</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr class="empty"><td colspan="5"><em>Loading pool snapshot…</em></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="import" aria-labelledby="import-head">
+      <h2 id="import-head">Importing accounts</h2>
+      <p>
+        The dashboard import endpoint is on the v1.1 roadmap. Until then,
+        add accounts from the command line — the CLI accepts the same
+        JSON shape the dashboard eventually will:
+      </p>
+      <pre class="cmd"><code>kiroxy import-json &lt; tokens.json</code></pre>
+      <p class="footnote">
+        See
+        <a href="/dashboard">/dashboard</a>,
+        <a href="/dashboard-next">/dashboard-next</a>,
+        <a href="/dashboard-mansion">/dashboard-mansion</a>,
+        <a href="/dashboard-brutal">/dashboard-brutal</a>
+        for the other five variants.
+      </p>
+    </section>
+
+    <footer class="colophon">
+      <p>
+        <em>kiroxy paper variant.</em>
+        Data from <code>/dashboard/api/state</code>, polled every two seconds.
+        Typography: Newsreader (headings) and Inter Tight (body) —
+        system fallbacks only, no CDN fetches.
+      </p>
+      <p>
+        References cited in
+        <code>.sisyphus/plans/variant-paper-manifesto.md</code>:
+        Stripe operator docs, The New York Times reading mode, Edward
+        Tufte's <i>tufte-css</i>, <i>The Economist</i> data graphics.
+      </p>
+    </footer>
+  </main>
+
+  <dialog id="palette" class="palette" aria-label="command palette">
+    <form method="dialog">
+      <label class="palette-label">
+        <span aria-hidden="true" class="prompt">▸</span>
+        <input id="palette-input" type="text" autocomplete="off"
+               spellcheck="false" placeholder="Type a command…">
+      </label>
+      <ul id="palette-list" class="palette-list" role="listbox"></ul>
+      <p class="palette-hint">
+        <kbd>↑</kbd><kbd>↓</kbd> move · <kbd>↵</kbd> run · <kbd>esc</kbd> close
+      </p>
+    </form>
+  </dialog>
+
+  <script type="module" src="/dashboard-paper/assets/app.js"></script>
+</body>
+</html>
