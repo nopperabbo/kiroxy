@@ -88,7 +88,7 @@
             values={store.perAccountSpark[a.id] ?? []}
             width={180}
             height={22}
-            accent={st === "error" ? "danger" : st === "cooldown" ? "warn" : "accent"}
+            accent="neutral"
           />
         </div>
       </button>

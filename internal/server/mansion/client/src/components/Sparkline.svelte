@@ -14,11 +14,13 @@
     values: number[];
     width?: number;
     height?: number;
-    /** CSS variable family: "accent" | "success" | "warn" | "danger" */
-    accent?: "accent" | "success" | "warn" | "danger";
+    /** CSS variable family: "accent" | "success" | "warn" | "danger" | "neutral"
+     *  Neutral is the default for data sparks inside the amber-budgeted UI —
+     *  charts NEVER carry amber. */
+    accent?: "accent" | "success" | "warn" | "danger" | "neutral";
     ariaLabel?: string;
   }
-  let { values, width = 120, height = 32, accent = "accent", ariaLabel }: Props = $props();
+  let { values, width = 120, height = 32, accent = "neutral", ariaLabel }: Props = $props();
 
   let pathD = $derived(linePath(values, width, height));
   let areaD = $derived(areaPath(values, width, height));
@@ -127,5 +129,8 @@
   }
   .spark--danger {
     color: var(--c-danger);
+  }
+  .spark--neutral {
+    color: var(--c-text-dim);
   }
 </style>

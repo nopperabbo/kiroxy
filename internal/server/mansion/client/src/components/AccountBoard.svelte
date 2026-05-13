@@ -210,9 +210,9 @@
         <span class="col col--spark" role="cell">
           <Sparkline
             values={store.perAccountSpark[a.id] ?? []}
-            width={100}
-            height={24}
-            accent={st === "error" ? "danger" : st === "cooldown" ? "warn" : "accent"}
+            width={140}
+            height={18}
+            accent="neutral"
             ariaLabel="requests per bucket last 5 minutes"
           />
         </span>
