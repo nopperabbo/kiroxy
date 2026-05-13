@@ -8,6 +8,33 @@ Last triaged: 2026-05-13 (post-Phase FEATURE-BOOST).
 
 ## Closed in v1.1.0-candidate (Phase FEATURE-BOOST, 2026-05-13)
 
+- **CLOSED: P1 GetUsageLimits polling for per-account credit
+  visibility** (Phase COMPLETION-C, 2026-05-13). Landed across 5
+  packages ~900 LoC (vs research estimate 80-120 LoC; the extra came
+  from the pool integration + dashboard wiring + tests). Now shipping:
+  - `internal/kiroclient/usage.go` queries the AWS Q Developer
+    management plane `GET q.<region>.amazonaws.com/getUsageLimits`
+    per account. Does NOT consume credits. Classifies upstream
+    failures (Unauthorized/Banned/Throttled/Transient).
+  - `internal/pool/usage.go` `UsagePoller` walks the account list
+    every 60s; `ForcePoll` hook available for the chat hot path to
+    enqueue out-of-band polls on 429.
+  - `AccountHealth.Weight()` factors `PercentRemaining` into the
+    composite weight: <10% remaining → floor (effectively skipped);
+    >10% → linear, so a 50%-remaining account competes at half the
+    strength of a fresh one and load spreads across the fleet.
+  - `/dashboard/api/state` now emits `usage_cap / usage_remaining /
+    usage_percent_used / usage_last_polled / usage_days_until_reset`
+    when `usage_known=true` (omitempty otherwise).
+  - Wired into `cmd/kiroxy/main.go` with `KIROXY_USAGE_POLL_DISABLED=1`
+    kill-switch for offline mock testing.
+  - Docs: CHANGELOG [Unreleased] entry, research-v4 sources intact.
+  - Tests: 35 new unit + integration tests (14 kiroclient, 10 pool
+    usage, 8 pool health-usage, 3 cmd/kiroxy dashboard). make gate
+    green, race-clean. No concurrent-session collision
+    (internal/server/mansion/* + internal/reqconv/* + internal/respconv/*
+    untouched).
+
 - **CLOSED: Session stickiness for X-Claude-Code-Session-Id** —
   `internal/pool/stickiness.go` pins (session’id → account_id) for 60s.
   Same client conversation stays on one upstream account, preserving
@@ -52,6 +79,7 @@ Last triaged: 2026-05-13 (post-Phase FEATURE-BOOST).
 - **P1: Add tests for `internal/config`** (READINESS.md §6). Zero tests today; env parsing is safety-critical (`KIROXY_PORT` validation, default resolution, `KIROXY_SHUTDOWN_TIMEOUT` type coercion). LoC: ~100 test coverage.
 - **P1: Ship starter `docs/alerts.yml`** (READINESS.md §2.3). Prometheus alert rules for PoolDepleted, HighErrorRate, RefreshFailing, UpstreamLatencyHigh. 30 min of work.
 - **P1: Minimum KIROXY_API_KEY length enforcement** (SECURITY.md §4.2). Currently accepts any non-empty string. Reject < 16 chars at startup with a WARN. LoC: ~10.
+- **CLOSED: P1 GetUsageLimits polling for per-account credit visibility** — Phase COMPLETION-C, 2026-05-13. See top of file for full entry.
 - **P2: Selector probe for onboarder** (FAIL-051). Pre-run sanity check of Kiro UI elements so onboarder fails fast when Kiro changes the auth flow.
 - **P2: Workspace dedupe documentation** (FAIL-008 mitigated, but operators need to know). README + OPERATIONS.md note: "if you're in a Workspace org, use `--email` explicitly".
 - **P2: Optional vault at-rest encryption** (SECURITY.md §4.1 / §10 item 10). User-supplied passphrase, argon2id + XChaCha20-Poly1305 or libsodium SecretBox. Not v1.0.1; target v1.1.

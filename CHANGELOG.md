@@ -5,7 +5,66 @@ All notable changes to kiroxy will be documented in this file. Format loosely fo
 ## [Unreleased]
 
 
-### Fixed (Track-1 v1.0.1 foundation — 3 P0 bugs)
+### Added (Phase COMPLETION-C — GetUsageLimits polling, 2026-05-13)
+
+Closes the largest enowX parity gap per
+`research-v4/sources/rate-limiting-research.md`: kiroxy now has
+per-account credit visibility instead of zero. Five-package landing.
+
+- **`internal/kiroclient/usage.go`**: `GetUsageLimits(ctx, httpClient,
+  token, profileArn, region)` hits the AWS Q Developer management plane
+  `GET https://q.<region>.amazonaws.com/getUsageLimits` and returns a
+  flat `UsageLimits` struct with derived `MonthlyCreditsRemaining` and
+  `PercentRemaining()` helpers. `UsageError` classifies 401 / 403+ban /
+  423 / 429 / 5xx so the pool can quarantine banned accounts vs retry
+  transient ones. Calling `getUsageLimits` does NOT consume credits.
+  Override the endpoint via `KIROXY_USAGE_LIMITS_URL` for tests. 14
+  unit tests cover the canonical Pro-tier 1000-credit body, Builder-ID
+  profileArn omission, derived field correctness, and every error
+  classification.
+- **`internal/pool/usage.go`**: `UsagePoller` background goroutine
+  walks the account list every 60s (configurable), calls the upstream
+  via an injected `UsagePollFn`, and stashes results on
+  `AccountHealth.UsageLimits`. `ForcePoll(accountID)` lets the chat
+  hot path enqueue an out-of-band poll (e.g. on 429); the request is
+  coalesced via a buffered channel — full = drop, next tick covers it.
+  Banned accounts get a sentinel stamp (cap=used=1, remaining=0) so
+  weighted selection deweights them, but no hard cooldown is imposed
+  here. Transient failures preserve the stale cache. 10 unit tests
+  including disabled-no-op, banned-sentinel, transient stale
+  preservation, ForcePoll trigger, idempotent Stop, vault-miss silent
+  skip. Race-clean.
+- **`internal/pool/health.go`**: `AccountHealth.Weight()` now
+  multiplies by `usageFactor(UsageLimits)`:
+  - nil / unknown cap → 1.0 (introspection failure never unpicks an
+    account)
+  - 0..10% remaining → floor (drained; effectively skipped)
+  - >10% remaining → linear `PercentRemaining` (50% remaining → half
+    weight → spreads load across fleet)
+
+  `usageDrainedThreshold = 0.10` aligns with the enowX 60-minute-window
+  finding. `HealthSnapshot` gains `UsageKnown / Cap / Used / Remaining
+  / PercentUsed / LastPolled / DaysUntilReset` fields. 8 new tests
+  cover nil safety, drained collapse, half-drained linearity, fresh-vs-
+  burnt 2:1 selection bias, drained-vs-alive effective skip.
+- **`internal/server/dashboard.go` + `cmd/kiroxy/dashboard.go`**:
+  `DashboardAccount` exposes `usage_*` JSON fields with omitempty.
+  `UsageKnown` is the render gate (false → show "—"). 3 new tests
+  cover provider-level wire-up, full HTTP round-trip via
+  `/dashboard/api/state`, and the negative case (never-polled accounts
+  produce no `usage_*` keys at all).
+- **`cmd/kiroxy/main.go`**: poller wired into the pool branch of
+  `runServe` with 60s interval, 10s per-account timeout, 2s startup
+  delay. `awaitShutdown` extended to stop the poller before
+  `vault.Close` so in-flight `Vault.Get()` doesn't race the SQLite
+  close. Disabled via `KIROXY_USAGE_POLL_DISABLED=1` for offline mock
+  testing. Legacy `KIROXY_KIRO_DB_PATH` branch leaves polling off.
+
+Net effect: dashboards show "Credits: 487 / 1000 (49%)" per account,
+and the pool stops sending requests to accounts that are about to hit
+their monthly cap or have been quarantined upstream. `make gate` green.
+
+
 
 - **BUG 1: Upstream 403 loop with fresh credentials (compounded).** Two
   root causes: (a) `internal/models.Resolve` didn't recognize Anthropic's
