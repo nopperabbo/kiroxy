@@ -229,22 +229,6 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 			"headers", logging.SafeHeaders{H: req.Header},
 		)
 
-		// TEMP Phase Track-1 BUG-1 outbound tap. Reverted in commit c3.
-		if os.Getenv("KIROXY_TAP") == "1" {
-			fmt.Fprintln(os.Stderr, "=== TAP: outbound kiro request ===")
-			fmt.Fprintf(os.Stderr, "  URL: %s %s\n", req.Method, req.URL.String())
-			for k, vs := range req.Header {
-				v := ""
-				if len(vs) > 0 {
-					v = vs[0]
-				}
-				if k == "Authorization" && len(v) > 12 {
-					v = v[:12] + "...(redacted)"
-				}
-				fmt.Fprintf(os.Stderr, "  %s: %s\n", k, v)
-			}
-			fmt.Fprintf(os.Stderr, "  Body (%d bytes):\n%s\n", len(body), string(body))
-		}
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
 			if attempt < maxRetries {
@@ -310,19 +294,6 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 			}, nil
 
 		case resp.StatusCode == http.StatusForbidden:
-			// TEMP Phase Track-1 BUG-1: capture 403 body before close. Reverted in c3.
-			if os.Getenv("KIROXY_TAP") == "1" {
-				tapBody := readLimitedBody(resp.Body, 4096)
-				fmt.Fprintf(os.Stderr, "=== TAP: upstream 403 response ===\n")
-				for k, vs := range resp.Header {
-					v := ""
-					if len(vs) > 0 {
-						v = vs[0]
-					}
-					fmt.Fprintf(os.Stderr, "  %s: %s\n", k, v)
-				}
-				fmt.Fprintf(os.Stderr, "  Body (%d bytes): %q\n", len(tapBody), string(tapBody))
-			}
 			_ = resp.Body.Close()
 			if attempt < maxRetries && c.tokenRefresher != nil {
 				newToken, err := c.tokenRefresher(ctx)
