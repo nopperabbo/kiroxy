@@ -69,6 +69,17 @@ type Options struct {
 	// NewCapturingHandler before SetDefault. When nil, both endpoints
 	// return 404.
 	LogSink *LogSink
+
+	// InboundKeyProvider, when set, powers /dashboard/api/inbound-keys
+	// (list / create / revoke). Typically backed by the tokenvault. When
+	// nil, the endpoints return 404 so kiro-cli SQLite mode stays silent.
+	InboundKeyProvider InboundKeyProvider
+
+	// SettingsProvider, when set, powers /dashboard/api/settings — the
+	// bundled snapshot for the Mansion Settings view. Returns general
+	// info, env vars (with redaction), vault stats, and inbound-key
+	// counts. When nil, the endpoint returns 404.
+	SettingsProvider SettingsProvider
 }
 
 // Server bundles the process-wide handler tree.
@@ -119,6 +130,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /readyz", s.ready.handle)
 	s.registerDashboard(mux)
 	s.registerLogsHandlers(mux)
+	s.registerInboundKeyHandlers(mux)
+	s.registerSettingsHandler(mux)
 	next.Register(mux)    // /_variants/dashboard-next (legacy /dashboard-next 302s)
 	mansion.Register(mux) // /dashboard-mansion: canonical operator dashboard (post-v1.0.0)
 	// Phase V taste-exploration variants, archived under /_variants/<slug>

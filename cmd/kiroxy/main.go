@@ -292,6 +292,15 @@ func runServe(ctx context.Context, args []string) error {
 			pool:      poolInst,
 			startedAt: startedAt,
 		},
+		InboundKeyProvider: newInboundKeyProvider(vault),
+		SettingsProvider: &settingsProvider{
+			version:   version,
+			vaultPath: cfg.DBPath,
+			logLevel:  cfg.LogLevel(),
+			vault:     vault,
+			pool:      poolInst,
+			startedAt: startedAt,
+		},
 	})
 
 	addr := net.JoinHostPort(cfg.Bind, strconv.Itoa(cfg.Port))
