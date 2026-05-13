@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en" data-theme="muji">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="5">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="kiroxy dashboard — muji / Japanese minimalism variant">
+  <title>kiroxy</title>
+  <link rel="stylesheet" href="/dashboard-muji/assets/app.css">
+</head>
+<body>
+  <!--
+    muji variant — Japanese minimalism.
+    Zero client JavaScript. Page refreshes every 5s via meta refresh.
+    Philosophy: nothing unnecessary, whitespace is the content.
+    See .sisyphus/plans/variant-muji-manifesto.md.
+  -->
+  <main class="page">
+    <header>
+      <p class="wordmark">kiroxy</p>
+      <nav aria-label="primary">
+        <a href="#pool">pool</a>
+        <a href="#system">system</a>
+        <a href="#import">import</a>
+      </nav>
+    </header>
+
+    <section class="summary" aria-label="summary">
+      <p>{{ .TotReq }} requests · {{ .TotErr }} errors · {{ len .Snap.Accounts }} accounts</p>
+    </section>
+
+    <section id="pool" aria-labelledby="pool-h">
+      <h2 id="pool-h">pool</h2>
+      {{ if eq (len .Snap.Accounts) 0 }}
+      <p class="void">no accounts yet</p>
+      {{ else }}
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">account</th>
+            <th scope="col">state</th>
+            <th scope="col" class="n">requests</th>
+            <th scope="col" class="n">errors</th>
+            <th scope="col">note</th>
+          </tr>
+        </thead>
+        <tbody>
+          {{ range .Snap.Accounts }}
+          <tr>
+            <td class="id">{{ .ID }}</td>
+            <td>{{ state . }}</td>
+            <td class="n">{{ .Requests }}</td>
+            <td class="n">{{ .Errors }}</td>
+            <td class="note">
+              {{ if .CooldownUntil }}until {{ .CooldownUntil }}
+              {{ else if .LastError }}{{ .LastError }}
+              {{ else if not .Enabled }}paused
+              {{ else }}—{{ end }}
+            </td>
+          </tr>
+          {{ end }}
+        </tbody>
+      </table>
+      {{ end }}
+    </section>
+
+    <section id="system" aria-labelledby="system-h">
+      <h2 id="system-h">system</h2>
+      <dl>
+        <dt>version</dt><dd>{{ or .Snap.Version "—" }}</dd>
+        <dt>uptime</dt><dd>{{ uptime .Snap.UptimeS }}</dd>
+        <dt>readiness</dt><dd>{{ if .Snap.Ready }}ready{{ else }}down{{ if .Snap.ReadyText }} · {{ .Snap.ReadyText }}{{ end }}{{ end }}</dd>
+        <dt>vault</dt><dd>{{ if .Snap.VaultOK }}open{{ else }}sealed{{ end }}</dd>
+      </dl>
+    </section>
+
+    <section id="import" aria-labelledby="import-h">
+      <h2 id="import-h">import</h2>
+      <p>
+        Paste JSON matching the CLI's <code>import-json</code> schema.
+        The import endpoint is v1.1; until it ships, this form posts
+        to a 404.
+      </p>
+      <form method="post" action="/dashboard/api/import" enctype="application/x-www-form-urlencoded">
+        <label for="json-field">accounts json</label>
+        <textarea id="json-field" name="accounts" rows="6" spellcheck="false"
+                  placeholder='[{"provider":"kiro","authMethod":"social","accessToken":"...","refreshToken":"..."}]'></textarea>
+        <button type="submit">submit</button>
+      </form>
+    </section>
+
+    <footer>
+      <p class="stamp">rendered {{ .Stamp }}</p>
+      <p class="variants">
+        other variants:
+        {{ range $i, $v := .Variants }}{{ if $i }} · {{ end }}<a href="{{ $v.Path }}">{{ $v.Label }}</a>{{ end }}
+      </p>
+    </footer>
+  </main>
+</body>
+</html>
