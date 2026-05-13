@@ -131,6 +131,26 @@ export interface DoctorReport {
   go_version?: string;
 }
 
+/**
+ * One row in the /dashboard/api/models response. Mirrors Go's
+ * server.ModelEntry. Usage stats are not included; the UI fetches
+ * /metrics for live counters and computes sparklines client-side.
+ */
+export interface ModelEntry {
+  anthropic: string;
+  kiro: string;
+  kiro_1m?: string;
+  context_window_size: number;
+  family: "opus" | "sonnet" | "haiku" | "other" | string;
+  tier: "pro" | "free" | string;
+  is_thinking: boolean;
+}
+
+export interface ModelsResponse {
+  models: ModelEntry[];
+  default_model: string;
+}
+
 async function jsonFetch<T>(input: RequestInfo, init?: RequestInit): Promise<Result<T>> {
   try {
     const res = await fetch(input, {
@@ -222,6 +242,9 @@ export const api = {
   },
   doctor(): Promise<Result<DoctorReport>> {
     return jsonFetch<DoctorReport>("/dashboard/api/tools/doctor", { method: "POST" });
+  },
+  modelsList(): Promise<Result<ModelsResponse>> {
+    return jsonFetch<ModelsResponse>("/dashboard/api/models");
   },
 };
 
