@@ -41,8 +41,14 @@ var indexHTML []byte
 // Register mounts the Dashboard Next routes on mux. Caller is responsible
 // for putting the result behind the existing auth + logging middleware
 // (server.New's Handler does this for everything on the same mux).
+//
+// Post-v1.0.0 archive layout: canonical URL is /_variants/dashboard-next;
+// the legacy /dashboard-next 302s there.
 func Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /dashboard-next", handleIndex)
+	mux.HandleFunc("GET /_variants/dashboard-next", handleIndex)
+	mux.HandleFunc("GET /dashboard-next", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/_variants/dashboard-next", http.StatusFound)
+	})
 	mux.HandleFunc("GET "+assetPrefix+"{path...}", handleAsset)
 }
 

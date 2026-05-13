@@ -12,7 +12,7 @@ func TestHandleIndex_ServesHTML(t *testing.T) {
 	mux := http.NewServeMux()
 	Register(mux)
 
-	req := httptest.NewRequest(http.MethodGet, "/dashboard-paper", nil)
+	req := httptest.NewRequest(http.MethodGet, "/_variants/paper", nil)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 

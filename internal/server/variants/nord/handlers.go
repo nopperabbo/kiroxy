@@ -24,8 +24,15 @@ const assetPrefix = "/dashboard-nord/assets/"
 //go:embed dist/index.html
 var indexHTML []byte
 
+// Register mounts the nord variant's routes on mux.
+//
+// Post-v1.0.0 archive layout: canonical URL is /_variants/nord; the
+// legacy /dashboard-nord 302s there.
 func Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /dashboard-nord", handleIndex)
+	mux.HandleFunc("GET /_variants/nord", handleIndex)
+	mux.HandleFunc("GET /dashboard-nord", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/_variants/nord", http.StatusFound)
+	})
 	mux.HandleFunc("GET "+assetPrefix+"{path...}", handleAsset)
 }
 

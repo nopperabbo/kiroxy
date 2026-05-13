@@ -77,6 +77,17 @@ func (e dashboardError) Error() string { return string(e) }
 func (s *Server) registerDashboard(mux *http.ServeMux) {
 	mux.HandleFunc("GET /dashboard", s.handleDashboardHTML)
 	mux.HandleFunc("GET /dashboard/api/state", s.handleDashboardState)
+	// The legacy hand-authored shell is archived under /_variants/dashboard-legacy
+	// for historical reference. It no longer receives new features, and its
+	// /dashboard/api/state consumers keep working because the data endpoint above
+	// stays at its original URL.
+	mux.HandleFunc("GET /_variants/dashboard-legacy", s.handleLegacyDashboard)
+}
+
+func (s *Server) handleLegacyDashboard(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	_, _ = w.Write(dashboardHTML)
 }
 
 func (s *Server) handleDashboardHTML(w http.ResponseWriter, r *http.Request) {

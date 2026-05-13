@@ -28,8 +28,16 @@ const assetPrefix = "/dashboard-paper/assets/"
 //go:embed dist/index.html
 var indexHTML []byte
 
+// Register mounts the paper variant's routes on mux.
+//
+// Post-v1.0.0 archive layout: canonical URL is /_variants/paper; the
+// legacy /dashboard-paper 302s there. Asset prefix is unchanged because
+// the built HTML shell hard-references it.
 func Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /dashboard-paper", handleIndex)
+	mux.HandleFunc("GET /_variants/paper", handleIndex)
+	mux.HandleFunc("GET /dashboard-paper", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/_variants/paper", http.StatusFound)
+	})
 	mux.HandleFunc("GET "+assetPrefix+"{path...}", handleAsset)
 }
 

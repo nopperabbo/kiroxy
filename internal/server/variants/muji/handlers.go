@@ -64,9 +64,15 @@ var indexTmpl = template.Must(template.New("muji").Funcs(template.FuncMap{
 // Register mounts the muji variant. snap may be nil — if so, every
 // render shows an empty pool with the CLI import instructions. The
 // typical wiring is `muji.Register(mux, makeSnapFn(server))`.
+//
+// Post-v1.0.0 archive layout: canonical URL is /_variants/muji; the
+// legacy /dashboard-muji 302s there.
 func Register(mux *http.ServeMux, snap SnapFn) {
-	mux.HandleFunc("GET /dashboard-muji", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /_variants/muji", func(w http.ResponseWriter, r *http.Request) {
 		handleIndex(w, r, snap)
+	})
+	mux.HandleFunc("GET /dashboard-muji", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/_variants/muji", http.StatusFound)
 	})
 	mux.HandleFunc("GET "+assetPrefix+"{path...}", handleAsset)
 }

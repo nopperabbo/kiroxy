@@ -23,8 +23,15 @@ const assetPrefix = "/dashboard-neon/assets/"
 //go:embed dist/index.html
 var indexHTML []byte
 
+// Register mounts the neon variant's routes on mux.
+//
+// Post-v1.0.0 archive layout: canonical URL is /_variants/neon; the
+// legacy /dashboard-neon 302s there.
 func Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /dashboard-neon", handleIndex)
+	mux.HandleFunc("GET /_variants/neon", handleIndex)
+	mux.HandleFunc("GET /dashboard-neon", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/_variants/neon", http.StatusFound)
+	})
 	mux.HandleFunc("GET "+assetPrefix+"{path...}", handleAsset)
 }
 

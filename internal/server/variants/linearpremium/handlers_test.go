@@ -11,7 +11,7 @@ import (
 func TestHandleIndex_ServesHTML(t *testing.T) {
 	mux := http.NewServeMux()
 	Register(mux)
-	req := httptest.NewRequest(http.MethodGet, "/dashboard-linear-premium", nil)
+	req := httptest.NewRequest(http.MethodGet, "/_variants/linear-premium", nil)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {

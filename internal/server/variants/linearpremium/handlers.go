@@ -23,8 +23,15 @@ const assetPrefix = "/dashboard-linear-premium/assets/"
 //go:embed dist/index.html
 var indexHTML []byte
 
+// Register mounts the linear-premium variant's routes on mux.
+//
+// Post-v1.0.0 archive layout: canonical URL is /_variants/linear-premium;
+// the legacy /dashboard-linear-premium 302s there.
 func Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /dashboard-linear-premium", handleIndex)
+	mux.HandleFunc("GET /_variants/linear-premium", handleIndex)
+	mux.HandleFunc("GET /dashboard-linear-premium", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/_variants/linear-premium", http.StatusFound)
+	})
 	mux.HandleFunc("GET "+assetPrefix+"{path...}", handleAsset)
 }
 

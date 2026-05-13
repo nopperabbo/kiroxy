@@ -28,7 +28,7 @@ func stubSnap(_ context.Context) Snapshot {
 func TestHandleIndex_RendersHTML(t *testing.T) {
 	mux := http.NewServeMux()
 	Register(mux, stubSnap)
-	req := httptest.NewRequest(http.MethodGet, "/dashboard-muji", nil)
+	req := httptest.NewRequest(http.MethodGet, "/_variants/muji", nil)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -63,7 +63,7 @@ func TestHandleIndex_RendersHTML(t *testing.T) {
 func TestHandleIndex_NilSnap(t *testing.T) {
 	mux := http.NewServeMux()
 	Register(mux, nil)
-	req := httptest.NewRequest(http.MethodGet, "/dashboard-muji", nil)
+	req := httptest.NewRequest(http.MethodGet, "/_variants/muji", nil)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {

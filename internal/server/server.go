@@ -111,17 +111,18 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /readyz", s.ready.handle)
 	s.registerDashboard(mux)
-	next.Register(mux)    // /dashboard-next: experimental 2026-stack alt to /dashboard
-	mansion.Register(mux) // /dashboard-mansion: signature "operator desk" dashboard
-	// Phase V taste-exploration variants. Each is a separate package so the
-	// philosophies stay isolated — see .sisyphus/plans/variant-*-manifesto.md
-	// and docs/VARIANTS.md.
-	brutal.Register(mux)           // /dashboard-brutal: terminal / htop aesthetic
-	paper.Register(mux)            // /dashboard-paper: ink on cream / document aesthetic
-	nord.Register(mux)             // /dashboard-nord: arctic calm palette
-	neon.Register(mux)             // /dashboard-neon: cyberpunk grafana aesthetic
-	muji.Register(mux, s.mujiSnap) // /dashboard-muji: zero-JS server-rendered
-	linearpremium.Register(mux)    // /dashboard-linear-premium: refined SaaS dark + indigo
+	next.Register(mux)    // /_variants/dashboard-next (legacy /dashboard-next 302s)
+	mansion.Register(mux) // /dashboard-mansion: canonical operator dashboard (post-v1.0.0)
+	// Phase V taste-exploration variants, archived under /_variants/<slug>
+	// after Mansion was chosen as canonical. Each legacy /dashboard-<slug>
+	// URL 302s to its /_variants/<slug> equivalent. Kept fully functional
+	// for historical reference and future design-language comparisons.
+	brutal.Register(mux)           // /_variants/brutal:        terminal / htop aesthetic
+	paper.Register(mux)            // /_variants/paper:         ink on cream / document aesthetic
+	nord.Register(mux)             // /_variants/nord:          arctic calm palette
+	neon.Register(mux)             // /_variants/neon:          cyberpunk grafana aesthetic
+	muji.Register(mux, s.mujiSnap) // /_variants/muji:          zero-JS server-rendered
+	linearpremium.Register(mux)    // /_variants/linear-premium: refined SaaS dark + indigo
 
 	if s.msgSvc != nil {
 		mux.HandleFunc("POST /v1/messages", s.msgSvc.HandleMessages)

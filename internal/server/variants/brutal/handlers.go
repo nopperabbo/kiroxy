@@ -45,9 +45,23 @@ var indexHTML []byte
 // responsible for putting the result behind the existing auth +
 // logging middleware (server.New's Handler does this for everything
 // on the same mux).
+//
+// Post-v1.0.0 archive layout: Mansion is the canonical dashboard, and
+// the six Phase V exploration variants move to /_variants/<slug>. The
+// old /dashboard-<slug> HTML route 302s to the archive URL so bookmarks
+// keep working; the asset subtree keeps its original prefix because the
+// built HTML shell references those paths verbatim and rebuilding every
+// variant's dist for this rename would be pure cosmetic churn.
 func Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /dashboard-brutal", handleIndex)
+	mux.HandleFunc("GET /_variants/brutal", handleIndex)
+	mux.HandleFunc("GET /dashboard-brutal", handleLegacyRedirect)
 	mux.HandleFunc("GET "+assetPrefix+"{path...}", handleAsset)
+}
+
+// handleLegacyRedirect sends visitors of the pre-archive URL to the
+// /_variants/<slug> canonical URL.
+func handleLegacyRedirect(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/_variants/brutal", http.StatusFound)
 }
 
 // handleIndex serves the HTML shell. Cache-Control:no-cache matches

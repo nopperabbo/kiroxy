@@ -12,7 +12,7 @@ func TestHandleIndex_ServesHTML(t *testing.T) {
 	mux := http.NewServeMux()
 	Register(mux)
 
-	req := httptest.NewRequest(http.MethodGet, "/dashboard-next", nil)
+	req := httptest.NewRequest(http.MethodGet, "/_variants/dashboard-next", nil)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -113,7 +113,7 @@ func TestRegister_IsIdempotentAcrossMuxes(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		mux := http.NewServeMux()
 		Register(mux)
-		req := httptest.NewRequest(http.MethodGet, "/dashboard-next", nil)
+		req := httptest.NewRequest(http.MethodGet, "/_variants/dashboard-next", nil)
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
@@ -129,7 +129,7 @@ func TestHandleIndex_SetsSecurityHeaders(t *testing.T) {
 	mux := http.NewServeMux()
 	Register(mux)
 
-	req := httptest.NewRequest(http.MethodGet, "/dashboard-next", nil)
+	req := httptest.NewRequest(http.MethodGet, "/_variants/dashboard-next", nil)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
