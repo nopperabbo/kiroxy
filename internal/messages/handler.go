@@ -10,6 +10,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	"local/kiroxy/internal/anthropic"
 	"local/kiroxy/internal/auth"
 	"local/kiroxy/internal/httpx"
@@ -44,9 +46,11 @@ func (s *Service) HandleMessages(w http.ResponseWriter, r *http.Request) {
 
 	ccSessionID := r.Header.Get(headerCCSessionID)
 	if ccSessionID == "" {
-		rm.errKind(metrics.RequestKindInvalidRequest)
-		httpx.WriteError(w, http.StatusBadRequest, errTypeInvalidRequest, "missing "+headerCCSessionID+" header")
-		return
+		// Non-Claude-Code clients (e.g. plain Anthropic BYOK) don't emit this
+		// header. Synthesize one so session stickiness and logging still work,
+		// matching the pattern used by the OpenAI-compat endpoint.
+		ccSessionID = "byok-" + uuid.New().String()
+		r.Header.Set(headerCCSessionID, ccSessionID)
 	}
 	ctx = logging.WithSessionID(ctx, ccSessionID)
 	r = r.WithContext(ctx)
