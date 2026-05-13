@@ -86,6 +86,10 @@ func (e dashboardError) Error() string { return string(e) }
 func (s *Server) registerDashboard(mux *http.ServeMux) {
 	mux.HandleFunc("GET /dashboard", s.handleDashboardHTML)
 	mux.HandleFunc("GET /dashboard/api/state", s.handleDashboardState)
+	// Embedded operator documentation catalog consumed by the Mansion
+	// command palette. See docs.go for the curated source set and the
+	// one-shot build strategy.
+	mux.HandleFunc("GET /dashboard/api/docs/index", s.handleDocsIndex)
 	// The legacy hand-authored shell is archived under /_variants/dashboard-legacy
 	// for historical reference. It no longer receives new features, and its
 	// /dashboard/api/state consumers keep working because the data endpoint above

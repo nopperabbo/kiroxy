@@ -1,6 +1,6 @@
 .PHONY: build vet fmt test test-race run tidy all gate clean \
         docker-build docker-run docker-compose-up docker-compose-down docker-clean \
-        vuln release-dry-run
+        vuln release-dry-run docs-sync
 
 export GOEXPERIMENT := jsonv2
 
@@ -138,3 +138,21 @@ dashboard-mansion:
 dashboard-mansion-check:
 	@command -v pnpm >/dev/null 2>&1 || { echo "pnpm not found on PATH" >&2; exit 1; }
 	cd internal/server/mansion/client && pnpm check
+
+# ---------------------------------------------------------------------------
+# Embedded operator docs (mansion command palette)
+# ---------------------------------------------------------------------------
+# Mirrors the curated subset of docs/*.md into
+# internal/server/embedded_docs/ so Go's //go:embed can reach them (it
+# cannot traverse upward out of the server package). Run this whenever
+# the authoritative docs/ source changes and you want the embedded
+# palette search to pick up the update.
+
+EMBED_DOCS := README.md ARCHITECTURE.md TROUBLESHOOTING.md OPENCODE.md OPENAI.md METRICS.md VISION.md
+
+docs-sync:
+	@mkdir -p internal/server/embedded_docs
+	@for f in $(EMBED_DOCS); do \
+	  cp "docs/$$f" "internal/server/embedded_docs/$$f" && \
+	  echo "synced $$f ($$(wc -l < "internal/server/embedded_docs/$$f") lines)"; \
+	done
