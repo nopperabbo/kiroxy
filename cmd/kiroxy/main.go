@@ -149,6 +149,7 @@ func runServe(ctx context.Context, args []string) error {
 		kiroClient kiroclient.Client
 		vault      *tokenvault.Vault
 		poolInst   *pool.Pool
+		stickiness *pool.Stickiness
 	)
 	startedAt := time.Now()
 	metricsReg := metrics.New(startedAt)
@@ -182,6 +183,11 @@ func runServe(ctx context.Context, args []string) error {
 		vault = v
 		poolInst = pool.New(pool.DefaultPolicy())
 		poolInst.SetMetricsSink(metricsSink)
+		// Session stickiness: pin (X-Claude-Code-Session-Id -> account)
+		// for a short TTL so multi-turn conversations don't ping-pong
+		// across accounts and lose upstream prompt-cache locality.
+		stickiness = pool.NewStickiness(pool.DefaultStickinessTTL)
+		poolInst.SetStickiness(stickiness)
 		if err := pool.RegisterPoolGauges(metricsReg.Registerer(), poolInst); err != nil {
 			return fmt.Errorf("register pool gauges: %w", err)
 		}
@@ -267,7 +273,7 @@ func runServe(ctx context.Context, args []string) error {
 		slog.Warn("binding to non-loopback address; ensure you have TLS + a reverse proxy in front")
 	}
 
-	done := awaitShutdown(ctx, httpSrv, cfg.ShutdownTimeout, vault)
+	done := awaitShutdown(ctx, httpSrv, cfg.ShutdownTimeout, vault, stickiness)
 
 	if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("listen: %w", err)
@@ -278,8 +284,9 @@ func runServe(ctx context.Context, args []string) error {
 
 // awaitShutdown registers SIGINT/SIGTERM handlers and drains the HTTP server
 // with the configured timeout. Derived from d-kuro/kirocc's cmd/kirocc/main.go.
-// If vault is non-nil, closes it after the HTTP server stops.
-func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Duration, vault *tokenvault.Vault) <-chan struct{} {
+// If vault is non-nil, closes it after the HTTP server stops. If stickiness
+// is non-nil, stops its background pruner goroutine.
+func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Duration, vault *tokenvault.Vault, stickiness *pool.Stickiness) <-chan struct{} {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -297,6 +304,9 @@ func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Durat
 		defer cancel()
 		if err := httpSrv.Shutdown(shutdownCtx); err != nil {
 			slog.Error("graceful shutdown failed", slog.String("err", err.Error()))
+		}
+		if stickiness != nil {
+			stickiness.Stop()
 		}
 		if vault != nil {
 			if err := vault.Close(); err != nil {
