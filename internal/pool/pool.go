@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"local/kiroxy/internal/auth"
+	"local/kiroxy/internal/logging"
 	"local/kiroxy/internal/metrics"
 	"local/kiroxy/internal/tokenvault"
 )
@@ -75,6 +76,10 @@ type Pool struct {
 	// metricsSink is nil-safe. When set, cooldown transitions emit
 	// account_cooldowns_total increments keyed by reason.
 	metricsSink *metrics.Sink
+
+	// stickiness pins session ID -> account for a short TTL. Nil when
+	// disabled; Pool.Pick falls back to the normal LRU scan.
+	stickiness *Stickiness
 }
 
 // New returns an empty Pool with the given policy.
@@ -92,6 +97,16 @@ func (p *Pool) SetMetricsSink(s *metrics.Sink) {
 	p.metricsSink = s
 }
 
+// SetStickiness attaches a Stickiness tracker. Pass nil to disable.
+// Safe to call at most once at boot. The Pool takes ownership of the
+// Stickiness in the sense that Pool.Remove triggers a Release() on it;
+// the caller retains the Stop() obligation.
+func (p *Pool) SetStickiness(s *Stickiness) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.stickiness = s
+}
+
 // Add registers an account in the pool. If an account with the same ID exists,
 // its metadata is replaced and health is reset.
 func (p *Pool) Add(a Account) {
@@ -105,12 +120,17 @@ func (p *Pool) Add(a Account) {
 	p.health[a.ID] = &HealthState{}
 }
 
-// Remove deletes an account. No-op if absent.
+// Remove deletes an account. No-op if absent. Also releases any
+// session pins to this account so in-flight sessions re-pick.
 func (p *Pool) Remove(id string) {
 	p.mu.Lock()
-	defer p.mu.Unlock()
+	stick := p.stickiness
 	delete(p.accounts, id)
 	delete(p.health, id)
+	p.mu.Unlock()
+	if stick != nil {
+		stick.Release(id)
+	}
 }
 
 // List returns a snapshot of all accounts with their health state, sorted by
@@ -164,8 +184,16 @@ type PickResult struct {
 	Token    string
 }
 
-// Pick selects the LRU-oldest enabled account that is not on cooldown, fetches
-// its access token from the vault, and bumps its LastUsed timestamp.
+// Pick selects an enabled account, fetches its access token from the vault,
+// and bumps its LastUsed timestamp. Selection order:
+//
+//  1. If session stickiness is configured AND the context carries a session
+//     ID (via logging.WithSessionID), the pinned account for that session
+//     is returned when healthy.
+//  2. Otherwise the LRU-oldest enabled account not on cooldown wins.
+//
+// When stickiness returns a pinned ID that is no longer usable (account
+// removed / disabled / on cooldown), the pin is released and step 2 runs.
 //
 // The token fetch is done inside the lock so we atomically promote the account
 // from LRU tail without another goroutine seeing the same LastUsed. The vault
@@ -174,19 +202,56 @@ func (p *Pool) Pick(ctx context.Context, vault *tokenvault.Vault) (*PickResult, 
 	p.mu.Lock()
 	now := time.Now()
 
-	var best *Account
-	for _, a := range p.accounts {
-		if !a.Enabled {
-			continue
+	// selectLRU scans the current account set for the LRU-oldest healthy
+	// candidate. Called under p.mu; may be invoked twice in the stickiness
+	// path (once as fallback inside Stickiness.Pick, once on stale-pin
+	// re-pick) but p.mu is held throughout so the scan is consistent.
+	selectLRU := func() *Account {
+		var best *Account
+		for _, a := range p.accounts {
+			if !a.Enabled {
+				continue
+			}
+			h := p.health[a.ID]
+			if h != nil && h.CooldownUntil.After(now) {
+				continue
+			}
+			if best == nil || a.LastUsed.Before(best.LastUsed) {
+				best = a
+			}
 		}
-		h := p.health[a.ID]
-		if h != nil && h.CooldownUntil.After(now) {
-			continue
-		}
-		if best == nil || a.LastUsed.Before(best.LastUsed) {
-			best = a
-		}
+		return best
 	}
+
+	var best *Account
+	sessionID := logging.SessionIDFromContext(ctx)
+	if p.stickiness != nil && sessionID != "" {
+		pinnedID := p.stickiness.Pick(sessionID, func() string {
+			a := selectLRU()
+			if a == nil {
+				return ""
+			}
+			return a.ID
+		})
+		if pinnedID != "" {
+			if a, ok := p.accounts[pinnedID]; ok && a.Enabled {
+				h := p.health[pinnedID]
+				if h == nil || !h.CooldownUntil.After(now) {
+					best = a
+				}
+			}
+			if best == nil {
+				// Pin points at an account we can no longer use
+				// (removed, disabled, or on cooldown). Drop it and
+				// re-pick so the session migrates to a healthy one.
+				p.stickiness.Release(pinnedID)
+				best = selectLRU()
+			}
+		}
+	} else {
+		best = selectLRU()
+	}
+
 	if best == nil {
 		p.mu.Unlock()
 		return nil, ErrNoAccount
@@ -276,11 +341,20 @@ func (p *Pool) RecordFailure(id string, kind FailureKind, reason string) {
 		slog.String("reason", reason),
 		slog.String("cooldown_until", h.CooldownUntil.Format(time.RFC3339)))
 	sink := p.metricsSink
+	stick := p.stickiness
 	p.mu.Unlock()
 	// Emit outside the lock — the metric write can involve atomic ops and
 	// we don't want metric collection to contend with the pool's hot path.
 	if cooldownJustApplied {
 		sink.Cooldown(cooldownReasonFor(kind))
+	}
+	// Release any session pins that were routing traffic to the failed
+	// account, so the NEXT request in those sessions re-picks a healthy
+	// account via Pool.Pick's normal selection path. Stickiness handles
+	// a nil accountID gracefully; we gate on stick != nil here anyway so
+	// disabled stickiness is a pure no-op.
+	if stick != nil {
+		stick.Release(id)
 	}
 }
 
