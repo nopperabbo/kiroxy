@@ -30,21 +30,23 @@ func TestM10_DashboardHTMLServed(t *testing.T) {
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
-	resp, err := http.Get(ts.URL + "/dashboard")
+	// Avoid the default redirect-following so we can inspect the 302.
+	client := &http.Client{
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	resp, err := client.Get(ts.URL + "/dashboard")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
 
-	if resp.StatusCode != 200 {
-		t.Fatalf("dashboard (loopback) want 200, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("dashboard (loopback) want 302, got %d", resp.StatusCode)
 	}
-	if !strings.Contains(string(body), "<title>kiroxy</title>") {
-		t.Fatalf("dashboard html missing title marker")
-	}
-	if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
-		t.Errorf("want text/html, got %q", ct)
+	if loc := resp.Header.Get("Location"); loc != "/dashboard-mansion" {
+		t.Fatalf("redirect Location want /dashboard-mansion, got %q", loc)
 	}
 }
 
@@ -100,14 +102,15 @@ func TestM10_DashboardRequiresKeyFromNonLoopback(t *testing.T) {
 			rr.Code, rr.Body.String())
 	}
 
+	// With a valid key, the redirect path runs to completion (302).
 	req = httptest.NewRequest("GET", "/dashboard", nil)
 	req.RemoteAddr = "203.0.113.9:55555"
 	req.Header.Set("X-Api-Key", "secret")
 	rr = httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
-	if rr.Code != 200 {
-		t.Fatalf("non-loopback dashboard with correct key: want 200, got %d body=%s",
+	if rr.Code != http.StatusFound {
+		t.Fatalf("non-loopback dashboard with correct key: want 302, got %d body=%s",
 			rr.Code, rr.Body.String())
 	}
 }

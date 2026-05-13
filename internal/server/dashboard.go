@@ -80,9 +80,13 @@ func (s *Server) registerDashboard(mux *http.ServeMux) {
 }
 
 func (s *Server) handleDashboardHTML(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
-	_, _ = w.Write(dashboardHTML)
+	// Post-v1.0.0: Mansion is the canonical dashboard. The legacy handwritten
+	// shell is archived under /_variants/dashboard-legacy; direct visitors of
+	// the old /dashboard URL are redirected via 302 so bookmarks keep working.
+	// The /dashboard/api/state data endpoint below is NOT redirected — several
+	// consumers (scripts, the legacy variant itself) still fetch from it, and
+	// Mansion's API shim reads it unchanged.
+	http.Redirect(w, r, "/dashboard-mansion", http.StatusFound)
 }
 
 func (s *Server) handleDashboardState(w http.ResponseWriter, r *http.Request) {
