@@ -165,12 +165,18 @@
     {#each sorted as a (a.id)}
       {@const st = accountStatus(a)}
       {@const sel = store.selectedAccountId === a.id}
+      {@const errRate = a.requests > 0 ? a.errors / a.requests : 0}
+      {@const isAnomaly = a.requests >= 10 && errRate > 0.01 && errRate <= 0.25}
+      {@const ago = a.last_used ? Date.now() - Date.parse(a.last_used) : Infinity}
+      {@const isIdle = ago > 300000 && st !== "disabled"}
       <div
         class="row row--account"
         class:row--selected={sel}
         class:row--error={st === "error"}
         class:row--cooldown={st === "cooldown"}
         class:row--disabled={st === "disabled"}
+        class:row--anomaly={isAnomaly}
+        class:row--idle={isIdle}
         data-account-id={a.id}
         role="row"
         tabindex="0"
@@ -332,14 +338,34 @@
     background: color-mix(in oklch, var(--c-accent-wash), var(--c-surface));
     box-shadow: inset 2px 0 0 0 var(--c-accent);
   }
+  .row--anomaly {
+    box-shadow: inset 0 0 0 2px var(--c-accent);
+    position: relative;
+  }
+  .row--anomaly::after {
+    content: "";
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-end: 0;
+    inline-size: 6px;
+    block-size: 6px;
+    background: var(--c-accent);
+    border-end-start-radius: var(--r-sm);
+  }
+  .row--anomaly.row--selected {
+    box-shadow: inset 0 0 0 2px var(--c-accent), inset 4px 0 0 0 var(--c-accent);
+  }
   .row--error .col--err {
     color: var(--c-danger);
   }
   .row--cooldown {
-    background: color-mix(in oklch, var(--c-warn-bg), var(--c-surface));
+    background: color-mix(in oklch, var(--c-accent-wash), var(--c-surface));
   }
   .row--disabled {
     opacity: 0.7;
+  }
+  .row--idle {
+    opacity: 0.6;
   }
 
   .col {
