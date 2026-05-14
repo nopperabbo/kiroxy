@@ -269,8 +269,17 @@ func parseUsageLimitsBody(body string) (*UsageLimits, error) {
 			TotalUsageLimit int64    `json:"totalUsageLimit"`
 			PercentUsed     *float64 `json:"percentUsed"`
 		} `json:"limits"`
-		NextDateReset  *int64 `json:"nextDateReset"`
-		DaysUntilReset *int   `json:"daysUntilReset"`
+		// NextDateReset is intentionally *float64 rather than *int64.
+		// Upstream emits this field in TWO inconsistent shapes: integer
+		// epoch seconds (1780272000) AND scientific-notation float
+		// (1.780272E9). Go's int64 unmarshaler rejects the latter with
+		// "cannot unmarshal JSON number 1.780272E9 into Go int64", which
+		// produces a hard parse error and discards the entire response.
+		// float64 accepts both forms and we round to int64 manually below.
+		// Float64 has 53 bits of mantissa, plenty for any plausible epoch
+		// second or millisecond value through the year 285,000.
+		NextDateReset  *float64 `json:"nextDateReset"`
+		DaysUntilReset *int     `json:"daysUntilReset"`
 	}
 	if err := json.Unmarshal([]byte(body), &raw); err != nil {
 		return nil, fmt.Errorf("getUsageLimits: parse json: %w", err)
@@ -304,7 +313,7 @@ func parseUsageLimitsBody(body string) (*UsageLimits, error) {
 		// Smithy conventions for this endpoint emit epoch seconds; guard
 		// against future drift by clamping implausible millisecond
 		// values.
-		ts := *raw.NextDateReset
+		ts := int64(*raw.NextDateReset)
 		if ts > 10_000_000_000 { // > Nov 2286 if seconds, so treat as ms
 			u.NextReset = time.UnixMilli(ts)
 		} else {

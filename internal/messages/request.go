@@ -17,8 +17,6 @@ import (
 
 	"local/kiroxy/internal/anthropic"
 	"local/kiroxy/internal/httpx"
-	"local/kiroxy/internal/models"
-	"local/kiroxy/internal/reqconv"
 	"local/kiroxy/internal/tokencount"
 )
 
@@ -30,31 +28,19 @@ func (s *Service) HandleCountTokens(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	profileARN := ""
-	if creds, err := s.auth.GetToken(r.Context()); err == nil {
-		profileARN = creds.ProfileARN
-	} else {
-		slog.DebugContext(r.Context(), "count_tokens proceeding without credentials", "err", err)
-	}
-
-	kiroModel, thinking, _, _ := models.Resolve(req.Model, anthropic.HasContext1MBeta(r.Header))
-	if req.IsThinkingEnabled() {
-		thinking = true
-	}
-
-	ccSessionID := r.Header.Get(headerCCSessionID)
-
-	payload, _, err := reqconv.BuildPayload(req, reqconv.BuildOptions{ProfileARN: profileARN, ModelID: kiroModel, ConversationID: ccSessionID, Thinking: thinking, ThinkingBudget: 0})
-	if err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, errTypeInvalidRequest, err.Error())
-		return
-	}
-
-	data, err := json.Marshal(payload)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, errTypeAPI, "failed to serialize payload")
-		return
-	}
+	// Build a token-counter input from the Anthropic request shape rather
+	// than the Kiro wire payload. The wire payload bakes in 1–3 KB of
+	// protocol overhead per request (synthetic ack message, ConversationState
+	// envelope, x-amz-target tags, ARN string, tool_specification wrapper)
+	// that the model NEVER sees. Counting that overhead inflates the
+	// returned input_tokens, causing clients (e.g. Claude Code, Cline) that
+	// budget against this number to over-trim conversation history.
+	//
+	// We approximate what the model actually consumes: system prompt +
+	// concatenated message text + each tool's name/description/schema.
+	// Tool input_schema is JSON-marshaled as-is (the model does see the
+	// schema as text), but the tool itself is NOT wrapped in toolSpecification.
+	data := buildCountTokensInput(req)
 
 	n, err := tokencount.CountBytes(data)
 	if err != nil {
@@ -68,6 +54,44 @@ func (s *Service) HandleCountTokens(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, _ = w.Write([]byte("\n"))
+}
+
+// buildCountTokensInput synthesizes a byte slice representing what the
+// model would actually see for token-counting purposes. Order: system,
+// each message in turn (role + content), then each tool definition
+// (name + description + JSON schema). Newline-separated for tokenizer
+// boundary stability.
+func buildCountTokensInput(req *anthropic.Request) []byte {
+	var buf bytes.Buffer
+	if !req.System.IsEmpty() {
+		if req.System.Text != "" {
+			buf.WriteString(req.System.Text)
+			buf.WriteByte('\n')
+		}
+		for _, b := range req.System.Blocks {
+			buf.WriteString(b.Text)
+			buf.WriteByte('\n')
+		}
+	}
+	for _, m := range req.Messages {
+		buf.WriteString(m.Role)
+		buf.WriteString(": ")
+		buf.WriteString(m.Content.String())
+		buf.WriteByte('\n')
+	}
+	for _, t := range req.Tools {
+		buf.WriteString(t.Name)
+		buf.WriteByte('\n')
+		buf.WriteString(t.Description)
+		buf.WriteByte('\n')
+		if len(t.InputSchema) > 0 {
+			if schemaJSON, err := json.Marshal(t.InputSchema); err == nil {
+				buf.Write(schemaJSON)
+				buf.WriteByte('\n')
+			}
+		}
+	}
+	return buf.Bytes()
 }
 
 // parseAndValidateRequest decodes and validates an Anthropic request from the HTTP body.

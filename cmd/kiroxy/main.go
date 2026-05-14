@@ -267,6 +267,7 @@ func runServe(ctx context.Context, args []string) error {
 				PollFn: func(ctx context.Context, token, profileArn, region string) (*kiroclient.UsageLimits, error) {
 					return kiroclient.GetUsageLimits(ctx, pollerHTTP, token, profileArn, region)
 				},
+				Refresh:      tg.Refresh,
 				Interval:     60 * time.Second,
 				Timeout:      10 * time.Second,
 				StartupDelay: 2 * time.Second,
