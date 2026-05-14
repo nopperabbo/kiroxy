@@ -104,6 +104,7 @@
           <span class="dot dot--cool" aria-hidden="true"></span>Cooldown
         </button>
         <span class="spacer"></span>
+        <span class="range__label caps faint">status</span>
         <div class="range" role="group" aria-label="status range">
           {#each ["all", "2xx", "4xx", "5xx"] as r}
             <button
@@ -169,6 +170,20 @@
                 }}
               >clear filters</button>
             {/if}
+          </div>
+          <div class="stream-ghosts" aria-hidden="true">
+            {#each Array(8) as _, i}
+              <div class="stream-row stream-row--ghost" style="--ghost-i: {i};">
+                <div class="time-cell"><span class="g-bar" style="inline-size: 44px"></span></div>
+                <div class="acct-cell"><span class="g-bar" style="inline-size: 72px"></span></div>
+                <div class="model-cell"><span class="g-bar" style="inline-size: 58px"></span></div>
+                <div class="path-cell"><span class="g-bar" style="inline-size: {60 + (i * 17) % 40}%"></span></div>
+                <div class="lat-cell num"><span class="g-bar" style="inline-size: 36px; margin-inline-start: auto"></span></div>
+                <div class="tok-cell num"><span class="g-bar" style="inline-size: 28px; margin-inline-start: auto"></span></div>
+                <div class="cost-cell num"><span class="g-bar" style="inline-size: 32px; margin-inline-start: auto"></span></div>
+                <div class="status-cell num"><span class="g-bar" style="inline-size: 24px; margin-inline-start: auto"></span></div>
+              </div>
+            {/each}
           </div>
         {:else}
           {#each visible as r (r.id)}
@@ -499,5 +514,57 @@
       grid-template-columns: 76px 90px 76px minmax(0, 1fr) 80px 70px 62px 80px;
       column-gap: var(--sp-3);
     }
+  }
+  @media (max-width: 768px) {
+    .toolbar {
+      flex-wrap: wrap;
+      block-size: auto;
+      min-block-size: 36px;
+      padding: var(--sp-2) var(--sp-3);
+      gap: var(--sp-2);
+    }
+    .toolbar .spacer { display: none; }
+    .stream-header,
+    .stream-row {
+      grid-template-columns: 60px 80px 70px minmax(140px, 1fr) 60px 50px 50px 60px;
+      column-gap: var(--sp-2);
+      font-size: var(--fs-2xs);
+    }
+    .live-main {
+      overflow-x: auto;
+    }
+  }
+  .range__label {
+    font-size: var(--fs-2xs);
+    color: var(--c-text-faint);
+    letter-spacing: 0.1em;
+    margin-inline-end: 4px;
+    align-self: center;
+  }
+  .stream-ghosts {
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+    opacity: 0.55;
+  }
+  .stream-row--ghost {
+    block-size: 32px;
+    border-block-end: 1px solid color-mix(in oklch, var(--c-border), transparent 50%);
+    align-items: center;
+  }
+  .g-bar {
+    display: inline-block;
+    block-size: 6px;
+    background: color-mix(in oklch, var(--c-text-faint), transparent 60%);
+    border-radius: 1px;
+    animation: ghost-pulse 2.4s ease-in-out infinite;
+    animation-delay: calc(var(--ghost-i, 0) * 80ms);
+  }
+  @keyframes ghost-pulse {
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 0.75; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .g-bar { animation: none; opacity: 0.5; }
   }
 </style>

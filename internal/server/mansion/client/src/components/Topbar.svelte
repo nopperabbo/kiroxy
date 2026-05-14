@@ -391,4 +391,17 @@
       min-inline-size: 140px;
     }
   }
+  @media (max-width: 560px) {
+    .search {
+      min-inline-size: 0;
+      max-inline-size: 120px;
+    }
+    .search__input::placeholder {
+      font-size: 10px;
+    }
+    .kbd { display: none; }
+    .brand__wordmark::after {
+      display: none;
+    }
+  }
 </style>
