@@ -287,7 +287,7 @@
                 Wire quiet. Nothing moves.
               </p>
               <p class="stream-empty__hint mono faint">
-                Try
+                <span style="margin-inline-end: 8px;">↓ Run this to see traffic</span>
                 <code>curl -H "x-api-key: $KIROXY_API_KEY" http://127.0.0.1:8787/v1/models</code>
               </p>
             {:else}
@@ -304,16 +304,22 @@
             {/if}
           </div>
           <div class="stream-ghosts" aria-hidden="true">
-            {#each Array(8) as _, i}
-              <div class="stream-row stream-row--ghost" style="--ghost-i: {i};">
-                <div class="time-cell"><span class="g-bar" style="inline-size: 44px"></span></div>
-                <div class="acct-cell"><span class="g-bar" style="inline-size: 72px"></span></div>
-                <div class="model-cell"><span class="g-bar" style="inline-size: 58px"></span></div>
-                <div class="path-cell"><span class="g-bar" style="inline-size: {60 + (i * 17) % 40}%"></span></div>
-                <div class="lat-cell num"><span class="g-bar" style="inline-size: 36px; margin-inline-start: auto"></span></div>
-                <div class="tok-cell num"><span class="g-bar" style="inline-size: 28px; margin-inline-start: auto"></span></div>
-                <div class="cost-cell num"><span class="g-bar" style="inline-size: 32px; margin-inline-start: auto"></span></div>
-                <div class="status-cell num"><span class="g-bar" style="inline-size: 24px; margin-inline-start: auto"></span></div>
+            {#each [
+              ['14:02:01', 'EHGA3GRVQM', 'claude-sonnet-4-6', '/v1/messages', '820ms', '4,210', '$0.0126', '200'],
+              ['14:01:45', 'act-7f3a', 'claude-haiku-4-5', '/v1/messages', '240ms', '812', '$0.0008', '200'],
+              ['14:00:12', 'EHGA3GRVQM', 'claude-opus-4-7', '/v1/messages', '4,100ms', '12,050', '$0.1807', '200'],
+              ['13:58:05', 'erinjones@', 'claude-sonnet-4-6', '/v1/messages', '120ms', '—', '—', '429']
+            ] as row, i}
+              {@const opacities = [1.0, 0.6, 0.35, 0.18]}
+              <div class="stream-row stream-row--ghost" style="opacity: {opacities[i]};">
+                <div class="ts-cell mono tabular">{row[0]}</div>
+                <div class="acct-cell mono">{row[1]}</div>
+                <div class="model-cell mono">{row[2]}</div>
+                <div class="path-cell mono">{row[3]}</div>
+                <div class="lat-cell mono tabular">{row[4]}</div>
+                <div class="tok-cell mono tabular">{row[5]}</div>
+                <div class="cost-cell mono tabular">{row[6]}</div>
+                <div class="status-cell mono">{row[7]}</div>
               </div>
             {/each}
           </div>
@@ -613,7 +619,7 @@
     font-size: var(--fs-2xs);
     color: var(--c-text-dim);
     background: var(--c-surface);
-    border: 1px solid var(--c-border);
+    border: 1px dashed var(--c-border-strong);
     padding: 1px 6px;
     border-radius: var(--r-sm);
   }
