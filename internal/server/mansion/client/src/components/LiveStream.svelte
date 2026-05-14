@@ -490,7 +490,6 @@
     min-block-size: 28px;
   }
   .stream-header .num,
-  .stream-row .num,
   .lat-cell,
   .tok-cell,
   .cost-cell,

@@ -464,9 +464,6 @@
     .nav__tab--ops {
       padding: 0 var(--sp-3);
     }
-    .nav__tab--ops .nav__count {
-      display: none;
-    }
   }
   @media (max-width: 960px) {
     .topbar__inner {
@@ -510,8 +507,8 @@
     .search__input::placeholder {
       font-size: 10px;
     }
-    .kbd { display: none; }
-    .brand__wordmark::after {
+    kbd { display: none; }
+    .brand__cursor {
       display: none;
     }
     .nav__tab > span:nth-of-type(2),

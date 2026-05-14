@@ -1170,30 +1170,24 @@
     padding: 4px 6px;
     border-block-end: 1px solid var(--c-rule);
   }
-  .topn-tbl th.num { text-align: end; }
+  .topn-th--num { text-align: end; }
   .topn-tbl td {
     padding: 4px 6px;
     border-block-end: 1px solid color-mix(in oklch, var(--c-rule) 50%, transparent);
     color: var(--c-text);
     font-variant-numeric: tabular-nums;
   }
-  .topn-tbl td.num { text-align: end; }
-  .topn-tbl td.path,
-  .topn-tbl td.client {
+  .topn-td--num { text-align: end; }
+  .topn-td--path {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     max-inline-size: 1px; /* hack to honor width via colgroup; ellipsis works inside table */
   }
   .topn-tbl tr:last-child td { border-block-end: 0; }
-  .topn-tbl .method {
-    color: var(--c-text-dim);
-    margin-inline-end: 6px;
-  }
-  .topn-tbl .status-2 { color: var(--c-success); }
-  .topn-tbl .status-3 { color: var(--c-info, #79a); }
-  .topn-tbl .status-4 { color: var(--c-warn); }
-  .topn-tbl .status-5 { color: var(--c-danger); }
+  .topn-status { color: var(--c-success); }
+  .topn-status--4xx { color: var(--c-warn); }
+  .topn-status--5xx { color: var(--c-danger); }
   .topn-empty {
     display: flex;
     align-items: center;
