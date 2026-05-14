@@ -13,8 +13,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { api, type ModelEntry } from "../lib/api";
+  import Icon from "./Icon.svelte";
 
   type SortKey = "anthropic" | "kiro" | "context" | "family";
+  const DISABLE_KEY = "mansion.models.disabled";
 
   let models: ModelEntry[] = $state([]);
   let defaultModel = $state("");
@@ -22,6 +24,10 @@
   let sortKey: SortKey = $state("anthropic");
   let sortDesc = $state(false);
   let groupByTier = $state(true);
+  let disabled: Set<string> = $state(loadDisabled());
+  let copiedId: string | null = $state(null);
+  let probing: string | null = $state(null);
+  let probeResult: Record<string, { ok: boolean; latency_ms: number; status: number; note?: string }> = $state({});
 
   onMount(() => void load());
 
@@ -33,6 +39,88 @@
       loadErr = null;
     } else {
       loadErr = `load failed: ${r.error}`;
+    }
+  }
+
+  function loadDisabled(): Set<string> {
+    try {
+      const raw = localStorage.getItem(DISABLE_KEY);
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw) as string[];
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  function persistDisabled(): void {
+    try {
+      localStorage.setItem(DISABLE_KEY, JSON.stringify([...disabled]));
+    } catch {
+      /* storage disabled — non-fatal */
+    }
+  }
+
+  function toggleDisabled(id: string): void {
+    if (disabled.has(id)) {
+      disabled.delete(id);
+    } else {
+      disabled.add(id);
+    }
+    disabled = new Set(disabled);
+    persistDisabled();
+  }
+
+  async function copyCurl(m: ModelEntry): Promise<void> {
+    const curl = `curl http://localhost:8787/v1/messages \\
+  -H "anthropic-version: 2023-06-01" \\
+  -H "x-api-key: $KIROXY_API_KEY" \\
+  -H "content-type: application/json" \\
+  -d '{"model":"${m.anthropic}","max_tokens":64,"messages":[{"role":"user","content":"ping"}]}'`;
+    try {
+      await navigator.clipboard.writeText(curl);
+      copiedId = m.anthropic;
+      setTimeout(() => {
+        if (copiedId === m.anthropic) copiedId = null;
+      }, 1600);
+    } catch {
+      copiedId = null;
+    }
+  }
+
+  async function probeModel(m: ModelEntry): Promise<void> {
+    if (probing) return;
+    probing = m.anthropic;
+    const t0 = performance.now();
+    try {
+      const res = await fetch("/v1/messages", {
+        method: "POST",
+        headers: {
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: m.anthropic,
+          max_tokens: 16,
+          messages: [{ role: "user", content: "ping" }],
+        }),
+      });
+      const dt = Math.round(performance.now() - t0);
+      probeResult[m.anthropic] = {
+        ok: res.ok,
+        latency_ms: dt,
+        status: res.status,
+        note: res.status === 401 ? "auth required (set inbound key)" : res.status >= 500 ? "upstream error" : undefined,
+      };
+    } catch (e) {
+      probeResult[m.anthropic] = {
+        ok: false,
+        latency_ms: Math.round(performance.now() - t0),
+        status: 0,
+        note: e instanceof Error ? e.message : "network error",
+      };
+    } finally {
+      probing = null;
     }
   }
 
@@ -138,15 +226,20 @@
                 <span class="th__arrow">{sortKey === "family" ? (sortDesc ? "▼" : "▲") : ""}</span>
               </th>
               <th>mode</th>
+              <th class="th--actions">actions</th>
             </tr>
           </thead>
           <tbody>
             {#each g.rows as m}
-              <tr class="row row--{m.tier} row--{m.family}">
+              {@const probe = probeResult[m.anthropic]}
+              <tr class="row row--{m.tier} row--{m.family}" class:row--disabled={disabled.has(m.anthropic)}>
                 <td class="cell__id mono">
                   {m.anthropic}
                   {#if m.anthropic === defaultModel}
                     <span class="badge badge--default caps">default</span>
+                  {/if}
+                  {#if disabled.has(m.anthropic)}
+                    <span class="badge badge--off caps">off</span>
                   {/if}
                 </td>
                 <td class="cell__kiro mono">
@@ -168,6 +261,49 @@
                   {:else}
                     <span class="badge badge--free caps">free</span>
                   {/if}
+                </td>
+                <td class="cell__actions">
+                  <div class="row-actions">
+                    <button
+                      type="button"
+                      class="ic-btn"
+                      class:ic-btn--off={disabled.has(m.anthropic)}
+                      onclick={() => toggleDisabled(m.anthropic)}
+                      title={disabled.has(m.anthropic) ? "enable" : "disable (UI hint, not enforced server-side)"}
+                      aria-label="toggle model"
+                    >
+                      <Icon name={disabled.has(m.anthropic) ? "x" : "check"} size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      class="ic-btn"
+                      onclick={() => void copyCurl(m)}
+                      title="copy curl example"
+                      aria-label="copy curl"
+                    >
+                      <Icon name={copiedId === m.anthropic ? "check" : "copy"} size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      class="ic-btn"
+                      onclick={() => void probeModel(m)}
+                      disabled={probing === m.anthropic}
+                      title="probe model with a 16-token ping"
+                      aria-label="probe"
+                    >
+                      <Icon name="zap" size={11} />
+                    </button>
+                    {#if probe}
+                      <span
+                        class="probe"
+                        class:probe--ok={probe.ok}
+                        class:probe--bad={!probe.ok}
+                        title={probe.note ?? `${probe.status} · ${probe.latency_ms}ms`}
+                      >
+                        {probe.status} · {probe.latency_ms}ms
+                      </span>
+                    {/if}
+                  </div>
                 </td>
               </tr>
             {/each}
@@ -330,6 +466,79 @@
     display: inline-flex;
     gap: var(--sp-2);
     align-items: center;
+  }
+
+  .row--disabled {
+    opacity: 0.45;
+  }
+  .row--disabled .cell__id {
+    text-decoration: line-through;
+  }
+  .badge--off {
+    color: var(--c-danger);
+    background: color-mix(in oklch, var(--c-danger), transparent 80%);
+    border: 1px solid color-mix(in oklch, var(--c-danger), transparent 60%);
+    margin-inline-start: var(--sp-2);
+  }
+  .th--actions {
+    inline-size: 220px;
+    text-align: end;
+  }
+  .cell__actions {
+    text-align: end;
+  }
+  .row-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .ic-btn {
+    inline-size: 22px;
+    block-size: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--c-text-dim);
+    background: transparent;
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    transition: color var(--mo-fast) var(--ease-std), border-color var(--mo-fast) var(--ease-std);
+  }
+  .ic-btn:hover {
+    color: var(--c-text);
+    border-color: var(--c-border-strong);
+  }
+  .ic-btn:disabled {
+    opacity: 0.4;
+    cursor: wait;
+  }
+  .ic-btn--off {
+    color: var(--c-danger);
+    border-color: color-mix(in oklch, var(--c-danger), transparent 60%);
+  }
+  .probe {
+    font-family: var(--font-mono);
+    font-size: var(--fs-2xs);
+    padding: 2px 6px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--c-rule);
+  }
+  .probe--ok {
+    color: var(--c-success);
+    border-color: color-mix(in oklch, var(--c-success), transparent 60%);
+  }
+  .probe--bad {
+    color: var(--c-danger);
+    border-color: color-mix(in oklch, var(--c-danger), transparent 60%);
+  }
+
+  @media (max-width: 720px) {
+    .th--actions { inline-size: auto; }
+    .cell__actions { text-align: start; }
+    .row-actions { justify-content: flex-start; }
   }
 
   .badge {
