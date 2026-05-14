@@ -218,6 +218,23 @@ func (p *Pool) Pick(ctx context.Context, vault *tokenvault.Vault) (*PickResult, 
 	p.mu.Lock()
 	now := time.Now()
 
+	// Decay Consecutive counters on accounts whose cooldown has fully
+	// elapsed. Without this, an account that recovered after a cooldown
+	// keeps its old Consecutive count, and the NEXT failure compounds
+	// onto it — the cooldown duration multiplier (Consecutive - threshold + 1)
+	// then over-penalizes a fresh blip as if the prior cooldown never
+	// happened. Cooldown expiry IS the recovery signal; reset it.
+	for _, h := range p.health {
+		if h == nil || h.CooldownUntil.IsZero() {
+			continue
+		}
+		if now.After(h.CooldownUntil) && h.Consecutive > 0 {
+			h.Consecutive = 0
+			h.CooldownUntil = time.Time{}
+			h.LastError = ""
+		}
+	}
+
 	// selectWeighted scans the current account set, computes each
 	// candidate's health weight, and returns one by weighted random
 	// selection. Falls back to LRU-oldest when every live candidate has
@@ -410,13 +427,18 @@ func (p *Pool) RecordFailure(id string, kind FailureKind, reason string) {
 	}
 	// Cooldown was either already present or newly set; we only want to
 	// emit the metric on the transition from "no cooldown" (or expired)
-	// to a fresh future cooldown, so stash the previous value.
+	// to a fresh future cooldown. Comparing the new value to the prior
+	// value is wrong — every quota failure sets CooldownUntil = now+TTL
+	// which is always > a stale prev, inflating the metric on every call.
+	// The right test: prev was either zero or already in the past.
 	prev := h.CooldownUntil
+	now := time.Now()
+	wasInactive := prev.IsZero() || !prev.After(now)
 	cooldownJustApplied := false
 	switch kind {
 	case FailureQuota:
-		h.CooldownUntil = time.Now().Add(p.policy.QuotaCooldown)
-		cooldownJustApplied = h.CooldownUntil.After(prev)
+		h.CooldownUntil = now.Add(p.policy.QuotaCooldown)
+		cooldownJustApplied = wasInactive
 	default:
 		if h.Consecutive >= p.policy.ConsecutiveErrorThreshold {
 			cool := p.policy.ShortCooldown
@@ -426,8 +448,8 @@ func (p *Pool) RecordFailure(id string, kind FailureKind, reason string) {
 			if cool > p.policy.MaxCooldown {
 				cool = p.policy.MaxCooldown
 			}
-			h.CooldownUntil = time.Now().Add(cool)
-			cooldownJustApplied = h.CooldownUntil.After(prev)
+			h.CooldownUntil = now.Add(cool)
+			cooldownJustApplied = wasInactive
 		}
 	}
 	slog.Debug("pool: account fault",
@@ -443,11 +465,54 @@ func (p *Pool) RecordFailure(id string, kind FailureKind, reason string) {
 	if cooldownJustApplied {
 		sink.Cooldown(cooldownReasonFor(kind))
 	}
-	// Release any session pins that were routing traffic to the failed
-	// account, so the NEXT request in those sessions re-picks a healthy
-	// account via Pool.Pick's normal selection path. Stickiness handles
-	// a nil accountID gracefully; we gate on stick != nil here anyway so
-	// disabled stickiness is a pure no-op.
+	// Release any session pins ONLY when the account just transitioned into
+	// cooldown. Releasing on every transient failure (including ones that
+	// haven't crossed ConsecutiveErrorThreshold) defeats stickiness for the
+	// second turn even though the account is still healthy enough to serve
+	// the next request — the user pays a fresh weighted-pick on every blip.
+	if stick != nil && cooldownJustApplied {
+		stick.Release(id)
+	}
+}
+
+// RecordUnauthorized marks an account as unrecoverable due to a dead
+// refresh_token. Unlike RecordFailure which uses the consecutive-error
+// cooldown ladder, this applies the maximum cooldown immediately and tags
+// the metric with CooldownReasonUnauthorized so operators can distinguish
+// "transient throttling" from "go re-authenticate this account".
+//
+// Without this, an account with a revoked refresh_token would tight-loop:
+// each Pick re-tries refresh, fails with ErrRefreshUnauthorized, and the
+// account stays at full weight ready to be picked again immediately.
+func (p *Pool) RecordUnauthorized(id string, reason string) {
+	p.mu.Lock()
+	a := p.accounts[id]
+	if a == nil {
+		p.mu.Unlock()
+		return
+	}
+	a.ErrorCount++
+	h := p.health[id]
+	if h == nil {
+		h = &HealthState{}
+		p.health[id] = h
+	}
+	prev := h.CooldownUntil
+	now := time.Now()
+	wasInactive := prev.IsZero() || !prev.After(now)
+	h.Consecutive++
+	h.LastError = reason
+	h.CooldownUntil = now.Add(p.policy.MaxCooldown)
+	slog.Warn("pool: account unauthorized — refresh_token dead",
+		slog.String("account_id", id),
+		slog.String("reason", reason),
+		slog.String("cooldown_until", h.CooldownUntil.Format(time.RFC3339)))
+	sink := p.metricsSink
+	stick := p.stickiness
+	p.mu.Unlock()
+	if wasInactive {
+		sink.Cooldown(metrics.CooldownReasonUnauthorized)
+	}
 	if stick != nil {
 		stick.Release(id)
 	}
@@ -561,6 +626,9 @@ func (tg *TokenGetter) GetToken(ctx context.Context) (*auth.Credentials, error) 
 		if md.AuthMethod == "social" && needsRefresh(md, tg.Refresh.effectiveSkew(), time.Now()) {
 			refreshed, rerr := refreshOne(ctx, tg.Vault, tg.Refresh, p.Provider, p.ID, p.Region, metrics.RefreshKindProactive)
 			if rerr != nil {
+				if errors.Is(rerr, auth.ErrRefreshUnauthorized) {
+					tg.Pool.RecordUnauthorized(p.ID, rerr.Error())
+				}
 				return nil, rerr
 			}
 			if refreshed != nil {

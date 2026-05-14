@@ -4,6 +4,175 @@ All notable changes to kiroxy will be documented in this file. Format loosely fo
 
 ## [Unreleased]
 
+### Added (Phase 3 — Throttle stampede prevention, 2026-05-14)
+
+Distinguishes server-side capacity shortage from per-account quota
+exhaustion so the pool no longer cooldowns the whole fleet when Kiro
+itself is overloaded. Investigation showed ~73% of `ThrottlingException`
+events carry `reason=INSUFFICIENT_MODEL_CAPACITY` (server side, no
+account at fault); the existing classifier treated all of them as
+`FailureQuota` → 1h cooldown per account, eventually quarantining every
+account in the pool during a single Kiro overload window. Phase 3 traces
+the AWS reason code, classifies it separately, and short-circuits the
+RecordFailure path so capacity events never accrue toward cooldown.
+
+- **`internal/kiroclient/aws_error.go`**: `UpstreamError` gains a
+  `Reason` field. New `parseAWSExceptionFields(body) (exType, reason)`
+  extracts both `__type` and `reason` from the JSON body in a single
+  pass; `resolveAWSExceptionFields(body, header)` is the companion that
+  prefers header-derived `:exception-type` when present. The legacy
+  `parseAWSExceptionType` and `resolveAWSException` remain as shims for
+  callers that don't need the reason yet. `Error()` now appends
+  `(reason=...)` when populated.
+- **`internal/kiroclient/client.go`**: All four error paths (200 with
+  AWS exception body; 401/403 with refresh attempt; 429/5xx with
+  Retry-After; default 4xx including ThrottlingException) call
+  `resolveAWSExceptionFields` and propagate the reason onto
+  `UpstreamError`. All five WARN/INFO sites now log
+  `account_id` + `reason` for forensic attribution.
+- **`internal/messages/execute.go`**: New `isCapacityShortage(ue)`
+  helper. Match is explicit on `Reason == "INSUFFICIENT_MODEL_CAPACITY"`
+  with a heuristic body-substring fallback (`"experiencing high
+  traffic"`) for older response shapes that lack the reason field.
+  `isQuotaFailure(ue)` early-returns false on capacity shortage, and
+  `RecordFailure` is gated behind `&& !isCapacityShortage(ue)` — even
+  the transient FailureRecord path is skipped because Consecutive would
+  otherwise trip the cooldown threshold over a long capacity window.
+  `rotationFailureReason(ue)` now appends the reason suffix
+  (`upstream_exception:ThrottlingException/INSUFFICIENT_MODEL_CAPACITY`)
+  for observable cooldown metrics.
+- **`internal/messages/execute.go`** (continued): New
+  `capacityShortageBaseDelay = 2*time.Second`, used by
+  `rotationBackoffFor(attempt, base)`. Capacity events get
+  2s/4s/8s rotation backoff instead of 500ms/1s/2s, giving Kiro time to
+  recover before the next account is tried. Total worst-case rotation
+  latency for capacity events: ~14s (vs. ~2s for genuine per-account
+  failures). The legacy `poolRotationBackoff(attempt)` is preserved as
+  a thin wrapper.
+- **`internal/logging/logging.go`**: New `WithAccountID(ctx, id)` and
+  `AccountIDFromContext(ctx)` helpers. Threads the account ID through
+  context so deeper layers (`kiroclient`) can attribute log lines
+  without invasive signature changes.
+
+Verified live (4-min soak): 2 capacity events landed against 2 distinct
+accounts; 0 accounts entered cooldown; pool returned to 78 healthy
+weight=1 immediately. Baseline 502 rate (2.5%) preserved.
+
+### Added (Phase 2 — Quality / correctness fixes, 2026-05-14)
+
+Ten targeted patches addressing the highest-impact items from the
+backend audit (see `BACKLOG.md` and the audit summary in the Phase 1
+notes). Each change ships with a build+verify cycle.
+
+- **`internal/messages/execute.go`** (Phase 2.1): Replaces fragile
+  `containsCI` substring matching with typed error classification via
+  `errors.As(http2.GoAwayError{})` + `errors.As(http2.StreamError{})` +
+  `errors.Is(err, context.DeadlineExceeded)` + `net.Error.Timeout()`.
+  Detects REFUSED_STREAM, ENHANCE_YOUR_CALM, CANCEL, INTERNAL,
+  PROTOCOL_ERROR per RFC 7540 §8.1.4. Returns stable Exception tags
+  (`Http2:GOAWAY`, `Http2:REFUSED_STREAM`) for metric labels.
+- **`internal/pool/pool.go`** (Phase 2.2): Cooldown-transition
+  double-fire fix. Previous logic compared the just-set
+  `h.CooldownUntil` against `prev`, which always fired during 429
+  storms. New `wasInactive = prev.IsZero() || !prev.After(now)` only
+  emits the metric on transition from no-cooldown into active.
+- **`internal/pool/pool.go`** (Phase 2.3): `stick.Release(id)` now
+  gated behind `cooldownJustApplied` so transient sub-threshold
+  failures no longer unbind the session pin.
+- **`internal/pool/pool.go` + `internal/pool/refresh.go`** (Phase 2.4):
+  New exported `Pool.RecordUnauthorized(id, reason)` sets cooldown to
+  `MaxCooldown` (max ladder), emits
+  `metrics.CooldownReasonUnauthorized`, and releases stickiness.
+  Triggered from `GetToken` when proactive refresh returns
+  `auth.ErrRefreshUnauthorized` (refresh_token dead → account quietly
+  removed from rotation until operator action).
+- **`internal/reqconv/schema_sanitize.go`** (Phase 2.5): `anyOf`/
+  `oneOf` with multiple non-null branches now go through
+  `mergeObjectBranches()` which unions properties and intersects
+  required across all object branches. Heterogeneous-branch fallback
+  drops `required` from the first branch so calls matching other
+  variants aren't hard-rejected for fields that don't apply. Cuts the
+  recurring "lossy schema conversion" warnings (was firing 66× / 16
+  min on tools with union types).
+- **`internal/messages/request.go`** (Phase 2.6): `count_tokens` now
+  builds an Anthropic-shaped text representation
+  (system + each message Role+Content + each tool
+  Name+Description+Schema) rather than counting the Kiro wire payload
+  (synthetic ack + ConversationState + ProfileARN +
+  tool_specification wrapper, ~3 KiB overhead/request). Eliminates
+  the Claude Code / Cline over-trim issue.
+- **`internal/kiroclient/backoff.go` + `client.go`** (Phase 2.7):
+  Honors `Retry-After` on 429/5xx. Parses both integer-seconds and
+  HTTP-date forms; clamps to `maxRetryAfter = 30s`; returns
+  `max(server, natural)` so the proxy is never more aggressive than
+  the server requested but never waits longer than 30s if the server
+  forgot to bound it.
+- **`internal/pool/pool.go`** (Phase 2.8): `Consecutive` decay on
+  `Pick`. After cooldown expires, the old failure count carried over
+  and inflated the next cooldown multiplier
+  (`(Consecutive - threshold + 1) × ShortCooldown`). Now reset on the
+  next pick after cooldown lapses — recovery is the signal.
+- **`internal/pool/usage.go` + `cmd/kiroxy/main.go`** (Phase 2.9):
+  Usage poller now refreshes-and-retries on 401/403. Eliminates the
+  log spam (~2031 / 2h) of `bearer token invalid` for accounts whose
+  access token expired between import and the first chat hot-path
+  use. Shares the same `RefreshConfig` as the chat path so a single
+  refresh round-trip covers both subsystems via singleflight (Phase 1).
+- **`internal/kiroclient/usage.go`** (Phase 2.10): `nextDateReset`
+  parser is now float-tolerant. Upstream sometimes emits scientific
+  notation (`1.780272E9`), which Go's `int64` unmarshaler rejects
+  outright; using `*float64` and casting before `time.Unix` covers
+  both forms with a 53-bit mantissa (plenty for any plausible epoch).
+
+### Added (Phase 1 — Stability + foundational hygiene, 2026-05-14)
+
+Six fixes shipped together as the first stability batch after the
+backend audit. Verified live across two restarts; 502 rate dropped from
+a 24% baseline (pre-audit) to 7% (post-HTTP/2-keepalive in
+pre-Phase-1) to 2.5% (post-Phase-1) over a 2h soak with 40
+`/v1/messages` requests.
+
+- **`internal/respconv/streaming.go`**: SSE keepalive ping every 15s.
+  Resolves FAIL-043 — opus-thinking turns >30s no longer get severed
+  by intermediate proxies (CloudFlare/Caddy/nginx default ~30s idle
+  timeout). New `keepaliveLoop()` goroutine emits
+  `event: ping\ndata: {"type":"ping"}\n\n`. All writes are mutex-
+  serialized to prevent interleaving with the event-handler goroutine.
+  Stopped on `Finish()` / `WriteError()` via `sync.Once`.
+- **`internal/kiroclient/idle_reader.go`**: Drain the producer
+  goroutine after `Close()` on timeout. The previous code returned
+  to the caller while the goroutine was still potentially writing
+  into the caller's buffer — `bufio.Reader` reuses its backing
+  array, so this was a reachable data race on stream bytes. Adds
+  `<-ch` after `r.rc.Close()`.
+- **`internal/kiroclient/client.go` + `internal/messages/execute.go`**:
+  401/403 → refresh + rotate. Previously only 403 triggered a refresh,
+  and 401 fell through to the default branch with no recovery. The
+  full `(401|403)` branch now reads the response body, resolves the
+  AWS exception type, and either retries with a fresh token or — if
+  refresh has been attempted and surrendered — surfaces an
+  `UpstreamError` that `isRotatableUpstreamError` honors as rotatable
+  to a different account.
+- **`internal/tokenvault/vault.go`**: New `tightenVaultPerms(path)`
+  applies mode 0600 to the main DB **plus** `path-wal` and
+  `path-shm`. The sidecar files contained plaintext refresh + access
+  tokens (uncheckpointed WAL pages, mmap shared region) and were
+  inheriting umask 0644. Called from `Open()` after schema init so
+  every vault path tightens itself, not just `cmd/kiroxy/main.go`'s
+  callsite.
+- **`internal/pool/refresh.go`**: Wires `cfg.group.Do(provider+"/"+id,
+  ...)` around `refreshOne`. The `singleflight.Group` field had been
+  declared but never invoked — concurrent callers hitting an expired
+  token simultaneously raced on `vault.Reserve`; losers got
+  `ErrLockHeld` → 401 to the user even though a sibling refresh was
+  in flight. Closes the BACKLOG P1 thundering-herd hazard.
+- **`internal/server/recover.go`** (new) + **`internal/server/server.go`**:
+  Outermost panic recovery middleware. Single in-handler panic no
+  longer crashes the process; it logs the stack via `slog.Error` with
+  `request_id` + `path` + `method` and returns the Anthropic
+  `api_error` envelope (or no-op if headers were already flushed —
+  for SSE streams, the framing is preserved).
+
 
 ### Added (Phase COMPLETION-C — GetUsageLimits polling, 2026-05-13)
 

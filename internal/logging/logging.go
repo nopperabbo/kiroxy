@@ -20,6 +20,7 @@ import (
 
 type traceIDKey struct{}
 type sessionIDKey struct{}
+type accountIDKey struct{}
 
 // NewTraceID generates a new UUID v4 trace ID.
 func NewTraceID() string {
@@ -63,6 +64,22 @@ func WithSessionID(ctx context.Context, id string) context.Context {
 // Returns "" if not set.
 func SessionIDFromContext(ctx context.Context) string {
 	id, _ := ctx.Value(sessionIDKey{}).(string)
+	return id
+}
+
+// WithAccountID stores an upstream account ID on the context so deeper layers
+// (kiroclient, eventstream parsing) can include it in WARN/ERROR logs without
+// needing it threaded through every function signature. Used to attribute
+// throttle / capacity / refresh failures to specific accounts during forensic
+// log analysis — without it, log lines list "exception=ThrottlingException"
+// with no way to know which of the 78 accounts produced it.
+func WithAccountID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, accountIDKey{}, id)
+}
+
+// AccountIDFromContext retrieves the upstream account ID. Returns "" if not set.
+func AccountIDFromContext(ctx context.Context) string {
+	id, _ := ctx.Value(accountIDKey{}).(string)
 	return id
 }
 

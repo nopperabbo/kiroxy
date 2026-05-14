@@ -10,8 +10,12 @@ import (
 	"errors"
 	"log/slog"
 	"math/rand/v2"
+	"net"
 	"net/http"
+	"strings"
 	"time"
+
+	"golang.org/x/net/http2"
 
 	"local/kiroxy/internal/anthropic"
 	"local/kiroxy/internal/auth"
@@ -48,17 +52,32 @@ const upstreamPoolRetries = 3
 // stays under 2s for the common case where rotation #1 succeeds.
 const poolRotationBaseDelay = 500 * time.Millisecond
 
+// capacityShortageBaseDelay is used when the upstream signals a server-side
+// capacity shortage (INSUFFICIENT_MODEL_CAPACITY). Rotating to a different
+// account does NOT help because every account hits the same Kiro model
+// fleet; we slow down to give the upstream a chance to recover. ~2s,
+// ~4s, ~8s with ±25% jitter, capping total worst-case rotation latency
+// under ~14s for capacity events.
+const capacityShortageBaseDelay = 2 * time.Second
+
 // poolRotationBackoff returns an exponential backoff delay with ±25% jitter
 // for the given rotation attempt number (0-indexed). attempt=0 returns 0
 // because the first rotation is the response to the original failure and
 // should fire immediately.
 func poolRotationBackoff(attempt int) time.Duration {
+	return rotationBackoffFor(attempt, poolRotationBaseDelay)
+}
+
+// rotationBackoffFor returns an exponential backoff delay with ±25% jitter,
+// parameterized on a base delay so callers can pick a longer floor for
+// upstream signals where rotation alone is insufficient (capacity shortage).
+func rotationBackoffFor(attempt int, base time.Duration) time.Duration {
 	if attempt <= 0 {
 		return 0
 	}
-	base := poolRotationBaseDelay << (attempt - 1)
-	jitter := time.Duration(rand.Int64N(int64(base)/2)) - base/4
-	return base + jitter
+	d := base << (attempt - 1)
+	jitter := time.Duration(rand.Int64N(int64(d)/2)) - d/4
+	return d + jitter
 }
 
 // rotationSleep waits for delay, respecting ctx cancellation. Returns the
@@ -87,26 +106,120 @@ func rotationSleep(ctx context.Context, delay time.Duration) error {
 //     IsRetryableAWSException alone would miss. Treating them as rotatable
 //     captures transient upstream gateway hiccups where a different account
 //     routed through a different edge is likely to succeed.
+//   - HTTP/2 / transport timeouts ("http2: timeout awaiting response headers",
+//     "context deadline exceeded", "i/o timeout"). Without rotation here,
+//     the caller would burn the entire request budget on the same account
+//     reusing a half-broken HTTP/2 connection. A synthetic UpstreamError is
+//     returned so callers can log uniform fields.
 func isRotatableUpstreamError(err error) (*kiroclient.UpstreamError, bool) {
 	var ue *kiroclient.UpstreamError
-	if !errors.As(err, &ue) {
-		return nil, false
+	if errors.As(err, &ue) {
+		if kiroclient.IsRetryableAWSException(ue.Exception) {
+			return ue, true
+		}
+		switch ue.Status {
+		case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+			return ue, true
+		case http.StatusUnauthorized, http.StatusForbidden:
+			// kiroclient already attempted token refresh and surrendered.
+			// The refresh_token on this account is likely dead or the upstream
+			// is rejecting it permanently. Rotate to a different account whose
+			// credentials may still be valid.
+			return ue, true
+		}
+		return ue, false
 	}
-	if kiroclient.IsRetryableAWSException(ue.Exception) {
-		return ue, true
+	if classified, ok := classifyTransportError(err); ok {
+		return &kiroclient.UpstreamError{Exception: classified}, true
 	}
-	switch ue.Status {
-	case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
-		return ue, true
+	return nil, false
+}
+
+// classifyTransportError detects HTTP/2 stream errors and transport timeouts
+// using typed error matching (errors.As / errors.Is) rather than substring
+// inspection. Returns a stable Exception tag for metric labeling.
+//
+// HTTP/2 categories handled per RFC 7540 §8.1.4 + GOAWAY semantics:
+//   - REFUSED_STREAM: server explicitly didn't process the request, safe to retry.
+//   - ENHANCE_YOUR_CALM: soft throttle — rotate to a different account/IP.
+//   - GOAWAY: server is shutting down this connection. Streams with id >
+//     LastStreamID are guaranteed unprocessed and safe to retry on a new conn.
+//   - CANCEL / INTERNAL_ERROR / PROTOCOL_ERROR: stream-level abort, retry.
+//
+// Transport-layer fallbacks (net.Error.Timeout, context.DeadlineExceeded,
+// http2.ErrCodeNo) cover stalled streams that don't surface a coded error.
+func classifyTransportError(err error) (string, bool) {
+	if err == nil {
+		return "", false
 	}
-	return ue, false
+	var goAway http2.GoAwayError
+	if errors.As(err, &goAway) {
+		return "Http2:GOAWAY", true
+	}
+	var streamErr http2.StreamError
+	if errors.As(err, &streamErr) {
+		switch streamErr.Code {
+		case http2.ErrCodeRefusedStream,
+			http2.ErrCodeEnhanceYourCalm,
+			http2.ErrCodeCancel,
+			http2.ErrCodeInternal,
+			http2.ErrCodeProtocol:
+			return "Http2:" + streamErr.Code.String(), true
+		}
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "TransportTimeout", true
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return "TransportTimeout", true
+	}
+	return "", false
+}
+
+// isCapacityShortage reports whether the upstream error is a server-side
+// capacity shortage that affects ALL accounts equally — not a per-account
+// rate limit. Kiro decorates ThrottlingException with `reason` field:
+//
+//   - "INSUFFICIENT_MODEL_CAPACITY" — Kiro's model fleet is overloaded.
+//     Hitting this on account A means account B will also hit it. Cooling
+//     down accounts on this signal causes a stampede where the entire
+//     pool is locked out for an hour while the upstream recovers in
+//     minutes. Treat as TRANSIENT (rotate, but don't cooldown).
+//
+// Without this distinction, a 30-minute Kiro-side overload window
+// converts every account in the pool to "quota-cooldown for 1h" — even
+// though no account is actually rate-limited. Symptom: "akun yang error
+// dan ga bisa di pake" reported by users.
+func isCapacityShortage(ue *kiroclient.UpstreamError) bool {
+	if ue == nil {
+		return false
+	}
+	// Explicit reason field (Kiro-specific extension).
+	if ue.Reason == "INSUFFICIENT_MODEL_CAPACITY" {
+		return true
+	}
+	// Heuristic fallback: ThrottlingException with the canonical capacity
+	// message but no `reason` field (older response shape).
+	if ue.Exception == "ThrottlingException" &&
+		strings.Contains(ue.Body, "experiencing high traffic") {
+		return true
+	}
+	return false
 }
 
 // isQuotaFailure classifies an upstream error for the FailureRecorder. Quota
 // failures (throttling / rate-limit / too-many-requests) should cool down the
 // account immediately; everything else (5xx gateway, internal errors) is
 // treated as transient and only cools down after repeated consecutive hits.
+//
+// Server-side capacity shortages (INSUFFICIENT_MODEL_CAPACITY) are explicitly
+// EXCLUDED — they affect every account equally, so cooling down one account
+// just shrinks the pool while leaving the actual problem unchanged.
 func isQuotaFailure(ue *kiroclient.UpstreamError) bool {
+	if isCapacityShortage(ue) {
+		return false
+	}
 	switch ue.Exception {
 	case "ThrottlingException", "TooManyRequestsException":
 		return true
@@ -119,6 +232,9 @@ func isQuotaFailure(ue *kiroclient.UpstreamError) bool {
 // reason field doesn't truncate useful info.
 func rotationFailureReason(ue *kiroclient.UpstreamError) string {
 	if ue.Exception != "" {
+		if ue.Reason != "" {
+			return "upstream_exception:" + ue.Exception + "/" + ue.Reason
+		}
 		return "upstream_exception:" + ue.Exception
 	}
 	if ue.Status != 0 {
@@ -142,7 +258,8 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 	capture := newUpstreamAttemptCapture(ctx, s.captureEnabled, inv.payload, inv.model, inv.thinking, inv.req.Stream, attempt)
 
 	upstreamStart := time.Now()
-	apiResp, err := s.client.GenerateAssistantResponse(ctx, inv.creds.AccessToken, inv.payload, inv.creds.Region)
+	callCtx := logging.WithAccountID(ctx, inv.creds.AccountID)
+	apiResp, err := s.client.GenerateAssistantResponse(callCtx, inv.creds.AccessToken, inv.payload, inv.creds.Region)
 	for poolAttempt := 0; err != nil && poolAttempt < upstreamPoolRetries; poolAttempt++ {
 		ue, ok := isRotatableUpstreamError(err)
 		if !ok {
@@ -152,11 +269,25 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 		// subsequent Pick calls bias away from it. This is a hint — the
 		// FailureRecorder interface is optional and a stale or unknown
 		// account ID is tolerated by the implementation.
-		if rec, ok := s.auth.(FailureRecorder); ok && inv.creds != nil && inv.creds.AccountID != "" {
+		//
+		// Capacity shortages (INSUFFICIENT_MODEL_CAPACITY) are an exception:
+		// the upstream model fleet is overloaded across all accounts. The
+		// account did nothing wrong — bumping its consecutive-error counter
+		// would falsely penalize healthy accounts during a regional Kiro
+		// hiccup. Skip recording entirely; just rotate.
+		if rec, ok := s.auth.(FailureRecorder); ok && inv.creds != nil && inv.creds.AccountID != "" && !isCapacityShortage(ue) {
 			reason := rotationFailureReason(ue)
 			rec.RecordFailure(inv.creds.AccountID, isQuotaFailure(ue), reason)
 		}
-		if delay := poolRotationBackoff(poolAttempt); delay > 0 {
+		// Capacity shortages affect every account in the pool equally, so
+		// rotation alone won't help. Slow the loop down to give the upstream
+		// a chance to recover instead of burning the rotation budget at
+		// network-RTT speed.
+		base := poolRotationBaseDelay
+		if isCapacityShortage(ue) {
+			base = capacityShortageBaseDelay
+		}
+		if delay := rotationBackoffFor(poolAttempt, base); delay > 0 {
 			if waitErr := rotationSleep(ctx, delay); waitErr != nil {
 				slog.WarnContext(ctx, "kiro: pool rotation aborted by ctx",
 					"trace_id", short, "err", waitErr,
@@ -179,7 +310,8 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 			"new_client_id", newCreds.ClientID)
 		inv.creds = newCreds
 		inv.payload.ProfileARN = newCreds.ProfileARN
-		apiResp, err = s.client.GenerateAssistantResponse(ctx, newCreds.AccessToken, inv.payload, newCreds.Region)
+		callCtx = logging.WithAccountID(ctx, newCreds.AccountID)
+		apiResp, err = s.client.GenerateAssistantResponse(callCtx, newCreds.AccessToken, inv.payload, newCreds.Region)
 	}
 	if err != nil {
 		logUpstreamError(ctx, short, err)

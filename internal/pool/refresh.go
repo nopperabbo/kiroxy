@@ -141,10 +141,31 @@ func needsRefresh(md accountMetadata, skew time.Duration, now time.Time) bool {
 // Retries on transient errors with exponential backoff. Returns the NEW
 // bundle on success.
 //
+// Concurrent calls for the same (provider, id) are coalesced via
+// singleflight: only ONE refresh round-trip happens, all concurrent
+// callers see the same result. This prevents the thundering-herd
+// pattern where N goroutines that hit a stale token simultaneously
+// all kick off independent refreshes against the upstream OIDC
+// endpoint (each invalidating the others' grant on AWS).
+//
 // kind classifies WHY this refresh was triggered (proactive pre-expiry
 // vs reactive 401/403), only for metric labelling — the refresh logic is
 // identical either way.
 func refreshOne(ctx context.Context, vault *tokenvault.Vault, cfg *RefreshConfig, provider, id, region string, kind metrics.RefreshKind) (*tokenvault.Bundle, error) {
+	key := provider + "/" + id
+	v, err, _ := cfg.group.Do(key, func() (any, error) {
+		return refreshOneInner(ctx, vault, cfg, provider, id, region, kind)
+	})
+	if err != nil {
+		return nil, err
+	}
+	if v == nil {
+		return nil, nil
+	}
+	return v.(*tokenvault.Bundle), nil
+}
+
+func refreshOneInner(ctx context.Context, vault *tokenvault.Vault, cfg *RefreshConfig, provider, id, region string, kind metrics.RefreshKind) (*tokenvault.Bundle, error) {
 	if cfg.RefreshFn == nil {
 		cfg.Metrics.RefreshAttempt(kind, metrics.RefreshResultFailOther)
 		return nil, errors.New("pool refresh: RefreshFn not configured")

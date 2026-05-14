@@ -25,7 +25,9 @@ import (
 	"sync"
 	"time"
 
+	"local/kiroxy/internal/auth"
 	"local/kiroxy/internal/kiroclient"
+	"local/kiroxy/internal/metrics"
 	"local/kiroxy/internal/tokenvault"
 )
 
@@ -47,6 +49,14 @@ type UsagePollerConfig struct {
 	// PollFn is the upstream getUsageLimits call. Nil disables the
 	// poller entirely — Start becomes a no-op.
 	PollFn UsagePollFn
+
+	// Refresh is the same RefreshConfig used by the chat hot path.
+	// When non-nil, the poller will trigger a token refresh on 401 / 403
+	// responses and retry the call once with the fresh token. Without
+	// this, a stale access_token causes every poll for that account to
+	// fail until the chat path eventually refreshes it (which may be
+	// hours if the account is rarely picked).
+	Refresh *RefreshConfig
 
 	// Interval between full passes over the account list. Default 60s.
 	// The Kiro UI updates credit usage at 5-minute granularity, so 60s
@@ -226,6 +236,33 @@ func (p *UsagePoller) pollOne(ctx context.Context, accountID string) {
 			slog.Int64("remaining", u.MonthlyCreditsRemaining),
 			slog.Int64("cap", u.MonthlyCap))
 		return
+	}
+
+	// On 401/403 (token stale), refresh and retry once. Without this,
+	// every poll for an account with a stale access_token fails until
+	// the chat path eventually triggers a refresh — which may be hours
+	// if the account is rarely picked. The refresh is gated behind a
+	// social-auth check because Builder ID accounts use long-lived
+	// tokens (no refresh path).
+	var ueRefresh *kiroclient.UsageError
+	if errors.As(perr, &ueRefresh) &&
+		ueRefresh.Kind == kiroclient.UsageErrKindUnauthorized &&
+		p.cfg.Refresh != nil && p.cfg.Refresh.RefreshFn != nil &&
+		md.AuthMethod == "social" {
+		refreshed, rerr := refreshOne(ctxT, p.cfg.Vault, p.cfg.Refresh, a.Provider, a.ID, region, metrics.RefreshKindReactive)
+		if rerr == nil && refreshed != nil {
+			u, perr = p.cfg.PollFn(ctxT, refreshed.AccessToken, md.ProfileArn, region)
+			if perr == nil && u != nil {
+				p.cfg.Pool.SetUsage(a.ID, u)
+				slog.Debug("usage poller: updated after refresh",
+					slog.String("account_id", a.ID),
+					slog.Int64("remaining", u.MonthlyCreditsRemaining))
+				return
+			}
+		} else if errors.Is(rerr, auth.ErrRefreshUnauthorized) {
+			p.cfg.Pool.RecordUnauthorized(a.ID, "usage poller: "+rerr.Error())
+			return
+		}
 	}
 
 	var ue *kiroclient.UsageError
