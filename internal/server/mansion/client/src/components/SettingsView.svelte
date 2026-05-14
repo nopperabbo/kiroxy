@@ -10,7 +10,7 @@
     4. Vault — pool breakdown + DB file path/size
 -->
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import {
     api,
     type SettingsSnapshot,
@@ -43,6 +43,24 @@
   let logLevelErr: string | null = $state(null);
   let scheme: Scheme = $state(readScheme());
   let copiedField: string | null = $state(null);
+
+  let liveUptimeSeconds: number = $state(0);
+  let uptimeTimer: ReturnType<typeof setInterval> | null = null;
+
+  $effect(() => {
+    if (snap?.general?.started_at) {
+      if (uptimeTimer) clearInterval(uptimeTimer);
+      const startMs = new Date(snap.general.started_at).getTime();
+      liveUptimeSeconds = Math.floor((Date.now() - startMs) / 1000);
+      uptimeTimer = setInterval(() => {
+        liveUptimeSeconds = Math.floor((Date.now() - startMs) / 1000);
+      }, 1000);
+    }
+  });
+
+  onDestroy(() => {
+    if (uptimeTimer) clearInterval(uptimeTimer);
+  });
 
   onMount(() => {
     void loadSnap();
@@ -190,7 +208,7 @@
             </button>
           </dd>
           <dt>uptime</dt>
-          <dd>{fmtUptime(snap.general.uptime_s)}</dd>
+          <dd>{fmtUptime(liveUptimeSeconds || snap.general.uptime_s)}</dd>
           <dt>started</dt>
           <dd class="kv__row">
             <span>{snap.general.started_at}</span>
