@@ -38,6 +38,7 @@ import (
 	"local/kiroxy/internal/pool"
 	"local/kiroxy/internal/server"
 	"local/kiroxy/internal/tokenvault"
+	"local/kiroxy/internal/tracing"
 )
 
 // version is overridden at build time via -ldflags "-X main.version=<tag>"
@@ -154,6 +155,19 @@ func runServe(ctx context.Context, args []string) error {
 		Level: logLevelVar,
 	})
 	slog.SetDefault(slog.New(server.NewCapturingHandler(jsonHandler, logSink)))
+
+	var otelShutdown func(context.Context) error
+	if os.Getenv("KIROXY_OTEL_ENABLED") == "1" {
+		shutdown, err := tracing.Init(ctx)
+		if err != nil {
+			slog.Warn("otel: tracing.Init failed; continuing without traces",
+				slog.String("err", err.Error()))
+		} else {
+			otelShutdown = shutdown
+			slog.Info("otel: tracing initialized",
+				slog.String("endpoint_env", "OTEL_EXPORTER_OTLP_ENDPOINT"))
+		}
+	}
 
 	var (
 		authMgr     messages.TokenGetter
@@ -336,7 +350,7 @@ func runServe(ctx context.Context, args []string) error {
 		slog.Warn("binding to non-loopback address; ensure you have TLS + a reverse proxy in front")
 	}
 
-	done := awaitShutdown(ctx, httpSrv, cfg.ShutdownTimeout, vault, stickiness, usagePoller)
+	done := awaitShutdown(ctx, httpSrv, cfg.ShutdownTimeout, vault, stickiness, usagePoller, otelShutdown)
 
 	if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("listen: %w", err)
@@ -350,8 +364,10 @@ func runServe(ctx context.Context, args []string) error {
 // If vault is non-nil, closes it after the HTTP server stops. If stickiness
 // is non-nil, stops its background pruner goroutine. If usagePoller is
 // non-nil, stops its 60s background poll goroutine before vault.Close so
-// that an in-flight Vault.Get() does not race the close.
-func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Duration, vault *tokenvault.Vault, stickiness *pool.Stickiness, usagePoller *pool.UsagePoller) <-chan struct{} {
+// that an in-flight Vault.Get() does not race the close. If otelShutdown is
+// non-nil, flushes pending OpenTelemetry spans last (after vault close, so
+// vault-close events still get traced if instrumented).
+func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Duration, vault *tokenvault.Vault, stickiness *pool.Stickiness, usagePoller *pool.UsagePoller, otelShutdown func(context.Context) error) <-chan struct{} {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -379,6 +395,11 @@ func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Durat
 		if vault != nil {
 			if err := vault.Close(); err != nil {
 				slog.Error("vault close failed", slog.String("err", err.Error()))
+			}
+		}
+		if otelShutdown != nil {
+			if err := otelShutdown(shutdownCtx); err != nil {
+				slog.Error("otel shutdown failed", slog.String("err", err.Error()))
 			}
 		}
 	}()

@@ -4,6 +4,35 @@ All notable changes to kiroxy will be documented in this file. Format loosely fo
 
 ## [Unreleased]
 
+### Added (Phase 4 — Test coverage + OTel runtime, 2026-05-14)
+
+Closes three medium-priority audit items from BACKLOG.md (config tests,
+OTel wiring, nextDateReset test gap).
+
+- **`internal/kiroclient/usage_test.go`**: 12 sub-tests for the
+  `nextDateReset` parser. Locks in the wire-format contract Phase 2.10
+  fixed (integer seconds AND scientific notation E-notation) plus the
+  ms-vs-s heuristic (>10B value treated as `UnixMilli`). Also pins the
+  rejection path (NaN, Infinity, string).
+- **`internal/config/config_test.go`**: From 1 test to ~50 sub-tests.
+  Coverage now includes: defaults (Bind, Port, LogLevelRaw, KiroRegion,
+  ShutdownTimeout, DBPath, APIKey); per-env overrides (BIND, PORT,
+  API_KEY, DB_PATH, LOG_LEVEL, KIRO_REGION, KIRO_DB_PATH,
+  SHUTDOWN_TIMEOUT) including their error paths (non-digit, zero,
+  >65535); flag overrides (`-port`, `-bind`); flag parse errors;
+  `LogLevel()` mapping (debug/info/warn/error/empty/unknown); `envOr`;
+  `atoiWithDefault` strict-parser invariants (rejects negative,
+  whitespace, '+' prefix, hex — pinned so future refactors don't
+  silently widen); error message context (env var name appears in
+  error so operators can locate misconfig).
+- **`cmd/kiroxy/main.go`**: OpenTelemetry initialization gated behind
+  `KIROXY_OTEL_ENABLED=1`. When enabled, `tracing.Init(ctx)` runs once
+  at startup, the returned shutdown hook is threaded into
+  `awaitShutdown` so pending spans are flushed AFTER vault close on
+  SIGINT/SIGTERM. `tracing.Init` failure is non-fatal — server logs
+  WARN and continues without traces. Endpoint reads from
+  `OTEL_EXPORTER_OTLP_ENDPOINT` per OTel SDK convention.
+
 ### Added (Phase 3 — Throttle stampede prevention, 2026-05-14)
 
 Distinguishes server-side capacity shortage from per-account quota
