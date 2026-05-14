@@ -61,6 +61,14 @@ type SettingsProvider interface {
 	Settings(ctx context.Context) SettingsSnapshot
 }
 
+// SettingsMutator is the optional write side of the settings API. When the
+// provider also implements this, /dashboard/api/settings/log-level becomes
+// available for live mutation. Returning an error rejects the change with
+// 400; returning nil acknowledges the new value.
+type SettingsMutator interface {
+	UpdateLogLevel(ctx context.Context, level string) error
+}
+
 // knownEnvVars lists the kiroxy env vars operators touch. Secret-looking
 // ones (keys containing KEY / TOKEN / SECRET) have their values redacted
 // to the last 4 chars. Non-kiroxy env vars from the parent shell are not
@@ -125,6 +133,9 @@ func (s *Server) registerSettingsHandler(mux *http.ServeMux) {
 		return
 	}
 	mux.HandleFunc("GET /dashboard/api/settings", s.handleSettings)
+	if _, ok := s.opts.SettingsProvider.(SettingsMutator); ok {
+		mux.HandleFunc("PUT /dashboard/api/settings/log-level", s.handleUpdateLogLevel)
+	}
 }
 
 func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
@@ -144,4 +155,27 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(snap)
+}
+
+func (s *Server) handleUpdateLogLevel(w http.ResponseWriter, r *http.Request) {
+	mutator, ok := s.opts.SettingsProvider.(SettingsMutator)
+	if !ok {
+		http.Error(w, "log level mutation not supported", http.StatusNotFound)
+		return
+	}
+	var body struct {
+		Level string `json:"level"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid json body", http.StatusBadRequest)
+		return
+	}
+	if err := mutator.UpdateLogLevel(r.Context(), body.Level); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	snap := s.opts.SettingsProvider.Settings(r.Context())
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(map[string]string{"log_level": snap.General.LogLevel})
 }

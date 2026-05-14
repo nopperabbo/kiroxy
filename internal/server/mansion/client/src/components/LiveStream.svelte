@@ -58,6 +58,11 @@
 
   let range = $derived(store.filters.statusRange ?? "all");
   let kindFilter = $state<"all" | StatusKind>("all");
+  type TimeWin = "5m" | "15m" | "1h" | "today";
+  let timeRange = $state<TimeWin>("5m");
+  let sortMode = $state<"time" | "latency">("time");
+  type SearchScope = "all" | "path" | "account" | "id";
+  let searchScope = $state<SearchScope>("all");
 
   function setKindFilter(k: typeof kindFilter): void {
     kindFilter = k;
@@ -65,12 +70,73 @@
   function setRange(r: typeof range): void {
     store.setFilter("statusRange", r);
   }
+  function setTimeRange(t: TimeWin): void {
+    timeRange = t;
+  }
+  function toggleSort(): void {
+    sortMode = sortMode === "time" ? "latency" : "time";
+  }
+  function setSearchScope(s: SearchScope): void {
+    searchScope = s;
+  }
+  function reconnect(): void {
+    store.reconnectLive?.();
+  }
+  function exportCsv(): void {
+    const rows = filtered.slice(0, 1000);
+    const header = ["time", "account_id", "model", "method", "path", "status", "latency_ms", "bytes_out"];
+    const lines = [header.join(",")];
+    for (const r of rows) {
+      const cells = [
+        r.started_at,
+        r.account_id ?? "",
+        modelOf(r),
+        r.method ?? "",
+        r.path,
+        String(r.status),
+        String(r.latency_ms),
+        String(r.bytes_out),
+      ].map((v) => {
+        const s = String(v);
+        return s.includes(",") || s.includes('"') ? '"' + s.replace(/"/g, '""') + '"' : s;
+      });
+      lines.push(cells.join(","));
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kiroxy-livestream-${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  function timeCutoff(t: TimeWin): number {
+    const now = Date.now();
+    if (t === "5m") return now - 5 * 60 * 1000;
+    if (t === "15m") return now - 15 * 60 * 1000;
+    if (t === "1h") return now - 60 * 60 * 1000;
+    // today: midnight local
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+  let cutoff = $derived(timeCutoff(timeRange));
 
   let filtered = $derived(
     store.requests.filter((r) => {
       const q = store.filters.search.trim().toLowerCase();
-      if (q && !r.path.toLowerCase().includes(q) && !r.id.toLowerCase().includes(q)) {
-        return false;
+      if (q) {
+        const path = r.path.toLowerCase();
+        const id = r.id.toLowerCase();
+        const acct = (r.account_id ?? "").toLowerCase();
+        let matches = false;
+        if (searchScope === "all") matches = path.includes(q) || id.includes(q) || acct.includes(q);
+        else if (searchScope === "path") matches = path.includes(q);
+        else if (searchScope === "account") matches = acct.includes(q);
+        else if (searchScope === "id") matches = id.includes(q);
+        if (!matches) return false;
       }
       if (range === "2xx" && !(r.status >= 200 && r.status < 300)) return false;
       if (range === "4xx" && !(r.status >= 400 && r.status < 500)) return false;
@@ -78,10 +144,17 @@
       if (store.filters.onlyErrors && r.status < 400) return false;
       const k = kindOf(r);
       if (kindFilter !== "all" && kindFilter !== k) return false;
+      const ts = Date.parse(r.started_at);
+      if (Number.isFinite(ts) && ts < cutoff) return false;
       return true;
     }),
   );
-  let visible = $derived(filtered.slice(0, VISIBLE));
+  let sorted = $derived(
+    sortMode === "latency"
+      ? [...filtered].sort((a, b) => b.latency_ms - a.latency_ms)
+      : filtered,
+  );
+  let visible = $derived(sorted.slice(0, VISIBLE));
 
   function select(id: string): void {
     store.selectRequest(id);
@@ -103,7 +176,31 @@
         <button type="button" class="chip" aria-pressed={kindFilter === "cool"} onclick={() => setKindFilter("cool")}>
           <span class="dot dot--cool" aria-hidden="true"></span>Cooldown
         </button>
+        {#if store.filters.search.trim()}
+          <span class="range__label caps faint">scope</span>
+          <div class="range" role="group" aria-label="search scope">
+            {#each ["all", "path", "account", "id"] as s}
+              <button
+                type="button"
+                class="range__seg"
+                class:range__seg--active={searchScope === s}
+                onclick={() => setSearchScope(s as SearchScope)}
+              >{s}</button>
+            {/each}
+          </div>
+        {/if}
         <span class="spacer"></span>
+        <span class="range__label caps faint">window</span>
+        <div class="range" role="group" aria-label="time window">
+          {#each ["5m", "15m", "1h", "today"] as t}
+            <button
+              type="button"
+              class="range__seg"
+              class:range__seg--active={timeRange === t}
+              onclick={() => setTimeRange(t as TimeWin)}
+            >{t}</button>
+          {/each}
+        </div>
         <span class="range__label caps faint">status</span>
         <div class="range" role="group" aria-label="status range">
           {#each ["all", "2xx", "4xx", "5xx"] as r}
@@ -129,6 +226,41 @@
             <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><rect x="2" y="1.5" width="2" height="7"/><rect x="6" y="1.5" width="2" height="7"/></svg>
             Pause
           {/if}
+        </button>
+        <button
+          type="button"
+          class="chip"
+          aria-pressed={sortMode === "latency"}
+          onclick={toggleSort}
+          title="sort by latency"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
+            <path d="M2 8 V2 M2 2 L0.5 3.5 M2 2 L3.5 3.5 M6 2 V8 M6 8 L4.5 6.5 M6 8 L7.5 6.5"/>
+          </svg>
+          {sortMode === "latency" ? "Slowest" : "Newest"}
+        </button>
+        <button
+          type="button"
+          class="chip"
+          onclick={exportCsv}
+          title="download visible rows as CSV"
+          disabled={filtered.length === 0}
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+            <path d="M5 1 V7 M3 5 L5 7 L7 5 M1.5 8.5 H8.5"/>
+          </svg>
+          CSV
+        </button>
+        <button
+          type="button"
+          class="chip"
+          onclick={reconnect}
+          title="re-open live connection"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+            <path d="M8 3 A3 3 0 1 0 8 6 M8 1 V3 H6"/>
+          </svg>
+          {store.liveStatus === "stream" ? "Live" : store.liveStatus === "polling" ? "Poll" : "Reconnect"}
         </button>
       </div>
 
@@ -223,8 +355,8 @@
       </div>
 
       <div class="stream-footer mono">
-        <span>Holding {Math.min(VISIBLE, filtered.length)} most recent · feed {store.streamPaused ? "paused" : "active"}</span>
-        <span>Moving window: 5 min</span>
+        <span>Holding {Math.min(VISIBLE, filtered.length)} most recent · feed {store.streamPaused ? "paused" : "active"} · sort {sortMode === "time" ? "newest first" : "slowest first"}</span>
+        <span>Window: {timeRange === "today" ? "today" : timeRange}</span>
       </div>
     </div>
 

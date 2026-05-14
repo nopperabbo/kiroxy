@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"local/kiroxy/internal/pool"
@@ -11,12 +13,10 @@ import (
 	"local/kiroxy/internal/tokenvault"
 )
 
-// settingsProvider populates the bundled /dashboard/api/settings response
-// from the same vault + pool the dashboard reads, plus runtime info.
 type settingsProvider struct {
 	version   string
 	vaultPath string
-	logLevel  slog.Level
+	logLevel  *slog.LevelVar
 	vault     *tokenvault.Vault
 	pool      *pool.Pool
 	startedAt time.Time
@@ -29,7 +29,7 @@ func (s *settingsProvider) Settings(ctx context.Context) server.SettingsSnapshot
 			UptimeS:   int64(time.Since(s.startedAt).Seconds()),
 			StartedAt: s.startedAt.UTC().Format(time.RFC3339),
 			VaultPath: s.vaultPath,
-			LogLevel:  s.logLevel.String(),
+			LogLevel:  s.currentLogLevelString(),
 		},
 		EnvVars: server.BuildEnvVars(),
 	}
@@ -57,4 +57,40 @@ func (s *settingsProvider) Settings(ctx context.Context) server.SettingsSnapshot
 		}
 	}
 	return snap
+}
+
+func (s *settingsProvider) currentLogLevelString() string {
+	if s.logLevel == nil {
+		return ""
+	}
+	return strings.ToLower(s.logLevel.Level().String())
+}
+
+func (s *settingsProvider) UpdateLogLevel(_ context.Context, level string) error {
+	if s.logLevel == nil {
+		return fmt.Errorf("log level not mutable in this build")
+	}
+	parsed, err := parseSlogLevel(level)
+	if err != nil {
+		return err
+	}
+	s.logLevel.Set(parsed)
+	slog.Info("log level updated via dashboard",
+		slog.String("level", strings.ToLower(parsed.String())))
+	return nil
+}
+
+func parseSlogLevel(s string) (slog.Level, error) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "debug":
+		return slog.LevelDebug, nil
+	case "info":
+		return slog.LevelInfo, nil
+	case "warn", "warning":
+		return slog.LevelWarn, nil
+	case "error":
+		return slog.LevelError, nil
+	default:
+		return 0, fmt.Errorf("invalid log level %q (expected debug/info/warn/error)", s)
+	}
 }

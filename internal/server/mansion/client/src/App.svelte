@@ -54,6 +54,17 @@
       onStatus: (s) => (store.liveStatus = s),
     });
     live.start();
+    store.reconnectLive = () => {
+      live?.close();
+      live = new LiveSource({
+        onSnapshot: (s) => store.applySnapshot(s),
+        onRequest: (r) => {
+          if (!store.streamPaused) store.appendRequest(r);
+        },
+        onStatus: (s) => (store.liveStatus = s),
+      });
+      live.start();
+    };
 
     const onKey = (e: KeyboardEvent): void => {
       const t = e.target as HTMLElement | null;

@@ -18,9 +18,13 @@
     type CreatedInboundKey,
   } from "../lib/api";
   import { fmtBytes, fmtUptime, relTime } from "../lib/format";
+  import { readScheme, setScheme, type Scheme } from "../lib/theme";
   import Icon from "./Icon.svelte";
 
   type Tab = "general" | "env" | "keys" | "vault";
+  type LogLevel = "debug" | "info" | "warn" | "error";
+  const LEVELS: LogLevel[] = ["debug", "info", "warn", "error"];
+  const SCHEMES: Scheme[] = ["dark", "light", "system"];
 
   let activeTab: Tab = $state("general");
   let snap: SettingsSnapshot | null = $state(null);
@@ -34,6 +38,11 @@
   let newLabel = $state("");
   let toRevokeID: string | null = $state(null);
   let copyOK = $state(false);
+
+  let logLevelPending = $state(false);
+  let logLevelErr: string | null = $state(null);
+  let scheme: Scheme = $state(readScheme());
+  let copiedField: string | null = $state(null);
 
   onMount(() => {
     void loadSnap();
@@ -107,6 +116,37 @@
       keysErr = `revoke failed: ${r.error}`;
     }
   }
+
+  async function changeLogLevel(next: LogLevel): Promise<void> {
+    if (logLevelPending) return;
+    logLevelPending = true;
+    logLevelErr = null;
+    const r = await api.updateLogLevel(next);
+    logLevelPending = false;
+    if (r.ok) {
+      if (snap) snap.general.log_level = r.data.log_level;
+    } else {
+      logLevelErr = `update failed: ${r.error}`;
+    }
+  }
+
+  function changeScheme(next: Scheme): void {
+    scheme = next;
+    setScheme(next);
+  }
+
+  async function copyField(name: string, value: string): Promise<void> {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      copiedField = name;
+      setTimeout(() => {
+        if (copiedField === name) copiedField = null;
+      }, 1400);
+    } catch {
+      copiedField = null;
+    }
+  }
 </script>
 
 <section class="settings" aria-label="settings">
@@ -137,15 +177,83 @@
       {#if snap}
         <dl class="kv mono">
           <dt>version</dt>
-          <dd>{snap.general.version}</dd>
+          <dd class="kv__row">
+            <span>{snap.general.version}</span>
+            <button
+              type="button"
+              class="copy-btn"
+              onclick={() => void copyField("version", snap?.general.version ?? "")}
+              title="copy version"
+              aria-label="copy version"
+            >
+              <Icon name={copiedField === "version" ? "check" : "copy"} size={11} />
+            </button>
+          </dd>
           <dt>uptime</dt>
           <dd>{fmtUptime(snap.general.uptime_s)}</dd>
           <dt>started</dt>
-          <dd>{snap.general.started_at}</dd>
+          <dd class="kv__row">
+            <span>{snap.general.started_at}</span>
+            <button
+              type="button"
+              class="copy-btn"
+              onclick={() => void copyField("started", snap?.general.started_at ?? "")}
+              title="copy started timestamp"
+              aria-label="copy started"
+            >
+              <Icon name={copiedField === "started" ? "check" : "copy"} size={11} />
+            </button>
+          </dd>
           <dt>vault path</dt>
-          <dd class="kv__path">{snap.general.vault_path ?? "—"}</dd>
+          <dd class="kv__path kv__row">
+            <span>{snap.general.vault_path ?? "—"}</span>
+            {#if snap.general.vault_path}
+              <button
+                type="button"
+                class="copy-btn"
+                onclick={() => void copyField("vault", snap?.general.vault_path ?? "")}
+                title="copy vault path"
+                aria-label="copy vault path"
+              >
+                <Icon name={copiedField === "vault" ? "check" : "copy"} size={11} />
+              </button>
+            {/if}
+          </dd>
           <dt>log level</dt>
-          <dd>{snap.general.log_level ?? "—"}</dd>
+          <dd class="kv__row">
+            <div class="seg-group" role="group" aria-label="log level">
+              {#each LEVELS as lv (lv)}
+                <button
+                  type="button"
+                  class="seg-btn"
+                  class:seg-btn--active={(snap?.general.log_level ?? "").toLowerCase() === lv}
+                  disabled={logLevelPending}
+                  onclick={() => void changeLogLevel(lv)}
+                >
+                  {lv}
+                </button>
+              {/each}
+            </div>
+            {#if logLevelErr}
+              <span class="seg-err mono">{logLevelErr}</span>
+            {/if}
+          </dd>
+          <dt>theme</dt>
+          <dd class="kv__row">
+            <div class="seg-group" role="group" aria-label="color scheme">
+              {#each SCHEMES as s (s)}
+                <button
+                  type="button"
+                  class="seg-btn"
+                  class:seg-btn--active={scheme === s}
+                  onclick={() => changeScheme(s)}
+                >
+                  {s}
+                </button>
+              {/each}
+            </div>
+            <span class="seg-hint mono faint">stored in localStorage</span>
+          </dd>
         </dl>
       {:else}
         <div class="empty mono faint">loading…</div>
@@ -423,6 +531,70 @@
   }
   .kv__path {
     overflow-wrap: anywhere;
+  }
+  .kv__row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+  }
+  .copy-btn {
+    inline-size: 22px;
+    block-size: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--c-text-faint);
+    background: transparent;
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    transition: color var(--mo-fast) var(--ease-std), border-color var(--mo-fast) var(--ease-std);
+  }
+  .copy-btn:hover {
+    color: var(--c-text);
+    border-color: var(--c-border-strong);
+  }
+
+  .seg-group {
+    display: inline-flex;
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+  }
+  .seg-btn {
+    padding: 4px 10px;
+    font-size: var(--fs-2xs);
+    font-family: var(--font-mono);
+    letter-spacing: var(--tr-wide);
+    text-transform: uppercase;
+    color: var(--c-text-dim);
+    background: transparent;
+    border: 0;
+    border-inline-end: 1px solid var(--c-rule);
+    cursor: pointer;
+    transition: color var(--mo-fast) var(--ease-std), background var(--mo-fast) var(--ease-std);
+  }
+  .seg-btn:last-child {
+    border-inline-end: 0;
+  }
+  .seg-btn:hover:not(:disabled) {
+    color: var(--c-text);
+  }
+  .seg-btn--active {
+    background: color-mix(in oklch, var(--c-accent), transparent 80%);
+    color: var(--c-accent);
+  }
+  .seg-btn:disabled {
+    opacity: 0.4;
+    cursor: wait;
+  }
+  .seg-err {
+    color: var(--c-danger);
+    font-size: var(--fs-2xs);
+  }
+  .seg-hint {
+    font-size: var(--fs-2xs);
   }
   .kv--good {
     color: var(--c-success);

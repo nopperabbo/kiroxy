@@ -148,8 +148,10 @@ func runServe(ctx context.Context, args []string) error {
 	// writes to stderr. Capacity 2048 is ~3–5 minutes of normal traffic at
 	// a low hundreds of req/sec and costs ~1 MB RAM in the worst case.
 	logSink := server.NewLogSink(2048)
+	logLevelVar := new(slog.LevelVar)
+	logLevelVar.Set(cfg.LogLevel())
 	jsonHandler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-		Level: cfg.LogLevel(),
+		Level: logLevelVar,
 	})
 	slog.SetDefault(slog.New(server.NewCapturingHandler(jsonHandler, logSink)))
 
@@ -299,7 +301,7 @@ func runServe(ctx context.Context, args []string) error {
 		SettingsProvider: &settingsProvider{
 			version:   version,
 			vaultPath: cfg.DBPath,
-			logLevel:  cfg.LogLevel(),
+			logLevel:  logLevelVar,
 			vault:     vault,
 			pool:      poolInst,
 			startedAt: startedAt,

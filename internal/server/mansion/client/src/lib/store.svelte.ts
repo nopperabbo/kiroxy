@@ -121,6 +121,8 @@ class Store {
   togglePause(): void {
     this.streamPaused = !this.streamPaused;
   }
+  /** Optional reconnect hook installed by App.svelte. */
+  reconnectLive: (() => void) | null = null;
   setDrawerTab(t: Store["drawerTab"]): void {
     this.drawerTab = t;
   }
