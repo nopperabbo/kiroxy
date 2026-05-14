@@ -47,12 +47,15 @@
     return history.slice().reverse().map((h) => parseDuration(h.elapsed));
   });
 
-  let historySparkAccent = $derived.by(() => {
+  type SparkAccent = "accent" | "success" | "warn" | "danger" | "neutral";
+  let historySparkAccent: SparkAccent = $derived.by((): SparkAccent => {
     if (historySpark.length < 3) return "neutral";
     const last3 = historySpark.slice(-3);
-    if (last3[0] < last3[1] && last3[1] < last3[2]) return "amber";
+    if (last3[0] < last3[1] && last3[1] < last3[2]) return "accent";
     return "neutral";
   });
+
+  let historyTrendingUp = $derived(historySparkAccent === "accent");
 
   onMount(() => {
     void runDoctor();
@@ -284,13 +287,13 @@
               <p class="card__sub mono faint">last {history.length} runs · stored in browser</p>
             </div>
             <div class="history__actions">
-              <span title={historySparkAccent === "amber" ? "run duration trend — last 3 runs trending slower" : "run duration trend"}>
+              <span title={historyTrendingUp ? "run duration trend — last 3 runs trending slower" : "run duration trend"}>
                 <Sparkline
                   values={historySpark}
                   width={80}
                   height={20}
                   accent={historySparkAccent}
-                  ariaLabel={historySparkAccent === "amber" ? "run duration trend — last 3 runs trending slower" : "run duration trend"}
+                  ariaLabel={historyTrendingUp ? "run duration trend — last 3 runs trending slower" : "run duration trend"}
                 />
               </span>
               <button
