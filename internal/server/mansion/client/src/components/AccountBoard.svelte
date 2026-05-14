@@ -151,7 +151,11 @@
             glyph="◇"
             title="Pool is empty. No accounts imported."
             hint="Press i to paste a JSON export, or run kiroxy import-accounts-json to fill the lamps from the CLI."
-          />
+          >
+            <button type="button" class="btn btn--accent" onclick={() => window.dispatchEvent(new KeyboardEvent('keydown', {key: 'i'}))}>
+              Import account
+            </button>
+          </EmptyState>
         {:else}
           <EmptyState
             density="tight"
@@ -469,6 +473,33 @@
   }
   .empty:last-child {
     border-block-end: none;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: 5px 10px;
+    font-size: var(--fs-sm);
+    font-family: var(--font-mono);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-sm);
+    color: var(--c-text-dim);
+    cursor: pointer;
+    transition: all var(--mo-fast) var(--ease-std);
+  }
+  .btn:hover {
+    color: var(--c-text);
+    border-color: var(--c-border-strong);
+  }
+  .btn--accent {
+    color: var(--c-accent);
+    border-color: color-mix(in oklch, var(--c-accent), transparent 50%);
+    background: var(--c-accent-wash);
+  }
+  .btn--accent:hover {
+    color: var(--c-accent-strong);
   }
 
   @media (max-width: 720px) {

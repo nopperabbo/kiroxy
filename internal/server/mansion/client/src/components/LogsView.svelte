@@ -28,6 +28,7 @@
   import { api, type LogRecord, type LogsQuery } from "../lib/api";
   import { shortTime } from "../lib/format";
   import Icon from "./Icon.svelte";
+  import EmptyState from "./EmptyState.svelte";
 
   const MAX_LOCAL = 1000;
 
@@ -547,9 +548,16 @@
   <div class="logs__layout" class:logs__layout--facets={showFacets}>
     <div class="logs__body" class:logs__body--wrap={wrap}>
       {#if displayed.length === 0}
-        <div class="logs__empty">
-          <span class="faint mono">no log records match the current filter</span>
-        </div>
+        <EmptyState
+          title="No log records match the current filter."
+          hint="Loosen your filter criteria, or trigger a request to test the pipeline."
+        >
+          <button type="button" class="btn btn--accent" onclick={async () => {
+            const cmd = 'curl -H "x-api-key: $KIROXY_API_KEY" http://127.0.0.1:8787/v1/models';
+            await navigator.clipboard.writeText(cmd);
+            store.pushToast("ok", "curl copied — paste in shell to see logs");
+          }}>Copy test request</button>
+        </EmptyState>
       {:else}
         {#each displayed as r (r.id)}
           <div
@@ -748,9 +756,32 @@
     overflow-y: auto;
     min-block-size: 200px;
   }
-  .logs__empty {
-    padding: var(--sp-6);
-    text-align: center;
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: 5px 10px;
+    font-size: var(--fs-sm);
+    font-family: var(--font-mono);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-sm);
+    color: var(--c-text-dim);
+    cursor: pointer;
+    transition: all var(--mo-fast) var(--ease-std);
+  }
+  .btn:hover {
+    color: var(--c-text);
+    border-color: var(--c-border-strong);
+  }
+  .btn--accent {
+    color: var(--c-accent);
+    border-color: color-mix(in oklch, var(--c-accent), transparent 50%);
+    background: var(--c-accent-wash);
+  }
+  .btn--accent:hover {
+    color: var(--c-accent-strong);
   }
 
   .row {

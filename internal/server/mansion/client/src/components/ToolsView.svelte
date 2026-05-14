@@ -20,6 +20,7 @@
   import { api, type DoctorReport, type DoctorResult } from "../lib/api";
   import Icon from "./Icon.svelte";
   import Sparkline from "./Sparkline.svelte";
+  import EmptyState from "./EmptyState.svelte";
 
   type Tab = "diagnostic" | "backup" | "restore" | "onboarder";
   let tab: Tab = $state("diagnostic");
@@ -320,6 +321,14 @@
               </li>
             {/each}
           </ul>
+        </div>
+      {:else}
+        <div class="card history-card" style="background: transparent; border: 0;">
+          <EmptyState title="No run history" hint="Run kiroxy doctor to record health metrics.">
+            <button type="button" class="btn btn--accent" onclick={() => void runDoctor()} disabled={running}>
+              Run kiroxy doctor
+            </button>
+          </EmptyState>
         </div>
       {/if}
 

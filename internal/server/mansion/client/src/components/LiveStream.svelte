@@ -290,6 +290,13 @@
                 <span style="margin-inline-end: 8px;">↓ Run this to see traffic</span>
                 <code>curl -H "x-api-key: $KIROXY_API_KEY" http://127.0.0.1:8787/v1/models</code>
               </p>
+              <div style="margin-block-start: var(--sp-4);">
+                <button type="button" class="btn btn--accent" onclick={async () => {
+                  const cmd = 'curl -H "x-api-key: $KIROXY_API_KEY" http://127.0.0.1:8787/v1/models';
+                  await navigator.clipboard.writeText(cmd);
+                  store.pushToast('ok', 'curl copied — paste in shell to see traffic');
+                }}>Copy test request</button>
+              </div>
             {:else}
               <p class="stream-empty__copy">Your filter is hiding the wire.</p>
               <button
@@ -631,6 +638,33 @@
     font-size: var(--fs-xs);
   }
   .stream-empty__reset:hover { color: var(--c-text); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: 5px 10px;
+    font-size: var(--fs-sm);
+    font-family: var(--font-mono);
+    background: var(--c-surface);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-sm);
+    color: var(--c-text-dim);
+    cursor: pointer;
+    transition: all var(--mo-fast) var(--ease-std);
+  }
+  .btn:hover {
+    color: var(--c-text);
+    border-color: var(--c-border-strong);
+  }
+  .btn--accent {
+    color: var(--c-accent);
+    border-color: color-mix(in oklch, var(--c-accent), transparent 50%);
+    background: var(--c-accent-wash);
+  }
+  .btn--accent:hover {
+    color: var(--c-accent-strong);
+  }
 
   .live-rail {
     display: flex;
