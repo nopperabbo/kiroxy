@@ -19,6 +19,7 @@
   import { onMount, onDestroy } from "svelte";
   import { api, type DoctorReport, type DoctorResult } from "../lib/api";
   import Icon from "./Icon.svelte";
+  import Sparkline from "./Sparkline.svelte";
 
   type Tab = "diagnostic" | "backup" | "restore" | "onboarder";
   let tab: Tab = $state("diagnostic");
@@ -33,6 +34,24 @@
   let autoRefresh = $state(false);
   let autoTimer: ReturnType<typeof setInterval> | null = null;
   let exportedAt: string | null = $state(null);
+
+  function parseDuration(s: string): number {
+    if (s.endsWith("ms")) return parseFloat(s);
+    if (s.endsWith("s") && !s.endsWith("ms")) return parseFloat(s) * 1000;
+    if (s.endsWith("m") && !s.endsWith("ms")) return parseFloat(s) * 60000;
+    return parseFloat(s) || 0;
+  }
+
+  let historySpark = $derived.by(() => {
+    return history.slice().reverse().map((h) => parseDuration(h.elapsed));
+  });
+
+  let historySparkAccent = $derived.by(() => {
+    if (historySpark.length < 3) return "neutral";
+    const last3 = historySpark.slice(-3);
+    if (last3[0] < last3[1] && last3[1] < last3[2]) return "amber";
+    return "neutral";
+  });
 
   onMount(() => {
     void runDoctor();
@@ -263,15 +282,26 @@
               <h3 class="card__title">Run history</h3>
               <p class="card__sub mono faint">last {history.length} runs · stored in browser</p>
             </div>
-            <button
-              type="button"
-              class="btn"
-              onclick={clearHistory}
-              title="forget local history"
-            >
-              <Icon name="trash" size={11} />
-              <span>clear</span>
-            </button>
+            <div class="history__actions">
+              <span title={historySparkAccent === "amber" ? "run duration trend — last 3 runs trending slower" : "run duration trend"}>
+                <Sparkline
+                  values={historySpark}
+                  width={80}
+                  height={20}
+                  accent={historySparkAccent}
+                  ariaLabel={historySparkAccent === "amber" ? "run duration trend — last 3 runs trending slower" : "run duration trend"}
+                />
+              </span>
+              <button
+                type="button"
+                class="btn"
+                onclick={clearHistory}
+                title="forget local history"
+              >
+                <Icon name="trash" size={11} />
+                <span>clear</span>
+              </button>
+            </div>
           </div>
           <ul class="hist mono">
             {#each history as h, i (h.ts + i)}
@@ -458,6 +488,11 @@ kiroxy import-accounts-json ./kiro-accounts.json`}
 
   .history-card {
     margin-block-start: var(--sp-4);
+  }
+  .history__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
   }
   .hist {
     list-style: none;
