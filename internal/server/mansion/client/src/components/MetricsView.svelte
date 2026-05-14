@@ -731,8 +731,8 @@
         <span class="caps">error budget · {range}</span>
         <span class="caps faint">target {SLO_ERR_BUDGET_PCT}% errors</span>
       </div>
-      <div class="slo-gauge" aria-hidden="true">
-        <div class="slo-gauge__fill" class:slo-gauge__fill--bad={errBudgetUsed > 100} class:slo-gauge__fill--warn={errBudgetUsed > 70 && errBudgetUsed <= 100} style="inline-size: {Math.min(100, errBudgetUsed).toFixed(1)}%"></div>
+      <div class="slo-gauge" aria-hidden="true" style="--slo-pct: {Math.min(100, errBudgetUsed).toFixed(1)}%;">
+        <div class="slo-gauge__fill"></div>
         <div class="slo-gauge__mark" style="inset-inline-start: 100%"></div>
       </div>
       <div class="slo-foot mono">
@@ -747,8 +747,8 @@
         <span class="caps">p99 latency budget</span>
         <span class="caps faint">target ≤ {fmtMs(SLO_P99_MS)}</span>
       </div>
-      <div class="slo-gauge" aria-hidden="true">
-        <div class="slo-gauge__fill" class:slo-gauge__fill--bad={!p99Healthy} class:slo-gauge__fill--warn={p99BudgetPct > 70 && p99BudgetPct <= 100} style="inline-size: {p99BudgetPct.toFixed(1)}%"></div>
+      <div class="slo-gauge" aria-hidden="true" style="--slo-pct: {p99BudgetPct.toFixed(1)}%;">
+        <div class="slo-gauge__fill"></div>
         <div class="slo-gauge__mark" style="inset-inline-start: 100%"></div>
       </div>
       <div class="slo-foot mono">
@@ -1239,11 +1239,19 @@
   }
   .slo-gauge__fill {
     block-size: 100%;
-    background: color-mix(in oklch, var(--c-success) 70%, transparent);
-    transition: inline-size 240ms ease;
+    inline-size: 100%;
+    background: linear-gradient(
+      to right,
+      color-mix(in oklch, var(--c-success) 70%, transparent) 0%,
+      color-mix(in oklch, var(--c-success) 70%, transparent) 50%,
+      color-mix(in oklch, var(--c-warn) 80%, transparent) 50%,
+      color-mix(in oklch, var(--c-warn) 80%, transparent) 90%,
+      var(--c-danger) 90%,
+      var(--c-danger) 100%
+    );
+    clip-path: inset(0 calc(100% - var(--slo-pct, 0%)) 0 0);
+    transition: clip-path 240ms ease;
   }
-  .slo-gauge__fill--warn { background: color-mix(in oklch, var(--c-warn) 80%, transparent); }
-  .slo-gauge__fill--bad { background: var(--c-danger); }
   .slo-gauge__mark {
     position: absolute;
     inset-block: -2px;
