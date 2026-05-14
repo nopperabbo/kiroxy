@@ -11,11 +11,19 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"local/kiroxy/internal/anthropic"
 	"local/kiroxy/internal/kiroproto"
 )
+
+// keepaliveInterval is how often the SSE writer emits a `ping` event during
+// upstream silence. 15s matches Anthropic's documented behavior and keeps
+// downstream proxies (CloudFlare/nginx default ~30s, Claude Code chunkTimeout
+// 30s) from severing the connection during long thinking turns.
+const keepaliveInterval = 15 * time.Second
 
 // SSEWriter writes Anthropic-compatible SSE events to an http.ResponseWriter.
 type SSEWriter struct {
@@ -29,6 +37,10 @@ type SSEWriter struct {
 	started    bool
 	writeErr   bool // true if a write/flush to the client failed
 	acc        responseAccumulator
+
+	writeMu  sync.Mutex
+	doneOnce sync.Once
+	done     chan struct{}
 
 	// OnVisibleOutput is called once, just before the first visible output
 	// (text delta or tool_use) is written. Used by GateWriter to promote
@@ -52,8 +64,47 @@ func NewSSEWriter(ctx context.Context, w http.ResponseWriter, model string, cont
 		msgID:      "msg_" + uuid.New().String()[:24],
 		blockIndex: -1,
 		acc:        newAccumulator(contextWindowSize, stopSequences, maxTokens, preCountedInputTokens),
+		done:       make(chan struct{}),
 	}
+	go sw.keepaliveLoop()
 	return sw
+}
+
+// keepaliveLoop emits a `ping` SSE event every keepaliveInterval until the
+// stream finishes. Without this, downstream proxies and SDK chunk timeouts
+// (Claude Code: 30s) sever the connection during long thinking turns.
+func (s *SSEWriter) keepaliveLoop() {
+	t := time.NewTicker(keepaliveInterval)
+	defer t.Stop()
+	for {
+		select {
+		case <-s.done:
+			return
+		case <-s.ctx.Done():
+			return
+		case <-t.C:
+			s.writePing()
+		}
+	}
+}
+
+func (s *SSEWriter) writePing() {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	if s.writeErr {
+		return
+	}
+	if _, err := fmt.Fprint(s.w, "event: ping\ndata: {\"type\":\"ping\"}\n\n"); err != nil {
+		s.writeErr = true
+		return
+	}
+	if s.flusher != nil {
+		s.flusher.Flush()
+	}
+}
+
+func (s *SSEWriter) stopKeepalive() {
+	s.doneOnce.Do(func() { close(s.done) })
 }
 
 // Started reports whether the SSE stream has been started (message_start sent).
@@ -176,6 +227,7 @@ func (s *SSEWriter) HandleEvent(e kiroproto.Event) bool {
 
 // WriteError writes an error SSE event to the stream.
 func (s *SSEWriter) WriteError(errType, message string) {
+	s.stopKeepalive()
 	s.closeActiveBlock()
 	s.writeSSE("error", map[string]any{
 		"type":  "error",
@@ -185,6 +237,7 @@ func (s *SSEWriter) WriteError(errType, message string) {
 
 // Finish writes the closing SSE events (message_delta + message_stop).
 func (s *SSEWriter) Finish() {
+	s.stopKeepalive()
 	s.ensureStarted()
 
 	textDelta, thinkingDelta, res := finalizeResult(&s.acc)
@@ -366,6 +419,8 @@ func (s *SSEWriter) ResetAccumulator(contextWindowSize int, stopSequences []stri
 }
 
 func (s *SSEWriter) writeSSE(eventType string, data map[string]any) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	if s.writeErr {
 		return
 	}
@@ -386,6 +441,8 @@ func (s *SSEWriter) writeSSE(eventType string, data map[string]any) {
 
 // writeRawSSE writes a pre-formatted SSE event using fmt.Fprintf, avoiding map allocation and json.Marshal.
 func (s *SSEWriter) writeRawSSE(eventType, format string, args ...any) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 	if s.writeErr {
 		return
 	}

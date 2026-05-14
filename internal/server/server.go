@@ -173,7 +173,8 @@ func (s *Server) Handler() http.Handler {
 		rec = s.opts.RequestRing
 	}
 	logMW := newLoggingMiddleware(s.logger, rec)
-	return logMW.wrap(authMW.wrap(mux))
+	recoverMW := newRecoverMiddleware(s.logger)
+	return recoverMW.wrap(logMW.wrap(authMW.wrap(mux)))
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {

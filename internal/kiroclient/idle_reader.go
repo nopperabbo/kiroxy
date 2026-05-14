@@ -37,7 +37,12 @@ func (r *idleReader) Read(p []byte) (int, error) {
 	case res := <-ch:
 		return res.n, res.err
 	case <-t.C:
-		_ = r.rc.Close() // forces the pending Read to unblock (net/http guarantee)
+		// Close unblocks the pending Read but does not synchronize. We MUST
+		// wait for the producer to return before yielding control: otherwise
+		// the caller (typically bufio.Reader) reuses p while the producer is
+		// still writing into it, causing a data race on the byte slice.
+		_ = r.rc.Close()
+		<-ch
 		return 0, ErrBodyReadIdle
 	}
 }
