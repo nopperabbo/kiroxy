@@ -24,6 +24,7 @@
 -->
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import { store } from "../lib/store.svelte";
   import { api, type LogRecord, type LogsQuery } from "../lib/api";
   import { shortTime } from "../lib/format";
   import Icon from "./Icon.svelte";
@@ -366,6 +367,40 @@
       sourceFilter = value;
     }
   }
+
+  function focusBin(bin: VolumeBin, e: MouseEvent): void {
+    if (bin.total === 0) return;
+
+    if (e.shiftKey) {
+      let dominant: Level | null = null;
+      if (bin.error / bin.total >= 0.7) dominant = "ERROR";
+      else if (bin.warn / bin.total >= 0.7) dominant = "WARN";
+      else if (bin.info / bin.total >= 0.7) dominant = "INFO";
+      else if (bin.debug / bin.total >= 0.7) dominant = "DEBUG";
+
+      if (dominant) {
+        levelMask = new Set([dominant]);
+        levelFilter = dominant;
+      }
+    }
+
+    const step = 60 * 1000;
+    const target = displayed.find(r => {
+      const ts = Date.parse(r.time);
+      return ts >= bin.t && ts < bin.t + step;
+    });
+
+    if (target) {
+      const el = document.getElementById(`log-row-${target.id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("row--flash");
+        setTimeout(() => el.classList.remove("row--flash"), 1600);
+      }
+    } else {
+      store.pushToast("info", "No matching logs in this window — adjust filter");
+    }
+  }
 </script>
 
 <section class="logs" aria-label="live logs">
@@ -490,12 +525,17 @@
       {@const warnH = (bin.warn / volumeMax) * 100}
       {@const infoH = (bin.info / volumeMax) * 100}
       {@const dbgH = (bin.debug / volumeMax) * 100}
-      <div class="hist-col" title="{new Date(bin.t).toLocaleTimeString()} · {bin.total} records">
+      <button
+        type="button"
+        class="hist-col"
+        title="{new Date(bin.t).toLocaleTimeString()} · {bin.total} records"
+        onclick={(e) => focusBin(bin, e)}
+      >
         {#if errH > 0}<span class="hist-seg hist-seg--error" style="block-size: {errH}%"></span>{/if}
         {#if warnH > 0}<span class="hist-seg hist-seg--warn" style="block-size: {warnH}%"></span>{/if}
         {#if infoH > 0}<span class="hist-seg hist-seg--info" style="block-size: {infoH}%"></span>{/if}
         {#if dbgH > 0}<span class="hist-seg hist-seg--debug" style="block-size: {dbgH}%"></span>{/if}
-      </div>
+      </button>
     {/each}
     <div class="hist-foot mono caps faint">
       <span>−60m</span>
@@ -513,6 +553,7 @@
       {:else}
         {#each displayed as r (r.id)}
           <div
+            id="log-row-{r.id}"
             class="row"
             class:row--expanded={expandedIds.has(r.id)}
             role="button"
@@ -723,6 +764,13 @@
     cursor: pointer;
     transition: background var(--mo-fast) var(--ease-std);
   }
+  .row.row--flash {
+    animation: row-flash 1.5s ease-out;
+  }
+  @keyframes row-flash {
+    0% { background: color-mix(in oklch, var(--c-accent) 20%, transparent); }
+    100% { background: transparent; }
+  }
   .row:hover {
     background: var(--c-surface-hover);
   }
@@ -889,7 +937,18 @@
     display: flex;
     flex-direction: column-reverse;
     background: transparent;
-    cursor: default;
+    cursor: pointer;
+    border: 0;
+    padding: 0;
+    transition: opacity var(--mo-fast) var(--ease-std);
+  }
+  .hist-col:hover {
+    opacity: 0.8;
+  }
+  .hist-col:focus-visible {
+    outline: 1px solid var(--c-accent);
+    outline-offset: 1px;
+    border-radius: 1px;
   }
   .hist-seg {
     inline-size: 100%;
