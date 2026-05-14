@@ -28,6 +28,7 @@ import (
 	"local/kiroxy/internal/auth"
 	"local/kiroxy/internal/kiroclient"
 	"local/kiroxy/internal/metrics"
+	"local/kiroxy/internal/safego"
 	"local/kiroxy/internal/tokenvault"
 )
 
@@ -118,7 +119,7 @@ func (p *UsagePoller) Start(ctx context.Context) {
 	}
 	runCtx, cancel := context.WithCancel(ctx)
 	p.cancel = cancel
-	go p.loop(runCtx)
+	safego.Go("pool-usage-poller", func() { p.loop(runCtx) })
 }
 
 // Stop signals the goroutine to exit and waits for it. Idempotent.

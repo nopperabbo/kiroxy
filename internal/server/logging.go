@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -42,12 +42,16 @@ func (m *loggingMiddleware) wrap(next http.Handler) http.Handler {
 		r = r.WithContext(ctx)
 		w.Header().Set("X-Request-Id", reqID)
 
-		lw := &loggingResponseWriter{ResponseWriter: w, status: 200}
+		lw := &loggingResponseWriter{ResponseWriter: w}
+		lw.status.Store(200)
 		start := time.Now()
 		next.ServeHTTP(lw, r)
 		latency := time.Since(start)
 
-		if r.URL.Path == "/healthz" && lw.status == http.StatusOK {
+		statusCode := int(lw.status.Load())
+		bytesOut := lw.written.Load()
+
+		if r.URL.Path == "/healthz" && statusCode == http.StatusOK {
 			return
 		}
 
@@ -55,9 +59,9 @@ func (m *loggingMiddleware) wrap(next http.Handler) http.Handler {
 			slog.String("request_id", reqID),
 			slog.String("method", r.Method),
 			slog.String("path", r.URL.Path),
-			slog.Int("status", lw.status),
+			slog.Int("status", statusCode),
 			slog.Int64("latency_ms", latency.Milliseconds()),
-			slog.Int64("bytes_out", lw.written),
+			slog.Int64("bytes_out", bytesOut),
 			slog.String("remote_ip", clientIP(r)),
 			slog.String("user_agent", r.Header.Get("User-Agent")),
 		)
@@ -69,8 +73,8 @@ func (m *loggingMiddleware) wrap(next http.Handler) http.Handler {
 				LatencyMS: latency.Milliseconds(),
 				Method:    r.Method,
 				Path:      r.URL.Path,
-				Status:    lw.status,
-				BytesOut:  lw.written,
+				Status:    statusCode,
+				BytesOut:  bytesOut,
 				RemoteIP:  clientIP(r),
 				UserAgent: r.Header.Get("User-Agent"),
 			})
@@ -87,22 +91,19 @@ func isDashboardTraffic(path string) bool {
 
 type loggingResponseWriter struct {
 	http.ResponseWriter
-	status   int
-	written  int64
-	flushed  bool
-	muStatus sync.Mutex
+	status  atomic.Int32
+	written atomic.Int64
+	flushed bool
 }
 
 func (w *loggingResponseWriter) WriteHeader(status int) {
-	w.muStatus.Lock()
-	w.status = status
-	w.muStatus.Unlock()
+	w.status.Store(int32(status))
 	w.ResponseWriter.WriteHeader(status)
 }
 
 func (w *loggingResponseWriter) Write(b []byte) (int, error) {
 	n, err := w.ResponseWriter.Write(b)
-	w.written += int64(n)
+	w.written.Add(int64(n))
 	return n, err
 }
 

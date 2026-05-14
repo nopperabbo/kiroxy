@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"local/kiroxy/internal/models"
@@ -50,7 +51,9 @@ func (s *Server) handleModels(w http.ResponseWriter, _ *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "max-age=60")
-	_ = json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		slog.Debug("models encode failed", slog.String("err", err.Error()))
+	}
 }
 
 // BuildModelTable converts the canonical model list into the dashboard

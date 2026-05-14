@@ -4,6 +4,57 @@ All notable changes to kiroxy will be documented in this file. Format loosely fo
 
 ## [Unreleased]
 
+### Added (Phase 5 — Worker panic-protection + log polish, 2026-05-14)
+
+Closes the panic-recovery gap left over from Phase 1. The HTTP recover
+middleware (Phase 1) only catches panics in handler goroutines; long-lived
+worker goroutines spawned at startup were unprotected and would die
+silently on any panic, leaving the system in a degraded state with no
+visible signal.
+
+- **`internal/safego/`** (NEW package): `safego.Go(name, fn)` and
+  `safego.Run(name, fn)` wrap goroutine spawn with deferred recover();
+  on panic, emits ERROR slog event with worker name, recovered value,
+  and full `runtime/debug.Stack()`. Optional `SetOnPanic(hook)` for
+  metric instrumentation. Hook itself is panic-guarded so a buggy
+  callback cannot turn recovery into a process kill.
+- **Adopted in 4 worker goroutines** (idle_reader.go intentionally
+  skipped — too hot path, low panic risk in net I/O):
+  - `internal/respconv/streaming.go` — SSE keepalive emitter
+    (`respconv-sse-keepalive`)
+  - `internal/pool/stickiness.go` — Session pin pruner
+    (`pool-stickiness-pruner`)
+  - `internal/pool/usage.go` — Usage poller loop
+    (`pool-usage-poller`)
+  - `internal/server/openai.go` — OpenAI translator goroutine
+    (`openai-translator`) — most critical: parent blocks on
+    `<-done`, a silent panic would deadlock forever
+  - `cmd/kiroxy/main.go` — Shutdown signal goroutine
+    (`main-shutdown`) — guards graceful-shutdown sequencing
+- **`internal/safego/safego_test.go`**: 5 unit tests covering recovery,
+  cleanup-after-panic invariant for `Run`, hook invocation, hook nil
+  disable, and hook-panic-doesn't-propagate.
+
+### Changed (Phase 5 — Log polish)
+
+- **`internal/messages/errors.go`**: `kiro api error` log level is now
+  WARN for 4xx upstream classifications (UnknownOperationException,
+  ValidationException, etc) and ERROR only for 5xx and non-HTTP
+  transport failures. Eliminates spurious ERROR-level noise from
+  upstream-side issues that are not actionable. Also exposes
+  `UpstreamError.Reason` (Phase 3.1 field) as a top-level log
+  attribute when present.
+- **`internal/server/logging.go`**: `loggingResponseWriter` migrated
+  from `int` + `sync.Mutex` to `atomic.Int32` + `atomic.Int64` for
+  status and bytes_out counters. Closes the (pre-existing, low-risk)
+  data race noted in audit M2 between `Write()` increments and the
+  log-line read at handler return. Eliminates the muStatus mutex.
+- **`internal/server/server.go` + `internal/server/models.go`**:
+  Replaced `_ = json.NewEncoder(w).Encode(resp)` with explicit
+  `slog.Debug("... encode failed", err)` — silent encode errors
+  during response write (typically: client disconnect mid-stream)
+  now surface in debug logs rather than vanishing.
+
 ### Added (Phase 4 — Test coverage + OTel runtime, 2026-05-14)
 
 Closes three medium-priority audit items from BACKLOG.md (config tests,

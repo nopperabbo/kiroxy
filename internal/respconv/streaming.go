@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"local/kiroxy/internal/anthropic"
 	"local/kiroxy/internal/kiroproto"
+	"local/kiroxy/internal/safego"
 )
 
 // keepaliveInterval is how often the SSE writer emits a `ping` event during
@@ -66,7 +67,7 @@ func NewSSEWriter(ctx context.Context, w http.ResponseWriter, model string, cont
 		acc:        newAccumulator(contextWindowSize, stopSequences, maxTokens, preCountedInputTokens),
 		done:       make(chan struct{}),
 	}
-	go sw.keepaliveLoop()
+	safego.Go("respconv-sse-keepalive", sw.keepaliveLoop)
 	return sw
 }
 

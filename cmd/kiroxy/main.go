@@ -36,6 +36,7 @@ import (
 	"local/kiroxy/internal/messages"
 	"local/kiroxy/internal/metrics"
 	"local/kiroxy/internal/pool"
+	"local/kiroxy/internal/safego"
 	"local/kiroxy/internal/server"
 	"local/kiroxy/internal/tokenvault"
 	"local/kiroxy/internal/tracing"
@@ -369,7 +370,7 @@ func runServe(ctx context.Context, args []string) error {
 // vault-close events still get traced if instrumented).
 func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Duration, vault *tokenvault.Vault, stickiness *pool.Stickiness, usagePoller *pool.UsagePoller, otelShutdown func(context.Context) error) <-chan struct{} {
 	done := make(chan struct{})
-	go func() {
+	safego.Go("main-shutdown", func() {
 		defer close(done)
 
 		sigCh := make(chan os.Signal, 1)
@@ -402,7 +403,7 @@ func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Durat
 				slog.Error("otel shutdown failed", slog.String("err", err.Error()))
 			}
 		}
-	}()
+	})
 	return done
 }
 

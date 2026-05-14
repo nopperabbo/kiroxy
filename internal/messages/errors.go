@@ -47,17 +47,31 @@ func handleUpstreamError(w http.ResponseWriter, isException bool, invalidReason 
 
 // logUpstreamError logs a "kiro api error" with structured attributes when the
 // error is an *UpstreamError. Falls back to plain err logging otherwise.
+//
+// Severity is chosen by HTTP status: 4xx (client/upstream-classified) is
+// logged at WARN since the failure is not actionable by the operator and
+// gets returned to the client as-is; 5xx (and non-HTTP transport failures)
+// is logged at ERROR because it indicates real upstream instability or a
+// proxy bug. This avoids polluting ERROR streams with mundane upstream
+// 400s like UnknownOperationException that are entirely upstream-side.
 func logUpstreamError(ctx context.Context, short string, err error, extra ...any) {
 	attrs := []any{"trace_id", short, "err", err}
 	attrs = append(attrs, extra...)
+	level := slog.LevelError
 	var ue *kiroclient.UpstreamError
 	if errors.As(err, &ue) {
 		attrs = append(attrs,
 			"status", ue.Status,
 			"content_type", ue.ContentType,
 			"exception", ue.Exception,
-			"body", ue.Body,
 		)
+		if ue.Reason != "" {
+			attrs = append(attrs, "reason", ue.Reason)
+		}
+		attrs = append(attrs, "body", ue.Body)
+		if ue.Status >= 400 && ue.Status < 500 {
+			level = slog.LevelWarn
+		}
 	}
-	slog.ErrorContext(ctx, "kiro api error", attrs...)
+	slog.Log(ctx, level, "kiro api error", attrs...)
 }
