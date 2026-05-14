@@ -514,5 +514,16 @@
     .brand__wordmark::after {
       display: none;
     }
+    .nav__tab > span:nth-of-type(2),
+    .nav__count {
+      display: none;
+    }
+    .nav__tab--active > span:nth-of-type(2) {
+      display: inline;
+      font-size: var(--fs-2xs);
+    }
+    .topbar__inner {
+      column-gap: var(--sp-2);
+    }
   }
 </style>

@@ -206,13 +206,14 @@
         {#if groupByTier}
           <h4 class="group caps">{g.tier} tier · {g.rows.length} {g.rows.length === 1 ? "model" : "models"}</h4>
         {/if}
-        <table class="tbl">
-          <thead>
-            <tr>
-              <th class="th" onclick={() => setSort("anthropic")}>
-                anthropic id
-                <span class="th__arrow">{sortKey === "anthropic" ? (sortDesc ? "▼" : "▲") : ""}</span>
-              </th>
+        <div class="tbl-scroll">
+          <table class="tbl">
+            <thead>
+              <tr>
+                <th class="th" onclick={() => setSort("anthropic")}>
+                  anthropic id
+                  <span class="th__arrow">{sortKey === "anthropic" ? (sortDesc ? "▼" : "▲") : ""}</span>
+                </th>
               <th class="th" onclick={() => setSort("kiro")}>
                 upstream kiro sku
                 <span class="th__arrow">{sortKey === "kiro" ? (sortDesc ? "▼" : "▲") : ""}</span>
@@ -309,6 +310,7 @@
             {/each}
           </tbody>
         </table>
+        </div>
       {/each}
       <p class="footnote mono faint">
         per-model usage stats arrive in v1.2.0 — for now scrape <code>/metrics</code>
@@ -414,6 +416,15 @@
     border-collapse: collapse;
     font-size: var(--fs-sm);
     margin-block-end: var(--sp-5);
+  }
+  .tbl-scroll {
+    overflow-x: auto;
+    margin-block-end: var(--sp-5);
+    -webkit-overflow-scrolling: touch;
+  }
+  .tbl-scroll > .tbl {
+    margin-block-end: 0;
+    min-inline-size: 600px;
   }
   .tbl th,
   .tbl td {

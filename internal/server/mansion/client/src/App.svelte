@@ -244,6 +244,8 @@
 <style>
   .shell {
     min-block-size: 100dvh;
+    max-inline-size: 100vw;
+    overflow-x: clip;
     display: grid;
     grid-template-rows: auto 1fr auto;
   }
