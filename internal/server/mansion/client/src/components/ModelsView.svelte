@@ -210,23 +210,31 @@
           <table class="tbl">
             <thead>
               <tr>
-                <th class="th" onclick={() => setSort("anthropic")}>
+                <th class="th" class:th--active={sortKey === "anthropic"} onclick={() => setSort("anthropic")}>
                   anthropic id
-                  <span class="th__arrow">{sortKey === "anthropic" ? (sortDesc ? "▼" : "▲") : ""}</span>
+                  {#if sortKey === "anthropic"}
+                    <span class="th__arrow" class:th__arrow--desc={sortDesc}>▲</span>
+                  {/if}
                 </th>
-              <th class="th" onclick={() => setSort("kiro")}>
-                upstream kiro sku
-                <span class="th__arrow">{sortKey === "kiro" ? (sortDesc ? "▼" : "▲") : ""}</span>
-              </th>
-              <th class="th th--num" onclick={() => setSort("context")}>
-                context
-                <span class="th__arrow">{sortKey === "context" ? (sortDesc ? "▼" : "▲") : ""}</span>
-              </th>
-              <th class="th" onclick={() => setSort("family")}>
-                family
-                <span class="th__arrow">{sortKey === "family" ? (sortDesc ? "▼" : "▲") : ""}</span>
-              </th>
-              <th>mode</th>
+                <th class="th" class:th--active={sortKey === "kiro"} onclick={() => setSort("kiro")}>
+                  upstream kiro sku
+                  {#if sortKey === "kiro"}
+                    <span class="th__arrow" class:th__arrow--desc={sortDesc}>▲</span>
+                  {/if}
+                </th>
+                <th class="th th--num" class:th--active={sortKey === "context"} onclick={() => setSort("context")}>
+                  context
+                  {#if sortKey === "context"}
+                    <span class="th__arrow" class:th__arrow--desc={sortDesc}>▲</span>
+                  {/if}
+                </th>
+                <th class="th" class:th--active={sortKey === "family"} onclick={() => setSort("family")}>
+                  family
+                  {#if sortKey === "family"}
+                    <span class="th__arrow" class:th__arrow--desc={sortDesc}>▲</span>
+                  {/if}
+                </th>
+                <th>mode</th>
               <th class="th--actions">actions</th>
             </tr>
           </thead>
@@ -444,11 +452,18 @@
   .th:hover {
     color: var(--c-text);
   }
+  .th--active {
+    color: var(--c-accent);
+  }
   .th__arrow {
     display: inline-block;
     min-inline-size: 8px;
     color: var(--c-accent);
     margin-inline-start: var(--sp-2);
+    transition: transform var(--mo-fast) var(--ease-std);
+  }
+  .th__arrow--desc {
+    transform: rotate(180deg);
   }
   .th--num {
     text-align: end;
