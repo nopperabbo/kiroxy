@@ -1026,8 +1026,13 @@
   }
   .series-chart {
     inline-size: 100%;
-    block-size: 80px;
+    block-size: 90px;
     display: block;
+  }
+  @media (min-width: 960px) {
+    .series-chart {
+      block-size: 140px;
+    }
   }
   .series-bar { fill: color-mix(in oklch, var(--c-text) 28%, transparent); }
   .series-bar--err { fill: color-mix(in oklch, var(--c-danger) 70%, transparent); }
