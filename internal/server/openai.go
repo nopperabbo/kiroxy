@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"local/kiroxy/internal/openai"
+	"local/kiroxy/internal/safego"
 )
 
 // handleChatCompletions implements POST /v1/chat/completions. It parses the
@@ -149,10 +150,10 @@ func (s *Server) streamChatCompletion(w http.ResponseWriter, syntheticReq *http.
 	}
 
 	done := make(chan error, 1)
-	go func() {
+	safego.Go("openai-translator", func() {
 		defer close(done)
 		done <- translator.Translate(syntheticReq.Context(), pr)
-	}()
+	})
 
 	// Run the pipeline. It writes to iw; iw proxies to pw (for the translator)
 	// unless the pipeline signals a non-2xx status before any bytes are

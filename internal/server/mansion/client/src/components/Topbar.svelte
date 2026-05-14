@@ -147,6 +147,79 @@
         </span>
         <span>Metrics</span>
       </button>
+
+      <span class="nav__rule" aria-hidden="true"></span>
+
+      <button
+        type="button"
+        class="nav__tab nav__tab--ops"
+        class:nav__tab--active={store.view === "logs"}
+        role="tab"
+        aria-selected={store.view === "logs"}
+        aria-controls="view-logs"
+        onclick={() => switchTo("logs")}
+        title="Server logs (cmd+K › view:logs)"
+      >
+        <span class="nav__glyph" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 2.5h8M2 6h8M2 9.5h5" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span>Logs</span>
+      </button>
+      <button
+        type="button"
+        class="nav__tab nav__tab--ops"
+        class:nav__tab--active={store.view === "models"}
+        role="tab"
+        aria-selected={store.view === "models"}
+        aria-controls="view-models"
+        onclick={() => switchTo("models")}
+        title="Models routing"
+      >
+        <span class="nav__glyph" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="6" cy="6" r="2" stroke="currentColor" stroke-width="1"/>
+            <path d="M6 1v2M6 9v2M1 6h2M9 6h2M2.5 2.5l1.4 1.4M8.1 8.1l1.4 1.4M2.5 9.5l1.4-1.4M8.1 3.9l1.4-1.4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span>Models</span>
+      </button>
+      <button
+        type="button"
+        class="nav__tab nav__tab--ops"
+        class:nav__tab--active={store.view === "tools"}
+        role="tab"
+        aria-selected={store.view === "tools"}
+        aria-controls="view-tools"
+        onclick={() => switchTo("tools")}
+        title="Diagnostic, backup, onboarder"
+      >
+        <span class="nav__glyph" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M2 10l3-3M5 7l1.5-1.5a2 2 0 1 0-2-2L3 5l-1 1 4 4z" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span>Tools</span>
+      </button>
+      <button
+        type="button"
+        class="nav__tab nav__tab--ops"
+        class:nav__tab--active={store.view === "settings"}
+        role="tab"
+        aria-selected={store.view === "settings"}
+        aria-controls="view-settings"
+        onclick={() => switchTo("settings")}
+        title="Server settings"
+      >
+        <span class="nav__glyph" aria-hidden="true">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="6" cy="6" r="1.5" stroke="currentColor" stroke-width="1"/>
+            <path d="M6 1.5v1.5M6 9v1.5M1.5 6h1.5M9 6h1.5M2.5 2.5l1.1 1.1M8.4 8.4l1.1 1.1M2.5 9.5l1.1-1.1M8.4 3.6l1.1-1.1" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span>Settings</span>
+      </button>
     </nav>
 
     <!-- Actions: search, import, theme, palette (⌘K kbd = amber role 5). -->
@@ -265,6 +338,29 @@
     color: var(--c-accent-dim);
   }
 
+  /* Subtle vertical rule separating primary tabs (Live/Pool/Metrics) from
+     ops tabs (Logs/Models/Tools/Settings). Helps signal the IA divide. */
+  .nav__rule {
+    inline-size: 1px;
+    background: var(--c-border);
+    align-self: stretch;
+    margin-block: 10px;
+    margin-inline: var(--sp-3);
+  }
+
+  /* Ops tabs: tighter padding + no count slot, leaving primary tabs
+     (Live/Pool) to retain their data-glances. */
+  .nav__tab--ops {
+    padding: 0 var(--sp-4);
+  }
+  .nav__tab--ops .nav__glyph {
+    color: var(--c-text-faint);
+  }
+  .nav__tab--ops:hover .nav__glyph,
+  .nav__tab--ops.nav__tab--active .nav__glyph {
+    color: currentColor;
+  }
+
   .actions {
     display: inline-flex;
     align-items: center;
@@ -363,6 +459,12 @@
     letter-spacing: 0.02em;
   }
 
+  @media (max-width: 1180px) {
+    .nav__rule { margin-inline: var(--sp-2); }
+    .nav__tab--ops {
+      padding: 0 var(--sp-3);
+    }
+  }
   @media (max-width: 960px) {
     .topbar__inner {
       grid-template-columns: auto 1fr;
@@ -383,12 +485,42 @@
     .nav__tab {
       block-size: 34px;
     }
+    .nav__tab--ops > span:nth-of-type(2) {
+      /* Hide the text label for ops tabs at narrow widths;
+         the glyph alone communicates the destination. */
+      display: none;
+    }
+    .nav__rule { margin-block: 6px; }
     .btn--ghost span,
     .brand__version {
       display: none;
     }
     .search {
       min-inline-size: 140px;
+    }
+  }
+  @media (max-width: 560px) {
+    .search {
+      min-inline-size: 0;
+      max-inline-size: 120px;
+    }
+    .search__input::placeholder {
+      font-size: 10px;
+    }
+    kbd { display: none; }
+    .brand__cursor {
+      display: none;
+    }
+    .nav__tab > span:nth-of-type(2),
+    .nav__count {
+      display: none;
+    }
+    .nav__tab--active > span:nth-of-type(2) {
+      display: inline;
+      font-size: var(--fs-2xs);
+    }
+    .topbar__inner {
+      column-gap: var(--sp-2);
     }
   }
 </style>

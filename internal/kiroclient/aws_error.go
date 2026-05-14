@@ -20,10 +20,15 @@ type UpstreamError struct {
 	Status      int    // HTTP status code
 	ContentType string // Content-Type header value
 	Exception   string // AWS exception class (normalized, may be "")
+	Reason      string // Sub-reason (Kiro-specific). e.g. "INSUFFICIENT_MODEL_CAPACITY"
 	Body        string // response body (up to 8 KiB)
 }
 
 func (e *UpstreamError) Error() string {
+	if e.Reason != "" {
+		return fmt.Sprintf("kiro api: status=%d content_type=%q exception=%q reason=%q: %s",
+			e.Status, e.ContentType, e.Exception, e.Reason, e.Body)
+	}
 	return fmt.Sprintf("kiro api: status=%d content_type=%q exception=%q: %s",
 		e.Status, e.ContentType, e.Exception, e.Body)
 }
@@ -33,16 +38,38 @@ func (e *UpstreamError) Error() string {
 // prefixed by a shape name ("com.amazonaws...#ThrottlingException").
 // Returns "" if the body cannot be parsed.
 func parseAWSExceptionType(body string) string {
+	exType, _ := parseAWSExceptionFields(body)
+	return exType
+}
+
+// parseAWSExceptionFields extracts both the AWS exception type AND a Kiro-specific
+// `reason` field from the error body. Kiro decorates ThrottlingException with a
+// `reason` field that distinguishes server-side capacity issues
+// ("INSUFFICIENT_MODEL_CAPACITY") from real per-account rate limiting. Without this
+// distinction, kiroxy treats both identically (cooldown the account for an hour),
+// which causes mass cooldown stampedes when the upstream model fleet is overloaded.
+//
+// Example body:
+//
+//	{
+//	  "__type": "com.amazon.kiro.runtimeservice#ThrottlingException",
+//	  "message": "I am experiencing high traffic, please try again shortly.",
+//	  "reason": "INSUFFICIENT_MODEL_CAPACITY"
+//	}
+//
+// Returns ("", "") if the body cannot be parsed.
+func parseAWSExceptionFields(body string) (exType, reason string) {
 	if body == "" {
-		return ""
+		return "", ""
 	}
 	var m struct {
-		Type1 string `json:"__type"`
-		Type2 string `json:"type"`
-		Code  string `json:"code"`
+		Type1  string `json:"__type"`
+		Type2  string `json:"type"`
+		Code   string `json:"code"`
+		Reason string `json:"reason"`
 	}
 	if err := json.Unmarshal([]byte(body), &m); err != nil {
-		return ""
+		return "", ""
 	}
 	t := m.Type1
 	if t == "" {
@@ -51,12 +78,12 @@ func parseAWSExceptionType(body string) string {
 	if t == "" {
 		t = m.Code
 	}
-	return normalizeAWSExceptionType(t)
+	return normalizeAWSExceptionType(t), m.Reason
 }
 
-// isRetryableAWSException reports whether an AWS exception type is transient
+// IsRetryableAWSException reports whether an AWS exception type is transient
 // and worth retrying (modeled after the AWS SDK retry policy).
-func isRetryableAWSException(exType string) bool {
+func IsRetryableAWSException(exType string) bool {
 	switch exType {
 	case "ThrottlingException",
 		"TooManyRequestsException",
@@ -97,6 +124,17 @@ func resolveAWSException(body string, header http.Header) string {
 		return exType
 	}
 	return normalizeAWSExceptionType(header.Get("X-Amzn-ErrorType"))
+}
+
+// resolveAWSExceptionFields is the same as resolveAWSException but also returns
+// the Kiro-specific `reason` field from the response body. Header fallback only
+// supplies the exception type — `reason` is body-only.
+func resolveAWSExceptionFields(body string, header http.Header) (exType, reason string) {
+	exType, reason = parseAWSExceptionFields(body)
+	if exType == "" {
+		exType = normalizeAWSExceptionType(header.Get("X-Amzn-ErrorType"))
+	}
+	return exType, reason
 }
 
 // isEventStreamContentType reports whether ct matches the AWS event stream

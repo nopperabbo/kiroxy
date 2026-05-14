@@ -126,6 +126,12 @@
     <div class="rail-eyebrow caps">Throughput · 5m</div>
     <div class="spark-strip">
       <svg viewBox="0 0 300 40" preserveAspectRatio="none" aria-hidden="true">
+        {#if !sparkPath}
+          <line x1="0" y1="38" x2="300" y2="38" class="spark__baseline" />
+          {#each Array(6) as _, i}
+            <line x1={i * 60} y1="38" x2={i * 60} y2="34" class="spark__tick" />
+          {/each}
+        {/if}
         {#if sparkArea}<path d={sparkArea} class="spark__area" />{/if}
         {#if sparkPath}<path d={sparkPath} class="spark__line" />{/if}
       </svg>
@@ -173,6 +179,25 @@
       <dt>errors total</dt>
       <dd class="mono tabular">{store.snapshot.total_errors ?? 0}</dd>
     </dl>
+
+    {#if store.snapshot.accounts.length > 0}
+      <div class="rail-eyebrow caps rail-eyebrow--spaced">Pool health</div>
+      <div class="heat" aria-label="account health heatmap">
+        {#each store.snapshot.accounts.slice(0, 64) as a}
+          <span
+            class="heat__cell"
+            class:heat__cell--ok={a.enabled && !a.cooldown_until}
+            class:heat__cell--cool={!!a.cooldown_until}
+            class:heat__cell--off={!a.enabled}
+            title="{a.id} · {a.cooldown_until ? 'cooling' : a.enabled ? 'ok' : 'disabled'}"
+          ></span>
+        {/each}
+      </div>
+      <p class="heat__legend mono faint">
+        <span class="heat__swatch heat__swatch--ok"></span> {activeCount} active
+        <span class="heat__swatch heat__swatch--cool"></span> {refreshCount} cool
+      </p>
+    {/if}
   </div>
 </div>
 
@@ -245,6 +270,17 @@
     fill: color-mix(in oklch, var(--c-text-dim), transparent 85%);
     stroke: none;
   }
+  .spark__baseline {
+    stroke: var(--c-text-faint);
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+    opacity: 0.5;
+  }
+  .spark__tick {
+    stroke: var(--c-text-faint);
+    stroke-width: 1;
+    opacity: 0.4;
+  }
 
   .mix {
     display: flex;
@@ -294,4 +330,38 @@
     color: var(--c-text-faint);
     font-size: var(--fs-sm);
   }
+
+  .rail-eyebrow--spaced { margin-block-start: var(--sp-5); }
+  .heat {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 3px;
+    padding: 2px 0;
+  }
+  .heat__cell {
+    block-size: 14px;
+    border-radius: 2px;
+    background: color-mix(in oklch, var(--c-text-faint), transparent 70%);
+    transition: transform 120ms ease;
+  }
+  .heat__cell--ok   { background: color-mix(in oklch, var(--c-success), transparent 35%); }
+  .heat__cell--cool { background: color-mix(in oklch, var(--c-info), transparent 40%); }
+  .heat__cell--off  { background: color-mix(in oklch, var(--c-text-faint), transparent 70%); }
+  .heat__cell:hover { transform: scale(1.2); }
+  .heat__legend {
+    margin: var(--sp-3) 0 0;
+    font-size: var(--fs-2xs);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .heat__swatch {
+    display: inline-block;
+    inline-size: 8px;
+    block-size: 8px;
+    border-radius: 1px;
+    margin-inline-start: 6px;
+  }
+  .heat__swatch--ok   { background: color-mix(in oklch, var(--c-success), transparent 35%); }
+  .heat__swatch--cool { background: color-mix(in oklch, var(--c-info), transparent 40%); }
 </style>

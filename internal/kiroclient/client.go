@@ -19,6 +19,7 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/net/http2"
 
 	"github.com/google/uuid"
 	"local/kiroxy/internal/kiroproto"
@@ -37,7 +38,7 @@ const (
 	// fallback works; kiroxy auto-switches to it when payload.ProfileARN == "".
 	amzTargetAmazonQ = "AmazonQDeveloperStreamingService.SendMessage"
 
-	maxRetries     = 3
+	maxRetries     = 1
 	baseRetryDelay = 1 * time.Second
 
 	// KiroIDE User-Agent (aws-sdk-js shape). Matches Quorinex/Kiro-Go's proven
@@ -127,7 +128,25 @@ func NewHTTPClient(opts ...HTTPClientOption) *HTTPClient {
 	transport.MaxIdleConns = 100
 	transport.MaxIdleConnsPerHost = 10
 	transport.IdleConnTimeout = 90 * time.Second
-	transport.ResponseHeaderTimeout = 30 * time.Second
+	// Tighter response-header timeout. Kiro upstream that does NOT return
+	// headers within ~12s is almost always a soft-throttle / dead HTTP/2
+	// stream — failing fast lets the pool rotation try a different account
+	// (and possibly a different upstream IP) before the user gives up.
+	// Was 30s; the old value combined with maxRetries=3 produced ~130s 502s.
+	transport.ResponseHeaderTimeout = 12 * time.Second
+	transport.ForceAttemptHTTP2 = true
+
+	// Activate HTTP/2 keep-alive pings. Without this, Go's net/http2 happily
+	// reuses a half-broken stream from the connection pool when Kiro's
+	// gateway silently drops it (common under throttling), and the next
+	// request hangs until ResponseHeaderTimeout fires. With ReadIdleTimeout
+	// set, the transport pings the peer after N seconds of inactivity and
+	// closes the connection if the ping fails — forcing a fresh dial that
+	// can land on a different upstream IP from the DNS pool.
+	if h2, err := http2.ConfigureTransports(transport); err == nil {
+		h2.ReadIdleTimeout = 15 * time.Second
+		h2.PingTimeout = 5 * time.Second
+	}
 
 	c := &HTTPClient{}
 	for _, opt := range opts {
@@ -262,13 +281,14 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 			// "reading prelude" message, masking the real upstream error.
 			if ct := resp.Header.Get("Content-Type"); !isEventStreamContentType(ct) {
 				errBody := readLimitedBody(resp.Body, upstreamBodyLimit)
-				exType := resolveAWSException(errBody, resp.Header)
+				exType, reason := resolveAWSExceptionFields(errBody, resp.Header)
 				// Retry transient AWS exceptions (throttling / internal / 5xx-equivalent)
 				// even though the HTTP status is 200.
-				if attempt < maxRetries && isRetryableAWSException(exType) {
+				if attempt < maxRetries && IsRetryableAWSException(exType) {
 					delay := backoffDelay(attempt)
 					slog.WarnContext(ctx, "kiro: 200 with non-eventstream exception, retrying",
-						"trace_id", short, "content_type", ct, "exception", exType,
+						"trace_id", short, "account_id", logging.AccountIDFromContext(ctx),
+						"content_type", ct, "exception", exType, "reason", reason,
 						"attempt", attempt+1, "max", maxRetries+1,
 						"delay", delay, "body", errBody)
 					if waitErr := retryWait(ctx, delay); waitErr != nil {
@@ -280,6 +300,7 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 					Status:      resp.StatusCode,
 					ContentType: ct,
 					Exception:   exType,
+					Reason:      reason,
 					Body:        errBody,
 				}
 				c.recordError(ctx, ue)
@@ -293,30 +314,44 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 				PromptTokens: promptTokens,
 			}, nil
 
-		case resp.StatusCode == http.StatusForbidden:
-			_ = resp.Body.Close()
+		case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+			errBody := readLimitedBody(resp.Body, upstreamBodyLimit)
+			exType, reason := resolveAWSExceptionFields(errBody, resp.Header)
 			if attempt < maxRetries && c.tokenRefresher != nil {
 				newToken, err := c.tokenRefresher(ctx)
 				if err != nil {
 					slog.WarnContext(ctx, "kiro: token refresh failed",
-						"trace_id", short, "err", err)
+						"trace_id", short, "account_id", logging.AccountIDFromContext(ctx),
+						"status", resp.StatusCode,
+						"exception", exType, "reason", reason, "err", err)
 				} else {
 					currentToken = newToken
-					slog.InfoContext(ctx, "kiro: 403 received, token refreshed",
-						"trace_id", short, "attempt", attempt+1, "max", maxRetries+1)
+					slog.InfoContext(ctx, "kiro: unauthorized, token refreshed",
+						"trace_id", short, "account_id", logging.AccountIDFromContext(ctx),
+						"status", resp.StatusCode,
+						"exception", exType, "reason", reason, "attempt", attempt+1, "max", maxRetries+1)
 					continue
 				}
 			}
-			ue := &UpstreamError{Status: resp.StatusCode, ContentType: resp.Header.Get("Content-Type")}
+			ue := &UpstreamError{
+				Status:      resp.StatusCode,
+				ContentType: resp.Header.Get("Content-Type"),
+				Exception:   exType,
+				Reason:      reason,
+				Body:        errBody,
+			}
 			c.recordError(ctx, ue)
 			return nil, ue
 
 		case resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500:
 			errBody := readLimitedBody(resp.Body, upstreamBodyLimit)
+			exType, reason := resolveAWSExceptionFields(errBody, resp.Header)
 			if attempt < maxRetries {
-				delay := backoffDelay(attempt)
+				delay := effectiveDelay(resp, attempt)
 				slog.WarnContext(ctx, "kiro: upstream error, retrying",
-					"trace_id", short, "status", resp.StatusCode,
+					"trace_id", short, "account_id", logging.AccountIDFromContext(ctx),
+					"status", resp.StatusCode,
+					"exception", exType, "reason", reason,
 					"attempt", attempt+1, "max", maxRetries+1,
 					"delay", delay, "body", errBody)
 				if waitErr := retryWait(ctx, delay); waitErr != nil {
@@ -327,7 +362,8 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 			ue := &UpstreamError{
 				Status:      resp.StatusCode,
 				ContentType: resp.Header.Get("Content-Type"),
-				Exception:   resolveAWSException(errBody, resp.Header),
+				Exception:   exType,
+				Reason:      reason,
 				Body:        errBody,
 			}
 			c.recordError(ctx, ue)
@@ -335,10 +371,29 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 
 		default:
 			errBody := readLimitedBody(resp.Body, upstreamBodyLimit)
+			ex, reason := resolveAWSExceptionFields(errBody, resp.Header)
+			// Kiro upstream returns AWS exceptions like ThrottlingException with
+			// HTTP 400 (application/x-amz-json-1.0). Treat retryable ones the same
+			// way we already do for 429/5xx so a transient capacity hiccup does
+			// not surface as a 502 to the caller.
+			if IsRetryableAWSException(ex) && attempt < maxRetries {
+				delay := backoffDelay(attempt)
+				slog.WarnContext(ctx, "kiro: retryable AWS exception, retrying",
+					"trace_id", short, "account_id", logging.AccountIDFromContext(ctx),
+					"status", resp.StatusCode,
+					"exception", ex, "reason", reason,
+					"attempt", attempt+1, "max", maxRetries+1,
+					"delay", delay, "body", errBody)
+				if waitErr := retryWait(ctx, delay); waitErr != nil {
+					return nil, waitErr
+				}
+				continue
+			}
 			ue := &UpstreamError{
 				Status:      resp.StatusCode,
 				ContentType: resp.Header.Get("Content-Type"),
-				Exception:   resolveAWSException(errBody, resp.Header),
+				Exception:   ex,
+				Reason:      reason,
 				Body:        errBody,
 			}
 			c.recordError(ctx, ue)

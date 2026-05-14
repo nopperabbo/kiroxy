@@ -18,6 +18,16 @@ type TokenGetter interface {
 	GetToken(ctx context.Context) (*auth.Credentials, error)
 }
 
+// FailureRecorder is an optional interface that a TokenGetter may implement
+// to receive notifications when an upstream call fails for a specific
+// account. Implementations should mark the account as cooled down (when
+// quota=true) or transient-failed (quota=false) so subsequent token fetches
+// bias away from it. A no-op implementation is acceptable; the rotation
+// logic only treats RecordFailure as a hint, not a guarantee.
+type FailureRecorder interface {
+	RecordFailure(accountID string, quota bool, reason string)
+}
+
 // Service owns message execution and token counting flows.
 type Service struct {
 	auth           TokenGetter

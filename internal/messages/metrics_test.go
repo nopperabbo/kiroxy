@@ -80,9 +80,9 @@ func TestMetrics_AuthError_IncrementsAuthKind(t *testing.T) {
 	}
 }
 
-// TestMetrics_InvalidRequest_IncrementsCounter covers the missing-session-id
-// path which exits before model resolution, so the model label should be
-// the unknown-fallback.
+// TestMetrics_InvalidRequest_IncrementsCounter covers an invalid-request
+// path that exits before model resolution, so the model label should be
+// the unknown-fallback. Malformed JSON is a stable pre-resolution failure.
 func TestMetrics_InvalidRequest_IncrementsCounter(t *testing.T) {
 	reg := metrics.New(time.Now())
 	s := New(
@@ -91,10 +91,10 @@ func TestMetrics_InvalidRequest_IncrementsCounter(t *testing.T) {
 		WithMetrics(reg.Sink()),
 	)
 
-	body := `{"model":"claude-sonnet-4-6","messages":[{"role":"user","content":"hi"}],"max_tokens":100}`
+	body := `{not valid json`
 	req := httptest.NewRequest(http.MethodPost, "/v1/messages", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	// No X-Claude-Code-Session-Id header — should fail invalid-request path.
+	req.Header.Set("X-Claude-Code-Session-Id", "test-session")
 	rr := httptest.NewRecorder()
 
 	s.HandleMessages(rr, req)
@@ -120,10 +120,11 @@ func TestMetrics_NilSink_HandlerStillRuns(t *testing.T) {
 		&stubKC{},
 	)
 
-	body := `{"model":"claude-sonnet-4-6","messages":[{"role":"user","content":"hi"}],"max_tokens":100}`
+	body := `{not valid json`
 	req := httptest.NewRequest(http.MethodPost, "/v1/messages", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	// Still omit session id → 400, but no panic.
+	req.Header.Set("X-Claude-Code-Session-Id", "test-session")
+	// Malformed JSON → 400, but no panic.
 	rr := httptest.NewRecorder()
 
 	s.HandleMessages(rr, req)

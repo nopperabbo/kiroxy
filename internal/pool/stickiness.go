@@ -13,6 +13,8 @@ package pool
 import (
 	"sync"
 	"time"
+
+	"local/kiroxy/internal/safego"
 )
 
 // DefaultStickinessTTL is the per-session pin lifetime. 60s was chosen
@@ -60,7 +62,7 @@ func NewStickiness(ttl time.Duration) *Stickiness {
 	if sweep < 10*time.Second {
 		sweep = 10 * time.Second
 	}
-	go s.runPruner(sweep)
+	safego.Go("pool-stickiness-pruner", func() { s.runPruner(sweep) })
 	return s
 }
 

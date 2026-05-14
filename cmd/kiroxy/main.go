@@ -36,8 +36,10 @@ import (
 	"local/kiroxy/internal/messages"
 	"local/kiroxy/internal/metrics"
 	"local/kiroxy/internal/pool"
+	"local/kiroxy/internal/safego"
 	"local/kiroxy/internal/server"
 	"local/kiroxy/internal/tokenvault"
+	"local/kiroxy/internal/tracing"
 )
 
 // version is overridden at build time via -ldflags "-X main.version=<tag>"
@@ -148,10 +150,25 @@ func runServe(ctx context.Context, args []string) error {
 	// writes to stderr. Capacity 2048 is ~3–5 minutes of normal traffic at
 	// a low hundreds of req/sec and costs ~1 MB RAM in the worst case.
 	logSink := server.NewLogSink(2048)
+	logLevelVar := new(slog.LevelVar)
+	logLevelVar.Set(cfg.LogLevel())
 	jsonHandler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-		Level: cfg.LogLevel(),
+		Level: logLevelVar,
 	})
 	slog.SetDefault(slog.New(server.NewCapturingHandler(jsonHandler, logSink)))
+
+	var otelShutdown func(context.Context) error
+	if os.Getenv("KIROXY_OTEL_ENABLED") == "1" {
+		shutdown, err := tracing.Init(ctx)
+		if err != nil {
+			slog.Warn("otel: tracing.Init failed; continuing without traces",
+				slog.String("err", err.Error()))
+		} else {
+			otelShutdown = shutdown
+			slog.Info("otel: tracing initialized",
+				slog.String("endpoint_env", "OTEL_EXPORTER_OTLP_ENDPOINT"))
+		}
+	}
 
 	var (
 		authMgr     messages.TokenGetter
@@ -265,6 +282,7 @@ func runServe(ctx context.Context, args []string) error {
 				PollFn: func(ctx context.Context, token, profileArn, region string) (*kiroclient.UsageLimits, error) {
 					return kiroclient.GetUsageLimits(ctx, pollerHTTP, token, profileArn, region)
 				},
+				Refresh:      tg.Refresh,
 				Interval:     60 * time.Second,
 				Timeout:      10 * time.Second,
 				StartupDelay: 2 * time.Second,
@@ -299,7 +317,7 @@ func runServe(ctx context.Context, args []string) error {
 		SettingsProvider: &settingsProvider{
 			version:   version,
 			vaultPath: cfg.DBPath,
-			logLevel:  cfg.LogLevel(),
+			logLevel:  logLevelVar,
 			vault:     vault,
 			pool:      poolInst,
 			startedAt: startedAt,
@@ -333,7 +351,7 @@ func runServe(ctx context.Context, args []string) error {
 		slog.Warn("binding to non-loopback address; ensure you have TLS + a reverse proxy in front")
 	}
 
-	done := awaitShutdown(ctx, httpSrv, cfg.ShutdownTimeout, vault, stickiness, usagePoller)
+	done := awaitShutdown(ctx, httpSrv, cfg.ShutdownTimeout, vault, stickiness, usagePoller, otelShutdown)
 
 	if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("listen: %w", err)
@@ -347,10 +365,12 @@ func runServe(ctx context.Context, args []string) error {
 // If vault is non-nil, closes it after the HTTP server stops. If stickiness
 // is non-nil, stops its background pruner goroutine. If usagePoller is
 // non-nil, stops its 60s background poll goroutine before vault.Close so
-// that an in-flight Vault.Get() does not race the close.
-func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Duration, vault *tokenvault.Vault, stickiness *pool.Stickiness, usagePoller *pool.UsagePoller) <-chan struct{} {
+// that an in-flight Vault.Get() does not race the close. If otelShutdown is
+// non-nil, flushes pending OpenTelemetry spans last (after vault close, so
+// vault-close events still get traced if instrumented).
+func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Duration, vault *tokenvault.Vault, stickiness *pool.Stickiness, usagePoller *pool.UsagePoller, otelShutdown func(context.Context) error) <-chan struct{} {
 	done := make(chan struct{})
-	go func() {
+	safego.Go("main-shutdown", func() {
 		defer close(done)
 
 		sigCh := make(chan os.Signal, 1)
@@ -378,7 +398,12 @@ func awaitShutdown(ctx context.Context, httpSrv *http.Server, timeout time.Durat
 				slog.Error("vault close failed", slog.String("err", err.Error()))
 			}
 		}
-	}()
+		if otelShutdown != nil {
+			if err := otelShutdown(shutdownCtx); err != nil {
+				slog.Error("otel shutdown failed", slog.String("err", err.Error()))
+			}
+		}
+	})
 	return done
 }
 

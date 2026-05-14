@@ -98,10 +98,23 @@ func SanitizeJSONSchema(schema map[string]any) map[string]any {
 					if m, ok := nonNull[0].(map[string]any); ok {
 						maps.Copy(result, SanitizeJSONSchema(m))
 					}
+				} else if merged := mergeObjectBranches(nonNull); merged != nil {
+					// All non-null branches are objects: merge properties (union)
+					// and required (intersection) to preserve maximum tool input
+					// compatibility. Without this, e.g. `{name: string} | {id: number}`
+					// would silently drop the second variant and the model's call
+					// matching only the second shape would be rejected by Kiro.
+					maps.Copy(result, merged)
 				} else if first, ok := arr[0].(map[string]any); ok {
-					slog.Warn("lossy schema conversion: using first branch only",
+					// Last-resort: branches are heterogeneous (string|number,
+					// object|array, etc.). Use first branch but drop `required`
+					// so calls matching another branch's shape aren't hard-rejected
+					// for missing fields that don't apply to their variant.
+					slog.Warn("lossy schema conversion: heterogeneous branches, using first without required",
 						"combinator", key, "branches", len(arr))
-					maps.Copy(result, SanitizeJSONSchema(first))
+					sanitized := SanitizeJSONSchema(first)
+					delete(sanitized, "required")
+					maps.Copy(result, sanitized)
 				}
 			}
 		case "allOf":
@@ -125,6 +138,80 @@ func dropNullBranches(branches []any) []any {
 		m, ok := b.(map[string]any)
 		if !ok || m["type"] != "null" {
 			result = append(result, b)
+		}
+	}
+	return result
+}
+
+// mergeObjectBranches unions properties and intersects required across object
+// branches of an anyOf/oneOf. Returns nil unless every branch is type:"object".
+// The intersection of `required` is the only safe choice: a field is only
+// universally required if EVERY branch requires it.
+func mergeObjectBranches(branches []any) map[string]any {
+	if len(branches) < 2 {
+		return nil
+	}
+	mergedProps := map[string]any{}
+	var requiredSets [][]string
+	for _, b := range branches {
+		m, ok := b.(map[string]any)
+		if !ok {
+			return nil
+		}
+		sanitized := SanitizeJSONSchema(m)
+		if t, _ := sanitized["type"].(string); t != "object" {
+			return nil
+		}
+		if props, ok := sanitized["properties"].(map[string]any); ok {
+			for k, v := range props {
+				if _, exists := mergedProps[k]; !exists {
+					mergedProps[k] = v
+				}
+			}
+		}
+		var thisRequired []string
+		if reqArr, ok := sanitized["required"].([]any); ok {
+			for _, r := range reqArr {
+				if s, ok := r.(string); ok {
+					thisRequired = append(thisRequired, s)
+				}
+			}
+		}
+		requiredSets = append(requiredSets, thisRequired)
+	}
+	result := map[string]any{"type": "object"}
+	if len(mergedProps) > 0 {
+		result["properties"] = mergedProps
+	}
+	if intersected := intersectStringSets(requiredSets); len(intersected) > 0 {
+		out := make([]any, len(intersected))
+		for i, s := range intersected {
+			out[i] = s
+		}
+		result["required"] = out
+	}
+	return result
+}
+
+// intersectStringSets returns the intersection of all input slices.
+func intersectStringSets(sets [][]string) []string {
+	if len(sets) == 0 {
+		return nil
+	}
+	counts := map[string]int{}
+	for _, s := range sets {
+		seen := map[string]bool{}
+		for _, k := range s {
+			if !seen[k] {
+				counts[k]++
+				seen[k] = true
+			}
+		}
+	}
+	var result []string
+	for k, c := range counts {
+		if c == len(sets) {
+			result = append(result, k)
 		}
 	}
 	return result

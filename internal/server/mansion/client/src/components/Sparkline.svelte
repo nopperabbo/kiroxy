@@ -81,6 +81,7 @@
 
 <svg
   class="spark spark--{accent}"
+  class:spark--empty={values.length === 0}
   {width}
   {height}
   viewBox="0 0 {width} {height}"
@@ -88,6 +89,12 @@
   role={ariaLabel ? "img" : "presentation"}
   aria-label={ariaLabel}
 >
+  {#if values.length === 0}
+    <line x1="2" y1={height - 2} x2={width - 2} y2={height - 2} class="spark__baseline" />
+    {#each Array(6) as _, i}
+      <line x1={2 + i * ((width - 4) / 5)} y1={height - 2} x2={2 + i * ((width - 4) / 5)} y2={height - 5} class="spark__tick" />
+    {/each}
+  {/if}
   {#if areaD}
     <path d={areaD} class="spark__area" />
   {/if}
@@ -132,5 +139,19 @@
   }
   .spark--neutral {
     color: var(--c-text-dim);
+  }
+  .spark__baseline {
+    stroke: var(--c-text-faint);
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+    opacity: 0.5;
+  }
+  .spark__tick {
+    stroke: var(--c-text-faint);
+    stroke-width: 1;
+    opacity: 0.4;
+  }
+  .spark--empty {
+    opacity: 0.7;
   }
 </style>

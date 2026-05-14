@@ -27,6 +27,7 @@ type Credentials struct {
 	ClientSecret string
 	ProfileARN   string // from state table, key "api.codewhisperer.profile"
 	AuthType     string // "social" or "idc" — determined by which token key was found
+	AccountID    string // pool-assigned ID, empty when loaded directly from CLI db
 }
 
 // ErrNoCredentials is returned when no token key is found in the database.

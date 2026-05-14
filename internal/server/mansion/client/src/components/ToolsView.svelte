@@ -16,9 +16,11 @@
   cards so operators have a centralized place to learn the workflow.
 -->
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { api, type DoctorReport, type DoctorResult } from "../lib/api";
   import Icon from "./Icon.svelte";
+  import Sparkline from "./Sparkline.svelte";
+  import EmptyState from "./EmptyState.svelte";
 
   type Tab = "diagnostic" | "backup" | "restore" | "onboarder";
   let tab: Tab = $state("diagnostic");
@@ -27,8 +29,40 @@
   let reportErr: string | null = $state(null);
   let running = $state(false);
 
+  type HistEntry = { ts: string; ok: boolean; elapsed: string; counts: { ok: number; warn: number; error: number; skip: number } };
+  const HIST_KEY = "mansion.doctor.history";
+  let history: HistEntry[] = $state(loadHistory());
+  let autoRefresh = $state(false);
+  let autoTimer: ReturnType<typeof setInterval> | null = null;
+  let exportedAt: string | null = $state(null);
+
+  function parseDuration(s: string): number {
+    if (s.endsWith("ms")) return parseFloat(s);
+    if (s.endsWith("s") && !s.endsWith("ms")) return parseFloat(s) * 1000;
+    if (s.endsWith("m") && !s.endsWith("ms")) return parseFloat(s) * 60000;
+    return parseFloat(s) || 0;
+  }
+
+  let historySpark = $derived.by(() => {
+    return history.slice().reverse().map((h) => parseDuration(h.elapsed));
+  });
+
+  type SparkAccent = "accent" | "success" | "warn" | "danger" | "neutral";
+  let historySparkAccent: SparkAccent = $derived.by((): SparkAccent => {
+    if (historySpark.length < 3) return "neutral";
+    const last3 = historySpark.slice(-3);
+    if (last3[0] < last3[1] && last3[1] < last3[2]) return "accent";
+    return "neutral";
+  });
+
+  let historyTrendingUp = $derived(historySparkAccent === "accent");
+
   onMount(() => {
     void runDoctor();
+  });
+
+  onDestroy(() => {
+    if (autoTimer !== null) clearInterval(autoTimer);
   });
 
   async function runDoctor(): Promise<void> {
@@ -38,10 +72,99 @@
     running = false;
     if (r.ok) {
       report = r.data;
+      pushHistory(r.data);
     } else if (r.status === 404) {
       reportErr = "doctor endpoint disabled (no ToolsProvider configured)";
     } else {
       reportErr = `doctor failed: ${r.error}`;
+    }
+  }
+
+  function loadHistory(): HistEntry[] {
+    try {
+      const raw = localStorage.getItem(HIST_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as HistEntry[];
+      return Array.isArray(parsed) ? parsed.slice(0, 10) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function pushHistory(rep: DoctorReport): void {
+    const counts = { ok: 0, warn: 0, error: 0, skip: 0 };
+    for (const r of rep.results) {
+      const k = r.status as keyof typeof counts;
+      if (k in counts) counts[k]++;
+    }
+    const entry: HistEntry = {
+      ts: rep.started_at,
+      ok: rep.ok,
+      elapsed: rep.elapsed,
+      counts,
+    };
+    history = [entry, ...history].slice(0, 10);
+    try {
+      localStorage.setItem(HIST_KEY, JSON.stringify(history));
+    } catch {
+      /* storage full or disabled — non-fatal */
+    }
+  }
+
+  function toggleAutoRefresh(): void {
+    autoRefresh = !autoRefresh;
+    if (autoRefresh) {
+      autoTimer = setInterval(() => {
+        if (!running) void runDoctor();
+      }, 30_000);
+    } else if (autoTimer !== null) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+    }
+  }
+
+  function exportReport(): void {
+    if (!report) return;
+    const lines: string[] = [];
+    lines.push("# kiroxy doctor report");
+    lines.push("");
+    lines.push(`- Generated: ${report.started_at}`);
+    lines.push(`- Elapsed:   ${report.elapsed}`);
+    lines.push(`- Verdict:   ${report.ok ? "OK" : "ISSUES"}`);
+    if (report.go_version) lines.push(`- Go:        ${report.go_version}`);
+    lines.push("");
+    lines.push("## Checks");
+    lines.push("");
+    for (const r of report.results) {
+      lines.push(`### ${r.name} — ${r.status.toUpperCase()}`);
+      lines.push("");
+      lines.push(r.detail);
+      if (r.hint) {
+        lines.push("");
+        lines.push(`> hint: ${r.hint}`);
+      }
+      lines.push("");
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    a.href = url;
+    a.download = `kiroxy-doctor-${stamp}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    exportedAt = new Date().toLocaleTimeString();
+    setTimeout(() => (exportedAt = null), 2400);
+  }
+
+  function clearHistory(): void {
+    history = [];
+    try {
+      localStorage.removeItem(HIST_KEY);
+    } catch {
+      /* storage disabled — non-fatal */
     }
   }
 
@@ -88,15 +211,37 @@
               checks runtime, vault file, upstream reachability, and pool size
             </p>
           </div>
-          <button
-            type="button"
-            class="btn btn--accent"
-            onclick={() => void runDoctor()}
-            disabled={running}
-          >
-            <Icon name="refresh" size={12} />
-            <span>{running ? "running…" : "run again"}</span>
-          </button>
+          <div class="card__actions">
+            <button
+              type="button"
+              class="btn"
+              class:btn--accent={autoRefresh}
+              onclick={toggleAutoRefresh}
+              title="auto-refresh every 30 s"
+            >
+              <Icon name={autoRefresh ? "pause" : "play"} size={11} />
+              <span>{autoRefresh ? "auto on" : "auto off"}</span>
+            </button>
+            <button
+              type="button"
+              class="btn"
+              onclick={exportReport}
+              disabled={!report}
+              title="export markdown report"
+            >
+              <Icon name="download" size={11} />
+              <span>{exportedAt ? `saved ${exportedAt}` : "export"}</span>
+            </button>
+            <button
+              type="button"
+              class="btn btn--accent"
+              onclick={() => void runDoctor()}
+              disabled={running}
+            >
+              <Icon name="refresh" size={12} />
+              <span>{running ? "running…" : "run again"}</span>
+            </button>
+          </div>
         </div>
 
         {#if reportErr}
@@ -133,6 +278,62 @@
           <div class="empty mono faint">running diagnostic…</div>
         {/if}
       </div>
+
+      {#if history.length > 0}
+        <div class="card history-card">
+          <div class="card__head">
+            <div>
+              <h3 class="card__title">Run history</h3>
+              <p class="card__sub mono faint">last {history.length} runs · stored in browser</p>
+            </div>
+            <div class="history__actions">
+              <span title={historyTrendingUp ? "run duration trend — last 3 runs trending slower" : "run duration trend"}>
+                <Sparkline
+                  values={historySpark}
+                  width={80}
+                  height={20}
+                  accent={historySparkAccent}
+                  ariaLabel={historyTrendingUp ? "run duration trend — last 3 runs trending slower" : "run duration trend"}
+                />
+              </span>
+              <button
+                type="button"
+                class="btn"
+                onclick={clearHistory}
+                title="forget local history"
+              >
+                <Icon name="trash" size={11} />
+                <span>clear</span>
+              </button>
+            </div>
+          </div>
+          <ul class="hist mono">
+            {#each history as h, i (h.ts + i)}
+              <li class="hist__row" class:hist__row--bad={!h.ok}>
+                <span class="hist__ts tabular">{new Date(h.ts).toLocaleString()}</span>
+                <span class="hist__verdict caps" class:hist__verdict--ok={h.ok}>
+                  {h.ok ? "ok" : "issues"}
+                </span>
+                <span class="hist__elapsed faint tabular">{h.elapsed}</span>
+                <span class="hist__counts tabular faint">
+                  ok {h.counts.ok}
+                  {#if h.counts.warn > 0} · warn {h.counts.warn}{/if}
+                  {#if h.counts.error > 0} · err {h.counts.error}{/if}
+                  {#if h.counts.skip > 0} · skip {h.counts.skip}{/if}
+                </span>
+              </li>
+            {/each}
+          </ul>
+        </div>
+      {:else}
+        <div class="card history-card" style="background: transparent; border: 0;">
+          <EmptyState title="No run history" hint="Run kiroxy doctor to record health metrics.">
+            <button type="button" class="btn btn--accent" onclick={() => void runDoctor()} disabled={running}>
+              Run kiroxy doctor
+            </button>
+          </EmptyState>
+        </div>
+      {/if}
 
     {:else if tab === "backup"}
       <div class="card">
@@ -278,6 +479,12 @@ kiroxy import-accounts-json ./kiro-accounts.json`}
     gap: var(--sp-5);
     margin-block-end: var(--sp-4);
   }
+  .card__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+  }
   .card__title {
     font-family: var(--font-display);
     font-size: var(--fs-md);
@@ -289,6 +496,63 @@ kiroxy import-accounts-json ./kiro-accounts.json`}
     font-size: var(--fs-sm);
     margin: var(--sp-2) 0;
     max-inline-size: 60ch;
+  }
+
+  .history-card {
+    margin-block-start: var(--sp-4);
+  }
+  .history__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+  }
+  .hist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: var(--c-rule);
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+  }
+  .hist__row {
+    display: grid;
+    grid-template-columns: 180px 70px 80px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--c-surface);
+    font-size: var(--fs-xs);
+  }
+  .hist__row--bad {
+    border-inline-start: 2px solid var(--c-danger);
+  }
+  .hist__verdict {
+    color: var(--c-danger);
+    font-size: var(--fs-2xs);
+    letter-spacing: var(--tr-wide);
+  }
+  .hist__verdict--ok {
+    color: var(--c-success);
+  }
+  .hist__elapsed,
+  .hist__counts {
+    font-size: var(--fs-2xs);
+  }
+
+  @media (max-width: 720px) {
+    .hist__row {
+      grid-template-columns: 1fr 60px;
+      grid-auto-flow: dense;
+      gap: var(--sp-2);
+    }
+    .hist__elapsed,
+    .hist__counts {
+      grid-column: 1 / -1;
+    }
   }
 
   .cmd {

@@ -19,6 +19,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -97,7 +98,23 @@ func Open(ctx context.Context, path string) (*Vault, error) {
 			return nil, fmt.Errorf("migrate add metadata: %w", err)
 		}
 	}
+	tightenVaultPerms(path)
 	return &Vault{db: db}, nil
+}
+
+// tightenVaultPerms enforces 0600 on the SQLite file plus its WAL/SHM sidecars.
+// SQLite creates -wal and -shm with the process umask (often 0644) which would
+// expose plaintext access/refresh tokens to other local users. Best-effort:
+// we never fail Open() if chmod fails; a permission warning is emitted instead.
+func tightenVaultPerms(path string) {
+	for _, p := range []string{path, path + "-wal", path + "-shm"} {
+		if _, err := os.Stat(p); err != nil {
+			continue
+		}
+		if err := os.Chmod(p, 0o600); err != nil {
+			slog.Warn("tokenvault: chmod 0600 failed", "path", p, "err", err)
+		}
+	}
 }
 
 // Close closes the underlying database.

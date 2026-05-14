@@ -306,3 +306,133 @@ func TestUsageLimitsURL_OverrideHonored(t *testing.T) {
 
 // _ = url.Values{} silences the import when no test directly uses url.
 var _ = url.Values{}
+
+// TestParseUsageLimitsBody_NextDateResetEdgeCases verifies the nextDateReset
+// parser handles the wire-format inconsistency observed in production. AWS
+// emits this field in TWO shapes (integer epoch seconds AND scientific-
+// notation float, sometimes within the same response shape across regions).
+// Phase 2.10 changed the field type from *int64 to *float64 to accept both;
+// these table-driven cases lock in that contract and the ms-vs-s heuristic.
+func TestParseUsageLimitsBody_NextDateResetEdgeCases(t *testing.T) {
+	tests := []struct {
+		name      string
+		raw       string
+		wantParse bool   // expect parse to succeed
+		wantUnix  int64  // expected NextReset.Unix() (0 = IsZero)
+		wantField string // optional descriptive field for failure log
+	}{
+		{
+			name:      "integer epoch seconds (canonical)",
+			raw:       `{"limits":[],"nextDateReset":1717200000}`,
+			wantParse: true,
+			wantUnix:  1717200000,
+			wantField: "should parse as Unix(1717200000, 0)",
+		},
+		{
+			name:      "scientific notation float (production bug)",
+			raw:       `{"limits":[],"nextDateReset":1.780272E9}`,
+			wantParse: true,
+			wantUnix:  1780272000, // int64(1.780272e9)
+			wantField: "Phase 2.10 fix — scientific notation must round-trip",
+		},
+		{
+			name:      "decimal float (non-scientific)",
+			raw:       `{"limits":[],"nextDateReset":1717200000.5}`,
+			wantParse: true,
+			wantUnix:  1717200000, // int64 truncation
+			wantField: "decimal float truncates to integer second",
+		},
+		{
+			name:      "epoch milliseconds (>10B threshold)",
+			raw:       `{"limits":[],"nextDateReset":1717200000000}`,
+			wantParse: true,
+			wantUnix:  1717200000, // UnixMilli(1717200000000).Unix() == 1717200000
+			wantField: "ms heuristic: >10B treated as UnixMilli",
+		},
+		{
+			name:      "zero value",
+			raw:       `{"limits":[],"nextDateReset":0}`,
+			wantParse: true,
+			wantUnix:  0,
+			wantField: "zero stays zero, not nil-skipped",
+		},
+		{
+			name:      "negative value (defensive)",
+			raw:       `{"limits":[],"nextDateReset":-1}`,
+			wantParse: true,
+			wantUnix:  -1, // time.Unix(-1, 0) is valid (1969-12-31 23:59:59 UTC)
+			wantField: "negative values must not panic",
+		},
+		{
+			name:      "absent field (nil pointer)",
+			raw:       `{"limits":[]}`,
+			wantParse: true,
+			wantUnix:  0, // NextReset is zero value time.Time, .Unix() returns -62135596800; but we check IsZero below
+			wantField: "missing field leaves NextReset zero-value",
+		},
+		{
+			name:      "very large value (year >2286, treated as ms)",
+			raw:       `{"limits":[],"nextDateReset":99999999999999}`,
+			wantParse: true,
+			wantUnix:  99999999999, // UnixMilli(99999999999999).Unix()
+			wantField: "overflow protection via ms branch",
+		},
+		{
+			name:      "scientific notation milliseconds",
+			raw:       `{"limits":[],"nextDateReset":1.717200000e12}`,
+			wantParse: true,
+			wantUnix:  1717200000, // int64(1.7172e12) > 10B → UnixMilli
+			wantField: "scientific ms also routes through UnixMilli",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u, err := parseUsageLimitsBody(tt.raw)
+			if tt.wantParse {
+				if err != nil {
+					t.Fatalf("parse error (unexpected): %v\nraw=%s", err, tt.raw)
+				}
+				if u == nil {
+					t.Fatalf("nil UsageLimits returned (unexpected)")
+				}
+				if tt.name == "absent field (nil pointer)" {
+					if !u.NextReset.IsZero() {
+						t.Errorf("absent nextDateReset should leave NextReset.IsZero(), got %v", u.NextReset)
+					}
+					return
+				}
+				gotUnix := u.NextReset.Unix()
+				if gotUnix != tt.wantUnix {
+					t.Errorf("NextReset.Unix(): got %d, want %d (%s)\nraw=%s",
+						gotUnix, tt.wantUnix, tt.wantField, tt.raw)
+				}
+			} else {
+				if err == nil {
+					t.Errorf("expected parse error, got nil (raw=%s)", tt.raw)
+				}
+			}
+		})
+	}
+}
+
+// TestParseUsageLimitsBody_NextDateResetRejectsInvalid documents what the
+// parser does NOT accept. JSON spec rejects NaN/Inf at the syntax level so
+// we expect those to bubble up as parse errors, not silent zero values.
+func TestParseUsageLimitsBody_NextDateResetRejectsInvalid(t *testing.T) {
+	// Go's encoding/json rejects bare NaN/Infinity (not in JSON spec).
+	// jsonv2 is stricter still. We expect an error rather than a silent zero.
+	cases := []string{
+		`{"limits":[],"nextDateReset":NaN}`,
+		`{"limits":[],"nextDateReset":Infinity}`,
+		`{"limits":[],"nextDateReset":"not-a-number"}`,
+	}
+	for _, raw := range cases {
+		t.Run(raw, func(t *testing.T) {
+			_, err := parseUsageLimitsBody(raw)
+			if err == nil {
+				t.Errorf("expected parse error for %s, got nil", raw)
+			}
+		})
+	}
+}

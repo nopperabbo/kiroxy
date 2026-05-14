@@ -225,6 +225,13 @@ export const api = {
   settings(): Promise<Result<SettingsSnapshot>> {
     return jsonFetch<SettingsSnapshot>("/dashboard/api/settings");
   },
+  updateLogLevel(level: string): Promise<Result<{ log_level: string }>> {
+    return jsonFetch<{ log_level: string }>("/dashboard/api/settings/log-level", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ level }),
+    });
+  },
   listInboundKeys(): Promise<Result<{ keys: InboundKeyView[] }>> {
     return jsonFetch<{ keys: InboundKeyView[] }>("/dashboard/api/inbound-keys");
   },

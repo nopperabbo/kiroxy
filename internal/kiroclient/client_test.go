@@ -163,7 +163,7 @@ func TestHTTPClient_Retry429(t *testing.T) {
 	var callCount atomic.Int32
 	srv := newTCP4TestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n := callCount.Add(1)
-		if n <= 2 {
+		if n == 1 {
 			w.WriteHeader(http.StatusTooManyRequests)
 			_, _ = w.Write([]byte("rate limited"))
 			return
@@ -182,8 +182,9 @@ func TestHTTPClient_Retry429(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = resp.Body.Close()
-	if callCount.Load() != 3 {
-		t.Fatalf("expected 3 calls, got %d", callCount.Load())
+	// maxRetries=1 means 2 attempts total: 1 fail (429) + 1 retry (200).
+	if callCount.Load() != 2 {
+		t.Fatalf("expected 2 calls, got %d", callCount.Load())
 	}
 }
 
@@ -351,7 +352,7 @@ func TestHTTPClient_NonEventStreamThrottlingRetries(t *testing.T) {
 	var callCount atomic.Int32
 	srv := newTCP4TestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		n := callCount.Add(1)
-		if n <= 2 {
+		if n == 1 {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"__type":"ThrottlingException","message":"Rate exceeded"}`))
@@ -370,8 +371,9 @@ func TestHTTPClient_NonEventStreamThrottlingRetries(t *testing.T) {
 		t.Fatalf("unexpected error after retry: %v", err)
 	}
 	_ = resp.Body.Close()
-	if callCount.Load() != 3 {
-		t.Fatalf("expected 3 calls after 2 throttles, got %d", callCount.Load())
+	// maxRetries=1: 1 throttle + 1 retry success = 2 calls.
+	if callCount.Load() != 2 {
+		t.Fatalf("expected 2 calls after 1 throttle, got %d", callCount.Load())
 	}
 }
 
@@ -408,13 +410,13 @@ func TestIsRetryableAWSException(t *testing.T) {
 		"InternalServerError",
 	}
 	for _, e := range retryable {
-		if !isRetryableAWSException(e) {
+		if !IsRetryableAWSException(e) {
 			t.Errorf("%q should be retryable", e)
 		}
 	}
 	nonRetryable := []string{"", "ValidationException", "AccessDeniedException", "ResourceNotFoundException"}
 	for _, e := range nonRetryable {
-		if isRetryableAWSException(e) {
+		if IsRetryableAWSException(e) {
 			t.Errorf("%q should NOT be retryable", e)
 		}
 	}

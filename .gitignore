@@ -41,3 +41,7 @@ tools/onboard/kiro_tokens.json
 # enowxai UI reference capture (credentials-bearing; do NOT commit)
 research-v3/enowx-reference/
 
+# Runtime artifacts
+/kiroxy.log
+/kiroxy.pid
+
