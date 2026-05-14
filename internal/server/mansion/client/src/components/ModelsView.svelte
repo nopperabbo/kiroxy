@@ -404,6 +404,7 @@
   .models__body {
     padding: var(--sp-4) var(--sp-5);
     overflow-y: auto;
+    contain: inline-size;
   }
   .empty {
     padding: var(--sp-6);
@@ -421,6 +422,8 @@
 
   .tbl {
     inline-size: 100%;
+    min-width: 320px;
+    max-width: 100vw;
     border-collapse: collapse;
     font-size: var(--fs-sm);
     margin-block-end: var(--sp-5);
