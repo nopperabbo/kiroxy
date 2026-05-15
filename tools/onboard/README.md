@@ -208,15 +208,15 @@ pending and retried.
 
 ```
 starting batch: 76 accounts, state=batch_state.json, output=kiro_tokens.json
-[1/76] DONE <redacted>@example.com (42.1s, attempt=1)
-[2/76] TRANSIENT <redacted>@example.com (browser, attempt=1/3) — will retry
-[3/76] FAILED <redacted>@example.com (blocked, attempt=1)
+[1/76] DONE alice@example.com (42.1s, attempt=1)
+[2/76] TRANSIENT bob@example.com (browser, attempt=1/3) — will retry
+[3/76] FAILED carol@example.com (blocked, attempt=1)
 ...
 ────────────────────────────────────────────────────────────
 Batch complete: 69/76 succeeded (failed=7, skipped=0)
 
 Failed:
-  <redacted>@example.com — hard:blocked (attempts=1)
+  carol@example.com — hard:blocked (attempts=1)
   ...
 
 Resume: re-run the same command. Transient failures will

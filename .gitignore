@@ -48,3 +48,6 @@ research-v3/enowx-reference/
 /.sisyphus/notes/*.log
 /internal/server/mansion/client/build.log
 
+
+# filter-repo backup directories (created by user during pre-release scrub; never commit)
+/.git.backup-pre-filter-repo-*/

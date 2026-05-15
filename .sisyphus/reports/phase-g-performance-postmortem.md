@@ -52,7 +52,7 @@ Ditto: **identical per-domain averages**. No Google-side rate-limit gradient det
 
 ## Where the 237 seconds go
 
-Sample run (`<redacted>@example.com`, 187s end-to-end):
+Sample run (account_id elided, 187s end-to-end):
 
 | Phase | Start | End | Duration | % | Source |
 |---|---|---|---|---|---|
