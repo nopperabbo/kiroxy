@@ -112,7 +112,7 @@
     --c-text-dim:
       light-dark(oklch(42% 0.016 65), oklch(70% 0.012 75));
     --c-text-faint:
-      light-dark(oklch(58% 0.012 65), oklch(50% 0.014 75));
+      light-dark(oklch(50% 0.014 65), oklch(60% 0.014 75));
     --c-text-ghost:
       light-dark(oklch(72% 0.008 65), oklch(36% 0.012 75));
 
