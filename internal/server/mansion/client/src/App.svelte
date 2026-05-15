@@ -29,6 +29,7 @@
   import SettingsView from "./components/SettingsView.svelte";
   import ToolsView from "./components/ToolsView.svelte";
   import ModelsView from "./components/ModelsView.svelte";
+  import Guide from "./components/Guide.svelte";
 
   let paletteOpen = $state(false);
   let importOpen = $state(false);
@@ -238,6 +239,7 @@
   <ImportDrawer open={importOpen} onClose={() => (importOpen = false)} />
   <DetailDrawer />
   <ShortcutSheet open={sheetOpen} onClose={() => (sheetOpen = false)} />
+  <Guide />
   <Toasts />
 </div>
 
