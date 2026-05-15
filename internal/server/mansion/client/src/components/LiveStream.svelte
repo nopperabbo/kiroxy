@@ -748,7 +748,8 @@
     .tok-cell, .cost-cell { display: none; }
 
     .chip, .range__seg, .btn {
-      padding-block: 14px;
+      min-block-size: 44px;
+      block-size: auto;
     }
   }
   .range__label {

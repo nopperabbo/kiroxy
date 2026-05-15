@@ -523,4 +523,15 @@
       column-gap: var(--sp-2);
     }
   }
+
+  @media (max-width: 480px) {
+    .btn, .search, .nav__tab {
+      block-size: auto;
+      min-block-size: 44px;
+    }
+    .btn--icon {
+      inline-size: auto;
+      min-inline-size: 44px;
+    }
+  }
 </style>

@@ -178,6 +178,11 @@
     gap: var(--sp-3);
     grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   }
+  @media (max-width: 480px) {
+    .pulse__grid {
+      display: none;
+    }
+  }
   .card {
     display: grid;
     gap: var(--sp-3);

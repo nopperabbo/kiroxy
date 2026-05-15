@@ -567,7 +567,8 @@
     }
 
     .btn, .chip--toggle, .th {
-      padding-block: 14px;
+      min-block-size: 44px;
+      block-size: auto;
     }
     .board__head {
       padding-block: var(--sp-2);

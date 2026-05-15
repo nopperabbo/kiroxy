@@ -1093,7 +1093,8 @@
 
   @media (max-width: 480px) {
     .fld, .seg, .btn, .lvl-chip, .facets__item {
-      padding-block: 14px;
+      min-block-size: 44px;
+      block-size: auto;
     }
   }
 

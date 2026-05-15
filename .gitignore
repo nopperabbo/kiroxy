@@ -43,5 +43,8 @@ research-v3/enowx-reference/
 
 # Runtime artifacts
 /kiroxy.log
+/kiroxy.log.*
 /kiroxy.pid
+/.sisyphus/notes/*.log
+/internal/server/mansion/client/build.log
 

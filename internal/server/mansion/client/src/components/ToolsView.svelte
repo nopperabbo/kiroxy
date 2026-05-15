@@ -671,7 +671,8 @@ kiroxy import-accounts-json ./kiro-accounts.json`}
 
   @media (max-width: 480px) {
     .btn, .tab {
-      padding-block: 14px;
+      min-block-size: 44px;
+      block-size: auto;
     }
   }
 </style>
