@@ -110,7 +110,16 @@ func SanitizeJSONSchema(schema map[string]any) map[string]any {
 					// object|array, etc.). Use first branch but drop `required`
 					// so calls matching another branch's shape aren't hard-rejected
 					// for missing fields that don't apply to their variant.
-					slog.Warn("lossy schema conversion: heterogeneous branches, using first without required",
+					//
+					// Logged at DEBUG (was WARN): this is a property of the tool's
+					// inputSchema, not a per-request anomaly — the same lossy
+					// conversion fires identically on every call to that tool, so
+					// WARN-level alerts produce constant noise (~3% of total log
+					// volume in observed prod traffic) with no per-occurrence
+					// information for the operator to act on. Devs can still
+					// surface it via LOG_LEVEL=debug when investigating tool
+					// schema issues.
+					slog.Debug("lossy schema conversion: heterogeneous branches, using first without required",
 						"combinator", key, "branches", len(arr))
 					sanitized := SanitizeJSONSchema(first)
 					delete(sanitized, "required")

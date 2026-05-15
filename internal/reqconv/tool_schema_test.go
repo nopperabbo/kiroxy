@@ -206,8 +206,10 @@ func TestSanitizeJSONSchema_OneOfNullable_NoWarning(t *testing.T) {
 
 func TestSanitizeJSONSchema_AnyOfNullableMultiNonNull_LogsWarning(t *testing.T) {
 	// When null is removed but 2+ non-null branches remain, lossy fallback should still fire.
+	// Captures at DEBUG because the lossy-fallback log was demoted from WARN -> DEBUG
+	// (see schema_sanitize.go:113 — too noisy at WARN, ~3% of prod log volume).
 	var buf bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	old := slog.Default()
 	slog.SetDefault(logger)
 	defer slog.SetDefault(old)
@@ -231,8 +233,9 @@ func TestSanitizeJSONSchema_AnyOfNullableMultiNonNull_LogsWarning(t *testing.T) 
 
 func TestSanitizeJSONSchema_AnyOfNonEnum_LogsWarning(t *testing.T) {
 	// When anyOf has non-enum branches, the lossy first-branch fallback should log a warning.
+	// Captures at DEBUG (see comment on TestSanitizeJSONSchema_AnyOfNullableMultiNonNull_LogsWarning).
 	var buf bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	old := slog.Default()
 	slog.SetDefault(logger)
 	defer slog.SetDefault(old)
@@ -251,8 +254,9 @@ func TestSanitizeJSONSchema_AnyOfNonEnum_LogsWarning(t *testing.T) {
 }
 
 func TestSanitizeJSONSchema_OneOfNonEnum_LogsWarning(t *testing.T) {
+	// Captures at DEBUG (see comment on TestSanitizeJSONSchema_AnyOfNullableMultiNonNull_LogsWarning).
 	var buf bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelWarn}))
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	old := slog.Default()
 	slog.SetDefault(logger)
 	defer slog.SetDefault(old)
