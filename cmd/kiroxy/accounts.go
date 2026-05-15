@@ -113,7 +113,14 @@ func addAccountViaOAuth(ctx context.Context, label, provider, region string, doO
 	if id == "" {
 		id = randomID()
 	}
-	metadata := fmt.Sprintf(`{"client_id":%q,"client_secret":%q,"region":%q,"source":"builder-id-oauth"}`,
+	// auth_method=idc tags this bundle as an IdC/Builder-ID OAuth account so
+	// pool dispatch (internal/pool/pool.go) routes it to the IdC code path
+	// instead of the social one. Without this tag, the pool falls back to
+	// AuthType="kiro" (the provider name) which sends the request to the
+	// wrong upstream target and yields opaque 4xx errors. Phase 6.2 root-cause
+	// fix — see git log around this commit for the broken-account incident
+	// that motivated it.
+	metadata := fmt.Sprintf(`{"client_id":%q,"client_secret":%q,"region":%q,"source":"builder-id-oauth","auth_method":"idc"}`,
 		sess.ClientID, sess.ClientSecret, sess.Region)
 	if err := persistAccountWithMetadata(ctx, provider, id, result.AccessToken, result.RefreshToken, metadata, "builder-id-oauth"); err != nil {
 		return err
