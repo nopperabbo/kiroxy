@@ -32,7 +32,12 @@ type Config struct {
 	// LogLevelRaw is the raw string from env (debug|info|warn|error).
 	LogLevelRaw string
 
-	// ShutdownTimeout is the deadline for http.Server.Shutdown. Default 30s.
+	// ShutdownTimeout is the deadline for http.Server.Shutdown. Default 60s.
+	// Kept generous because in-flight SSE streams from the upstream Kiro can
+	// last up to ~minute for long generations; cutting them at 30s drops
+	// answers mid-stream during operator restarts. Override via
+	// KIROXY_SHUTDOWN_TIMEOUT (seconds) when running under a service manager
+	// with its own grace period (systemd's default TimeoutStopSec is 90s).
 	ShutdownTimeout time.Duration
 
 	KiroRegion string
@@ -75,7 +80,7 @@ func FromEnvAndFlags(args []string) (Config, error) {
 		APIKey:          os.Getenv("KIROXY_API_KEY"),
 		LogLevelRaw:     envOr("KIROXY_LOG_LEVEL", "info"),
 		KiroRegion:      envOr("KIROXY_KIRO_REGION", "us-east-1"),
-		ShutdownTimeout: 30 * time.Second,
+		ShutdownTimeout: 60 * time.Second,
 	}
 
 	// Port from env with default
@@ -98,7 +103,7 @@ func FromEnvAndFlags(args []string) (Config, error) {
 
 	// Shutdown timeout
 	if s := os.Getenv("KIROXY_SHUTDOWN_TIMEOUT"); s != "" {
-		n, err := atoiWithDefault(s, 30)
+		n, err := atoiWithDefault(s, 60)
 		if err != nil {
 			return cfg, fmt.Errorf("KIROXY_SHUTDOWN_TIMEOUT: %w", err)
 		}

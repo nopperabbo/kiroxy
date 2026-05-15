@@ -83,8 +83,8 @@ func TestFromEnvAndFlags_Defaults(t *testing.T) {
 	if cfg.KiroRegion != "us-east-1" {
 		t.Errorf("KiroRegion default: got %q, want us-east-1", cfg.KiroRegion)
 	}
-	if cfg.ShutdownTimeout != 30*time.Second {
-		t.Errorf("ShutdownTimeout default: got %v, want 30s", cfg.ShutdownTimeout)
+	if cfg.ShutdownTimeout != 60*time.Second {
+		t.Errorf("ShutdownTimeout default: got %v, want 60s", cfg.ShutdownTimeout)
 	}
 	home, _ := os.UserHomeDir()
 	wantDBPath := filepath.Join(home, ".kiroxy", "tokens.db")
