@@ -13,6 +13,50 @@ A single-user, self-hosted proxy that exposes your Kiro IDE subscription (Amazon
 
 ---
 
+## What it looks like
+
+The bundled **Mansion** dashboard ships in the same binary at `/dashboard-mansion`. Seven views, dark + light themes, mobile-responsive, no external CDN.
+
+### Live request stream
+
+Real-time SSE feed of every request through the pool. Click a row for a 4-tab drill-down (request, response, account, timing). Time-range picker, sort, search-scope toggle, CSV export.
+
+![Live request stream](docs/screenshots/dashboard-live.png)
+
+### Metrics
+
+3 time-series charts (req/min, latency p50/p95/p99, error rate), 4 top-N tables (endpoints, slowest paths, errors, clients), status-code stacked bar, and 2 SLO gauges with zone gradients.
+
+![Metrics dashboard](docs/screenshots/dashboard-metrics.png)
+
+### Account pool
+
+78-account density visualization with anomaly emphasis (amber border on accounts crossing 1% error rate), cooldown wash, idle dim. Pool minimap above for at-a-glance health.
+
+![Account pool](docs/screenshots/dashboard-pool.png)
+
+### Logs
+
+60-bin volume histogram (clickable to filter time window), multi-select level chips, facets sidebar, JSONL export, wrap toggle.
+
+![Logs view](docs/screenshots/dashboard-logs.png)
+
+### Light theme
+
+Token-driven theming with WCAG AA contrast in both schemes. Switch via Settings → Theme.
+
+![Settings — light theme](docs/screenshots/dashboard-settings-light.png)
+
+### Mobile (iPhone 13)
+
+All 7 views adapt to 390px CSS viewport. Pool collapses to 2-line cards with sticky headers, Live stream uses vertical card layout, tap targets ≥44px, no horizontal scroll.
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-mobile.png" alt="Mobile dashboard" width="320">
+</p>
+
+---
+
 ## Installation
 
 Three ways to get kiroxy running. **`go install` is the most reliable
