@@ -1,0 +1,43 @@
+/* MOTION BUDGET — kiroxy mansion dashboard
+ *
+ * Mansion is an operator surface. Motion exists to convey state, not to
+ * decorate. This file documents which animations are sanctioned and the
+ * role each one plays. New motion that doesn't fit one of these slots
+ * should be questioned.
+ *
+ * The guard rails are:
+ *
+ *   1. Every animation must reduce to no-motion under
+ *      `prefers-reduced-motion: reduce`. No exceptions.
+ *
+ *   2. Idle-loop animations (infinite, no user input) are limited to
+ *      five live signals only:
+ *        - cursor-blink         (Topbar wordmark — brand identity)
+ *        - live-pulse           (Topbar LIVE dot — connection health)
+ *        - pulse-ring           (cooldown indicators on accounts/rows)
+ *        - ghost-pulse          (LiveStream empty-state ghost rows —
+ *                                hint that the feed is alive even when
+ *                                no requests have arrived yet)
+ *        - caret-blink (FeatureGrid landing) — outside the dashboard
+ *
+ *      That's the entire ambient-motion budget. Adding a sixth idle
+ *      loop requires retiring one.
+ *
+ *   3. One-shot transitions (entrance, hover, click feedback) are
+ *      unbudgeted but must be:
+ *        - <= 240ms duration
+ *        - bezier easing (var(--ease-out) or var(--ease-std))
+ *        - tied to a real user/system event
+ *
+ *      Examples in use: row-fade-in, edge-marker, slide-up, fade-in,
+ *      wiz-fade, wiz-rise, row-flash, slide-in.
+ *
+ *   4. No animation that affects geometry of fixed-layout widgets
+ *      (no width/height transitions on table cells, no padding
+ *      transitions on buttons). Color, opacity, transform, clip-path
+ *      only.
+ *
+ *   5. Reduced motion fallback is the source of truth: if the
+ *      experience breaks without animation, the animation isn't
+ *      polish — it's load-bearing, which is a smell.
+ */
