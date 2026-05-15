@@ -1,0 +1,63 @@
+name: Feature request
+description: Suggest an enhancement or new capability
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening a feature request, please:
+        - Read the **Project Philosophy** section in [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md) — kiroxy has explicit non-goals
+        - Check the [BACKLOG.md](../blob/main/BACKLOG.md) — your idea may already be planned or rejected with reasoning
+        - Search [existing issues](https://github.com/nopperabbo/kiroxy/issues?q=is%3Aissue) for duplicates
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the operator pain point. Skip the solution for a moment.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How would you like kiroxy to behave? Be concrete.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you tried existing kiroxy features, LiteLLM, Portkey, etc.? Why don't they work?
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope check
+      description: kiroxy explicitly avoids certain directions
+      options:
+        - This is a single-user, self-hosted enhancement
+        - This adds multi-tenant capabilities (likely out of scope)
+        - This adds multi-provider routing (likely out of scope — use LiteLLM)
+        - This is a SaaS feature (out of scope)
+        - I'm not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Logs, screenshots, related links, etc.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Pre-flight checklist
+      options:
+        - label: I've read CONTRIBUTING.md and understand the project's non-goals
+          required: true
+        - label: I've searched existing issues and BACKLOG.md
+          required: true

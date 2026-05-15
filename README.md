@@ -1,8 +1,13 @@
 # kiroxy
 
+[![Release](https://img.shields.io/github/v/release/nopperabbo/kiroxy?style=flat-square)](https://github.com/nopperabbo/kiroxy/releases/latest)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/nopperabbo/kiroxy?style=flat-square)](go.mod)
+[![Issues](https://img.shields.io/github/issues/nopperabbo/kiroxy?style=flat-square)](https://github.com/nopperabbo/kiroxy/issues)
+
 A single-user, self-hosted proxy that exposes your Kiro IDE subscription (Amazon Q Developer / AWS CodeWhisperer) as an **Anthropic Messages API** endpoint. Point your Claude Code, Cursor, or any Anthropic-compatible client at kiroxy, and it forwards requests to Kiro using your own credentials.
 
-**Status:** v0.3.0 — personal-use, MIT-licensed. See `BUILD_LOG.md` for the construction log, `CHANGELOG.md` for release notes, `docs/ARCHITECTURE.md` for the engineering overview, and `docs/TROUBLESHOOTING.md` for operator diagnostics.
+**Status:** v1.4.0 — public release, MIT-licensed. See `CHANGELOG.md` for release notes, `docs/ARCHITECTURE.md` for the engineering overview, and `docs/TROUBLESHOOTING.md` for operator diagnostics.
 
 ---
 
@@ -20,7 +25,7 @@ plus `LICENSE`, `NOTICE`, `README.md`, `CHANGELOG.md`, `docs/ARCHITECTURE.md`,
 
 ```bash
 # Pick the matching Os_Arch — Linux_amd64, Linux_arm64, Darwin_amd64, Darwin_arm64.
-VERSION=0.3.0
+VERSION=1.4.0
 OS_ARCH=Linux_amd64   # or Darwin_arm64, etc.
 
 curl -sSL -o kiroxy.tar.gz \

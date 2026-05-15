@@ -1,0 +1,83 @@
+name: Bug report
+description: Something doesn't work as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Before submitting, please:
+        - Search [existing issues](https://github.com/nopperabbo/kiroxy/issues?q=is%3Aissue) to avoid duplicates
+        - Run `./kiroxy doctor` and include relevant output
+        - Check `docs/TROUBLESHOOTING.md`
+
+  - type: input
+    id: version
+    attributes:
+      label: kiroxy version
+      description: Output of `./kiroxy --version` (or commit hash if running from source)
+      placeholder: "v1.4.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS (arm64)
+        - macOS (amd64)
+        - Linux (amd64)
+        - Linux (arm64)
+        - Windows (WSL)
+        - Docker
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Describe what you expected vs what actually happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps that trigger the bug
+      placeholder: |
+        1. Run `./kiroxy serve -port 8787`
+        2. Send curl request: `curl ...`
+        3. Observe error: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: |
+        Paste output from `kiroxy.log` (set log level to DEBUG via Settings or `-log-level debug`).
+        **Redact any tokens, account IDs, or API keys before pasting.**
+      render: shell
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: kiroxy doctor output
+      description: Run `./kiroxy doctor` and paste the result
+      render: shell
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Pre-flight checklist
+      options:
+        - label: I've redacted credentials from logs/output above
+          required: true
+        - label: I've searched existing issues
+          required: true
+        - label: This is reproducible (not a one-off)
+          required: false
