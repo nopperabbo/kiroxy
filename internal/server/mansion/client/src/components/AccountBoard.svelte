@@ -305,7 +305,10 @@
     cursor: pointer;
     user-select: none;
     opacity: 0.68;
-    transition: all var(--mo-fast) var(--ease-std);
+    transition:
+      color var(--mo-fast) var(--ease-std),
+      background var(--mo-fast) var(--ease-std),
+      border-color var(--mo-fast) var(--ease-std);
   }
   .chip--toggle:hover {
     opacity: 1;
@@ -419,6 +422,7 @@
     cursor: pointer;
     padding-inline: var(--sp-1);
     border-radius: var(--r-xs);
+    transition: color var(--mo-fast) var(--ease-std);
   }
   .th:hover {
     color: var(--c-accent);
@@ -427,8 +431,18 @@
     justify-content: flex-end;
   }
   .th__arrow {
+    display: inline-block;
     margin-inline-start: var(--sp-1);
+    color: var(--c-text-faint);
+    transition:
+      color var(--mo-fast) var(--ease-std),
+      transform var(--mo-fast) var(--ease-std);
+  }
+  .th:hover .th__arrow {
     color: var(--c-accent);
+  }
+  .th__arrow--desc {
+    transform: rotate(180deg);
   }
 
   .idline {
@@ -507,7 +521,10 @@
     border-radius: var(--r-sm);
     color: var(--c-text-dim);
     cursor: pointer;
-    transition: all var(--mo-fast) var(--ease-std);
+    transition:
+      color var(--mo-fast) var(--ease-std),
+      border-color var(--mo-fast) var(--ease-std),
+      background var(--mo-fast) var(--ease-std);
   }
   .btn:hover {
     color: var(--c-text);

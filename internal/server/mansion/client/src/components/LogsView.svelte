@@ -741,7 +741,10 @@
     background: var(--c-surface-sunken);
     border: 1px solid var(--c-rule);
     border-radius: var(--r-sm);
-    transition: color var(--mo-fast) var(--ease-std);
+    transition:
+      color var(--mo-fast) var(--ease-std),
+      background var(--mo-fast) var(--ease-std),
+      box-shadow var(--mo-fast) var(--ease-std);
   }
   .seg:hover {
     color: var(--c-text);
@@ -778,7 +781,10 @@
     border-radius: var(--r-sm);
     color: var(--c-text-dim);
     cursor: pointer;
-    transition: all var(--mo-fast) var(--ease-std);
+    transition:
+      color var(--mo-fast) var(--ease-std),
+      background var(--mo-fast) var(--ease-std),
+      border-color var(--mo-fast) var(--ease-std);
   }
   .btn:hover {
     color: var(--c-text);
@@ -942,7 +948,10 @@
     background: var(--c-surface-sunken);
     border: 1px solid var(--c-rule);
     border-radius: var(--r-pill);
-    transition: color var(--mo-fast) var(--ease-std);
+    transition:
+      color var(--mo-fast) var(--ease-std),
+      background var(--mo-fast) var(--ease-std),
+      box-shadow var(--mo-fast) var(--ease-std);
   }
   .lvl-chip:hover {
     color: var(--c-text);
