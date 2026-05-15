@@ -248,9 +248,16 @@ func rotationFailureReason(ue *kiroclient.UpstreamError) string {
 // via retry or rotation — the account needs operator attention (re-onboard,
 // fix metadata, or remove from pool).
 //
-// Excluded by design:
-//   - PROMPT_TOO_LONG: caller-side data error (1M-token Bedrock limit). The
-//     account is healthy; the user just sent too much context.
+// ValidationException is INTENTIONALLY EXCLUDED. Despite its name, AWS uses
+// ValidationException for caller-data errors (PROMPT_TOO_LONG, INVALID_MODEL_ID,
+// malformed payloads) far more often than account-shape errors, and we cannot
+// reliably tell them apart from the reason code alone. Quarantining on
+// ValidationException would silently disable healthy accounts whenever a user
+// sends a bad request — which is exactly the false-positive we observed in
+// the Phase 6.1 verification probe (INVALID_MODEL_ID falsely quarantined an
+// account for 2h).
+//
+// Other excluded categories:
 //   - INVALID_CONVERSATION_STATE / STALE_CONVERSATION / CONTENT_LENGTH_EXCEEDS_THRESHOLD:
 //     conversation-state errors handled separately by retryableInvalidStateReasons.
 //   - Throttling / 5xx / transport timeouts: transient, handled by RecordFailure.
@@ -265,13 +272,6 @@ func isStructuralError(err error) (*kiroclient.UpstreamError, bool) {
 		"ResourceNotFoundException",
 		"UnrecognizedClientException",
 		"InvalidSignatureException":
-		return ue, true
-	case "ValidationException":
-		// User-data errors masquerade as ValidationException; only flag the
-		// ones that signal account-shape incompatibility, not user input.
-		if ue.Reason == "PROMPT_TOO_LONG" {
-			return ue, false
-		}
 		return ue, true
 	}
 	return ue, false
