@@ -101,7 +101,7 @@ jobs:
 
       - name: Open or update issue
         if: steps.classify.outputs.called != '0'
-        uses: peter-evans/create-issue-from-file@v5
+        uses: peter-evans/create-issue-from-file@v6
         with:
           title: "govulncheck: ${{ steps.classify.outputs.called }} called vuln(s) detected"
           content-filepath: issue-body.md
