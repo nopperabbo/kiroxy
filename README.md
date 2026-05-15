@@ -59,41 +59,17 @@ All 7 views adapt to 390px CSS viewport. Pool collapses to 2-line cards with sti
 
 ## Installation
 
-Three ways to get kiroxy running. **`go install` is the most reliable
-right now** while pre-built tarballs catch up to v1.4.0 on the release
-page.
+Three ways to get kiroxy running. **Pre-built binary** is the fastest;
+**`go install`** is the most flexible.
 
-### 1. `go install` (recommended)
-
-Requires [Go 1.26+](https://go.dev/dl/) (kiroxy uses `encoding/json/v2`
-via `GOEXPERIMENT=jsonv2`).
-
-```bash
-GOEXPERIMENT=jsonv2 go install github.com/nopperabbo/kiroxy/cmd/kiroxy@v1.4.0
-kiroxy version
-```
-
-The binary lands in `$(go env GOPATH)/bin/kiroxy` (typically
-`~/go/bin/kiroxy`). Make sure `$GOPATH/bin` is on your `$PATH`.
-
-### 2. Build from source
-
-For development work or if you want to inspect/modify the code first.
-Covered in the [Five-minute quickstart](#five-minute-quickstart) below.
-`make build` pins `GOEXPERIMENT=jsonv2` and stamps `main.version` from
-`git describe`.
-
-### 3. Pre-built binary (when available)
+### 1. Pre-built binary (recommended)
 
 Pre-built tarballs for Linux and macOS (amd64 + arm64) attach to every
-[GitHub Release](../../releases/latest) once the goreleaser workflow
-runs. Each archive ships the binary plus `LICENSE`, `NOTICE`,
-`README.md`, `CHANGELOG.md`, `docs/ARCHITECTURE.md`,
-`docs/TROUBLESHOOTING.md`, and `docs/OPENCODE.md`. A SHA-256 checksums
-file (`kiroxy_<version>_checksums.txt`) verifies download integrity.
-
-> **Note (v1.4.0):** Binary tarballs are not yet attached to the v1.4.0
-> release. Use `go install` (above) until the release workflow re-runs.
+[GitHub Release](../../releases/latest). Each archive ships the binary
+plus `LICENSE`, `NOTICE`, `README.md`, `CHANGELOG.md`,
+`docs/ARCHITECTURE.md`, `docs/TROUBLESHOOTING.md`, and `docs/OPENCODE.md`.
+A SHA-256 checksums file (`kiroxy_<version>_checksums.txt`) verifies
+download integrity.
 
 ```bash
 # Pick the matching Os_Arch — Linux_amd64, Linux_arm64, Darwin_amd64, Darwin_arm64.
@@ -111,6 +87,26 @@ grep " kiroxy_${VERSION}_${OS_ARCH}.tar.gz$" checksums.txt | shasum -a 256 -c -
 tar -xzf kiroxy.tar.gz
 ./kiroxy version
 ```
+
+### 2. `go install`
+
+Requires [Go 1.26+](https://go.dev/dl/) (kiroxy uses `encoding/json/v2`
+via `GOEXPERIMENT=jsonv2`).
+
+```bash
+GOEXPERIMENT=jsonv2 go install github.com/nopperabbo/kiroxy/cmd/kiroxy@v1.4.0
+kiroxy version
+```
+
+The binary lands in `$(go env GOPATH)/bin/kiroxy` (typically
+`~/go/bin/kiroxy`). Make sure `$GOPATH/bin` is on your `$PATH`.
+
+### 3. Build from source
+
+For development work or if you want to inspect/modify the code first.
+Covered in the [Five-minute quickstart](#five-minute-quickstart) below.
+`make build` pins `GOEXPERIMENT=jsonv2` and stamps `main.version` from
+`git describe`.
 
 ### 4. Run from Docker
 

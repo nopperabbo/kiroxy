@@ -123,7 +123,7 @@ release:
     ```bash
     # Linux amd64 example
     curl -sSL -o kiroxy.tar.gz \
-      https://github.com/{{ .Env.GITHUB_REPOSITORY | default "OWNER/REPO" }}/releases/download/{{ .Tag }}/kiroxy_{{ .Version }}_Linux_amd64.tar.gz
+      https://github.com/nopperabbo/kiroxy/releases/download/{{ .Tag }}/kiroxy_{{ .Version }}_Linux_amd64.tar.gz
     tar -xzf kiroxy.tar.gz
     ./kiroxy version
     ```
