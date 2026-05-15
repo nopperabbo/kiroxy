@@ -668,4 +668,10 @@ kiroxy import-accounts-json ./kiro-accounts.json`}
     border-color: color-mix(in oklch, var(--c-accent), transparent 50%);
     background: var(--c-accent-wash);
   }
+
+  @media (max-width: 480px) {
+    .btn, .tab {
+      padding-block: 14px;
+    }
+  }
 </style>

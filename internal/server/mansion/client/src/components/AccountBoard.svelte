@@ -209,11 +209,17 @@
               <Icon name="copy" size={11} />
             </button>
           </span>
-          {#if a.provider || a.region}
-            <span class="idline__meta faint">
+          <span class="idline__meta faint">
+            {#if a.provider || a.region}
               {a.provider ?? "provider"} · {a.region ?? "—"}
+            {/if}
+            <span class="mobile-last-used">
+              {#if a.errors > 0}
+                 · err <span class="c-danger">{a.errors}</span>
+              {/if}
+               · idle {a.last_used ? relTime(a.last_used) : "—"}
             </span>
-          {/if}
+          </span>
         </span>
         <span class="col col--ring" role="cell">
           <CountdownRing expiresAt={a.expires_at} ttlSeconds={3600} size={36} stroke={3} />
@@ -255,7 +261,6 @@
     border: 1px solid var(--c-border);
     border-radius: var(--r-md);
     box-shadow: var(--sh-1);
-    overflow: hidden;
   }
   .board__head {
     display: flex;
@@ -264,6 +269,20 @@
     padding: var(--sp-4) var(--sp-5);
     gap: var(--sp-5);
     border-block-end: 1px solid var(--c-rule);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--c-surface);
+    border-start-start-radius: var(--r-md);
+    border-start-end-radius: var(--r-md);
+  }
+  .row--head {
+    padding-block: var(--sp-2);
+    background: var(--c-surface-sunken);
+    color: var(--c-text-dim);
+    position: sticky;
+    top: 61px;
+    z-index: 10;
   }
   .board__title {
     display: inline-flex;
@@ -513,6 +532,50 @@
     .col--cool,
     .col--note {
       display: none;
+    }
+  }
+
+  .c-danger { color: var(--c-danger); }
+  .mobile-last-used { display: none; }
+
+  @media (max-width: 480px) {
+    .row {
+      grid-template-columns: 24px 1fr auto;
+      grid-template-areas: 
+        "status id req"
+        "status meta cool";
+      gap: 4px var(--sp-2);
+      padding: var(--sp-3) var(--sp-4);
+    }
+    .row--head {
+      display: none;
+    }
+    .col--status { grid-area: status; align-self: start; padding-top: 4px; }
+    .col--id { grid-area: id; }
+    .col--req { grid-area: req; justify-content: flex-end; }
+    .col--req::before { content: "req "; margin-right: 4px; opacity: 0.5; font-weight: normal; }
+    .col--err { display: none; }
+    .col--cool { display: inline-flex; grid-area: cool; justify-content: flex-end; }
+    .col--ring, .col--spark, .col--note { display: none; }
+
+    .idline__meta {
+      grid-area: meta;
+      white-space: normal;
+    }
+    .mobile-last-used {
+      display: inline;
+    }
+
+    .btn, .chip--toggle, .th {
+      padding-block: 14px;
+    }
+    .board__head {
+      padding-block: var(--sp-2);
+      flex-wrap: wrap;
+    }
+    .board__filters {
+      width: 100%;
+      justify-content: flex-start;
     }
   }
 </style>

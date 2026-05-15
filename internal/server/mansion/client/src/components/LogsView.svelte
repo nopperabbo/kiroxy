@@ -1091,6 +1091,12 @@
     font-size: var(--fs-xs);
   }
 
+  @media (max-width: 480px) {
+    .fld, .seg, .btn, .lvl-chip, .facets__item {
+      padding-block: 14px;
+    }
+  }
+
   @media (max-width: 720px) {
     .logs__hist { display: none; }
     .logs__facets { flex: 0 0 180px; padding: var(--sp-2) var(--sp-3); }
