@@ -22,7 +22,6 @@
 <script lang="ts">
   import { store } from "../lib/store.svelte";
   import { shortTime, fmtMs, abbrId, truncate } from "../lib/format";
-  import Icon from "./Icon.svelte";
   import type { RequestRecord } from "../lib/types";
   import type { Snippet } from "svelte";
 
@@ -277,12 +276,11 @@
 
       <div class="stream-body" role="table">
         {#if visible.length === 0}
-          <div class="stream-empty">
-            <div class="stream-empty__head">
-              <Icon name="bolt" size={16} />
-              <span class="mono">no requests yet</span>
-            </div>
+          <div class="stream-empty" role="status">
             {#if store.requests.length === 0}
+              <div class="stream-empty__head">
+                <span class="stream-empty__glyph mono" aria-hidden="true">~</span>
+              </div>
               <p class="stream-empty__copy">
                 Wire quiet. Nothing moves.
               </p>
@@ -297,17 +295,34 @@
                   store.pushToast('ok', 'curl copied — paste in shell to see traffic');
                 }}>Copy test request</button>
               </div>
-            {:else}
+            {:else if store.filters.search.trim() || range !== "all" || store.filters.onlyErrors || kindFilter !== "all"}
+              <div class="stream-empty__head">
+                <span class="stream-empty__glyph mono" aria-hidden="true">⌐</span>
+              </div>
               <p class="stream-empty__copy">Your filter is hiding the wire.</p>
-              <button
-                type="button"
-                class="stream-empty__reset mono"
-                onclick={() => {
-                  store.setFilter('search', '');
-                  setRange('all');
-                  setKindFilter('all');
-                }}
-              >clear filters</button>
+              <div style="margin-block-start: var(--sp-3);">
+                <button
+                  type="button"
+                  class="stream-empty__reset mono"
+                  onclick={() => {
+                    store.setFilter('search', '');
+                    setRange('all');
+                    setKindFilter('all');
+                  }}
+                >clear filters</button>
+              </div>
+            {:else}
+              {@const lastReq = store.requests[0]}
+              {@const idleMins = Math.floor((Date.now() - Date.parse(lastReq.started_at)) / 60000)}
+              <div class="stream-empty__head">
+                <span class="stream-empty__glyph mono" aria-hidden="true">~</span>
+              </div>
+              <p class="stream-empty__copy">
+                Wire quiet for {idleMins} minute{idleMins === 1 ? '' : 's'}.
+              </p>
+              <p class="stream-empty__hint mono faint">
+                Stream still listening. Send a request to wake it.
+              </p>
             {/if}
           </div>
           <div class="stream-ghosts" aria-hidden="true">
@@ -602,6 +617,13 @@
     align-items: center;
     gap: var(--sp-3);
     color: var(--c-text-dim);
+  }
+  .stream-empty__glyph {
+    font-size: 28px;
+    line-height: 1;
+    color: var(--c-accent);
+    opacity: 0.55;
+    margin-block-end: var(--sp-2);
   }
   /* Italic serif for the philosophical empty-state copy — matches the
      operator voice codified in brand-spec.md. */

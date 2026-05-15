@@ -548,16 +548,25 @@
   <div class="logs__layout" class:logs__layout--facets={showFacets}>
     <div class="logs__body" class:logs__body--wrap={wrap}>
       {#if displayed.length === 0}
-        <EmptyState
-          title="No log records match the current filter."
-          hint="Loosen your filter criteria, or trigger a request to test the pipeline."
-        >
-          <button type="button" class="btn btn--accent" onclick={async () => {
-            const cmd = 'curl -H "x-api-key: $KIROXY_API_KEY" http://127.0.0.1:8787/v1/models';
-            await navigator.clipboard.writeText(cmd);
-            store.pushToast("ok", "curl copied — paste in shell to see logs");
-          }}>Copy test request</button>
-        </EmptyState>
+        {#if records.length === 0}
+          <EmptyState
+            glyph="~"
+            title="The record is blank."
+            hint="Trigger a request to generate telemetry."
+          >
+            <button type="button" class="btn btn--accent" onclick={async () => {
+              const cmd = 'curl -H "x-api-key: $KIROXY_API_KEY" http://127.0.0.1:8787/v1/models';
+              await navigator.clipboard.writeText(cmd);
+              store.pushToast("ok", "curl copied — paste in shell to see logs");
+            }}>Copy test request</button>
+          </EmptyState>
+        {:else}
+          <EmptyState
+            glyph="⌐"
+            title="The wire stays hidden under your filter."
+            hint="Loosen the filter criteria to reveal the wire."
+          />
+        {/if}
       {:else}
         {#each displayed as r (r.id)}
           <div

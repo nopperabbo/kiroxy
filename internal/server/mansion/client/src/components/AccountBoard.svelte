@@ -149,8 +149,8 @@
         {#if store.snapshot.accounts.length === 0}
           <EmptyState
             glyph="◇"
-            title="Pool is empty. No accounts imported."
-            hint="Press i to paste a JSON export, or run kiroxy import-accounts-json to fill the lamps from the CLI."
+            title="The pool lies dormant."
+            hint="Press i to paste a JSON export, or use kiroxy import-accounts-json from the CLI."
           >
             <button type="button" class="btn btn--accent" onclick={() => window.dispatchEvent(new KeyboardEvent('keydown', {key: 'i'}))}>
               Import account
@@ -158,9 +158,10 @@
           </EmptyState>
         {:else}
           <EmptyState
+            glyph="≠"
             density="tight"
-            title="No accounts match the current filter."
-            hint="Loosen the filter chips above to see the full pool."
+            title="All accounts hide behind the filter."
+            hint="Loosen the chips above to see the full pool."
           />
         {/if}
       </div>

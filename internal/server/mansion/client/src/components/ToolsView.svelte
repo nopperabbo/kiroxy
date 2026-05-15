@@ -327,7 +327,7 @@
         </div>
       {:else}
         <div class="card history-card" style="background: transparent; border: 0;">
-          <EmptyState title="No run history" hint="Run kiroxy doctor to record health metrics.">
+          <EmptyState title="History is unwritten." hint="Run kiroxy doctor to record health metrics.">
             <button type="button" class="btn btn--accent" onclick={() => void runDoctor()} disabled={running}>
               Run kiroxy doctor
             </button>
