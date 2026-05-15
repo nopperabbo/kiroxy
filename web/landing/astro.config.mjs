@@ -2,9 +2,14 @@
 import { defineConfig } from 'astro/config';
 
 // Static-first. Zero runtime JS by default.
-// Deploy target: any static host (Vercel, Cloudflare Pages, Netlify, GH Pages).
+// Deploy target: GitHub Pages by default; override via SITE env for custom
+// domain (e.g., SITE=https://kiroxy.dev npm run build).
+const site = process.env.SITE || 'https://nopperabbo.github.io';
+const base = process.env.BASE || '/kiroxy';
+
 export default defineConfig({
-  site: 'https://kiroxy.dev',
+  site,
+  base,
   output: 'static',
   compressHTML: true,
   build: {
