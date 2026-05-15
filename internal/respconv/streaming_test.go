@@ -318,3 +318,59 @@ func TestSSEWriter_ThinkingViaTags_WithRegularTool(t *testing.T) {
 		t.Fatal("expected tool_use stop_reason")
 	}
 }
+
+func TestSSEWriter_TruncatedFinish_EmitsMaxTokens(t *testing.T) {
+	w := httptest.NewRecorder()
+	sw := NewSSEWriter(context.Background(), w, "claude-sonnet-4.6", 200000, nil, 0, 0)
+
+	// Start the stream and emit some visible content (simulates a stream
+	// that reached the client before being severed).
+	sw.HandleEvent(kiroproto.Event{Type: "assistantResponseEvent", Content: "Once upon"})
+	sw.HandleEvent(kiroproto.Event{Type: "assistantResponseEvent", Content: "Once upon a time"})
+
+	// Upstream cuts off without emitting a proper messageStop. We finalize
+	// gracefully with stop_reason=max_tokens.
+	sw.TruncatedFinish("upstream_severed")
+
+	body := w.Body.String()
+	if !strings.Contains(body, "event: message_start\n") {
+		t.Fatal("missing event: message_start")
+	}
+	if !strings.Contains(body, `"text":"Once upon"`) {
+		t.Fatal("missing first delta")
+	}
+	if !strings.Contains(body, `"text":" a time"`) {
+		t.Fatal("missing second delta")
+	}
+	if !strings.Contains(body, `"stop_reason":"max_tokens"`) {
+		t.Fatal("expected stop_reason=max_tokens for truncated stream")
+	}
+	if !strings.Contains(body, "event: message_stop\n") {
+		t.Fatal("missing event: message_stop — client would hang")
+	}
+	// No SSE error event should be emitted; that would break the protocol
+	// after content_block_start has fired.
+	if strings.Contains(body, "event: error\n") {
+		t.Fatal("TruncatedFinish must NOT emit error event after content has streamed")
+	}
+}
+
+func TestSSEWriter_TruncatedFinish_PreservesUpstreamStopReason(t *testing.T) {
+	w := httptest.NewRecorder()
+	sw := NewSSEWriter(context.Background(), w, "claude-sonnet-4.6", 200000, nil, 0, 0)
+
+	sw.HandleEvent(kiroproto.Event{Type: "assistantResponseEvent", Content: "partial"})
+	// Simulate that the accumulator already saw a non-end_turn stop reason
+	// from the upstream (e.g. stop_sequence), then the connection was cut.
+	// TruncatedFinish should preserve that signal rather than overwriting
+	// to max_tokens.
+	sw.acc.StopReason = StopReasonStopSequence
+	sw.acc.StopSequence = "STOP"
+
+	sw.TruncatedFinish("connection_reset")
+
+	body := w.Body.String()
+	if !strings.Contains(body, `"stop_reason":"stop_sequence"`) {
+		t.Fatal("expected upstream stop_sequence to be preserved over max_tokens default")
+	}
+}

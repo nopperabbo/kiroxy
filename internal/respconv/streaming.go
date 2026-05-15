@@ -236,6 +236,71 @@ func (s *SSEWriter) WriteError(errType, message string) {
 	})
 }
 
+// TruncatedFinish closes a stream that was severed mid-output without a
+// proper upstream stop_reason. Emits a synthetic message_delta with
+// stop_reason="max_tokens" + usage from whatever was accumulated, then
+// message_stop, producing a valid Anthropic SSE stream the client can
+// finalize cleanly.
+//
+// Use this instead of WriteError when:
+//   - The GateWriter is already promoted (visible output reached client)
+//   - Some text/thinking deltas were emitted before the upstream cut off
+//   - Client expects a complete SSE protocol envelope (message_delta +
+//     message_stop), not an error event mid-stream
+//
+// The "max_tokens" stop reason is the closest Anthropic-compatible
+// signal available — clients (Claude Code, OpenCode, claude-code-router)
+// already handle it with a "response was cut off, you can ask 'continue'"
+// UX. Emitting "end_turn" would falsely suggest the response is complete.
+//
+// Tracks the original failure mode in a slog.Warn so operators can see
+// it on the dashboard, but the client receives a clean stream-close.
+//
+// Reference: hank9999/kiro.rs issues #22 and #49 documented this exact
+// failure pattern (long outputs causing "session stuck" client states);
+// upstream Kiro emits a partial EventStream then drops the connection
+// without a proper messageStop event. Surfacing as max_tokens lets the
+// client present a sane UX instead of hanging.
+func (s *SSEWriter) TruncatedFinish(reason string) {
+	s.stopKeepalive()
+	s.ensureStarted()
+
+	textDelta, thinkingDelta, res := finalizeResult(&s.acc)
+	if thinkingDelta != "" {
+		s.writeThinkingDelta(EventDelta{ThinkingDelta: thinkingDelta})
+	}
+	if textDelta != "" {
+		s.fireVisibleOutput()
+		s.switchBlock(anthropic.BlockTypeText)
+		s.writeDelta("text_delta", "text", textDelta)
+	}
+
+	s.closeActiveBlock()
+
+	stopReason := StopReasonMaxTokens
+	if res.StopReason != "" && res.StopReason != StopReasonEndTurn {
+		stopReason = res.StopReason
+	}
+	slog.LogAttrs(s.ctx, slog.LevelWarn, "stream truncated, finalizing as max_tokens",
+		slog.String("upstream_reason", reason),
+		slog.String("stop_reason_emitted", stopReason),
+		slog.Int("input_tokens", res.InputTokens),
+		slog.Int("output_tokens", res.OutputTokens),
+	)
+
+	s.writeSSE("message_delta", map[string]any{
+		"type": "message_delta",
+		"delta": map[string]any{
+			"stop_reason":   stopReason,
+			"stop_sequence": res.StopSequence,
+		},
+		"usage": res.Usage,
+	})
+	s.writeSSE("message_stop", map[string]any{
+		"type": "message_stop",
+	})
+}
+
 // Finish writes the closing SSE events (message_delta + message_stop).
 func (s *SSEWriter) Finish() {
 	s.stopKeepalive()

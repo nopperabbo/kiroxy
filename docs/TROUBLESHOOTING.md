@@ -230,6 +230,72 @@ Multi-account pooling against consumer Builder IDs can trigger abuse
 detection. Personal use only. 1–3 accounts is fine; keep request
 cadence reasonable; don't share tokens across machines.
 
+### MCP servers / `mcp_servers` field in /v1/messages
+
+**Status: not supported.** Anthropic's [MCP connector
+beta](https://docs.claude.com/en/docs/agents-and-tools/mcp-connector)
+(`anthropic-beta: mcp-client-2025-11-20`) lets a client send `mcp_servers[]`
+in a Messages API request and have Anthropic do the MCP server connection
++ tool dispatch + result streaming server-side.
+
+kiroxy proxies to AWS Q Developer (Kiro), **not** Anthropic. The Kiro
+upstream protocol does not implement MCP semantics — it accepts only a
+flat tool definition list and returns `tool_use`/`server_tool_use`
+content blocks. There is no upstream `mcp_tool_use`/`mcp_tool_result`
+support to forward.
+
+If your client sends `mcp_servers`, kiroxy will currently strip the
+field at the request boundary (the `anthropic.Request` struct does not
+unmarshal it) and the request proceeds as a normal /v1/messages call.
+You will not get MCP tools.
+
+**Workarounds for MCP-style workflows today:**
+
+1. Run an MCP-aware orchestrator in front of kiroxy (e.g.
+   [musistudio/claude-code-router](https://github.com/musistudio/claude-code-router)
+   ~34k stars, MIT) that handles MCP server connections itself and
+   feeds resolved tools to kiroxy as plain `tools[]` entries.
+2. Use `claude-code` directly with kiroxy as `ANTHROPIC_BASE_URL`. The
+   CLI handles MCP stdio servers locally; kiroxy never sees the MCP
+   plumbing.
+3. Track [issue #(TODO)](#) for kiroxy-native MCP support — a clean-room
+   Go MCP client (~700 LoC, can't lift code from AGPL peers like
+   jwadow/kiro-gateway) is on the roadmap but not in v1.4.
+
+### Stream truncated mid-output (client shows partial response then hangs)
+
+Symptom: `claude-code` or `opencode` prints some output then sits forever
+without ever showing a final/done state. `kiroxy.log` may show
+`upstream stream error` or `upstream exception` mid-stream.
+
+Cause: Kiro upstream sometimes severs long streams without emitting a
+proper `messageStop` event — common with very long thinking blocks or
+near-cap-exhausted accounts. Without a `message_stop` SSE event the
+client cannot finalize the response and waits for more deltas that
+never arrive.
+
+Mitigation (since v1.4 + Path-C work): kiroxy now detects this case
+when the stream has already promoted (visible content reached the
+client) and synthesizes a clean stream-close with
+`stop_reason: max_tokens`. The client sees a valid SSE protocol
+envelope and can show its normal "response was truncated, ask
+'continue' to resume" UX instead of hanging.
+
+The synthetic stop reason is logged at WARN with the original upstream
+reason in `upstream_reason` so you can still diagnose what tripped it:
+
+```
+WARN  stream truncated, finalizing as max_tokens
+      upstream_reason=upstream_severed
+      stop_reason_emitted=max_tokens
+      input_tokens=823
+      output_tokens=12047
+```
+
+If you see these warns frequently, check pool health for
+near-exhausted accounts (low `usage_percent_used`) and inspect the
+GetUsageLimits poller logs for refresh failures.
+
 ---
 
 ## Diagnostic tools

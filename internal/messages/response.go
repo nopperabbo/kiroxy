@@ -87,6 +87,24 @@ func (s *Service) handleStreamingResponse(ctx context.Context, w http.ResponseWr
 		return handleUpstreamError(w, isException, invalidReason)
 	}
 
+	// Stream errored mid-output AFTER visible content reached the client.
+	// We can't go back and emit a JSON error envelope without violating the
+	// SSE protocol (message_start already sent). Finalize with a synthetic
+	// max_tokens stop reason so the client sees a valid stream close and
+	// can offer a "continue" UX instead of hanging.
+	// References hank9999/kiro.rs issues #22 + #49.
+	if streamErr && sw.Started() && gw.IsPromoted() {
+		reason := invalidReason
+		if reason == "" && isException {
+			reason = "upstream_exception"
+		}
+		if reason == "" {
+			reason = "stream_severed"
+		}
+		sw.TruncatedFinish(reason)
+		return ""
+	}
+
 	if err != nil {
 		slog.ErrorContext(ctx, "stream error", "trace_id", short, "err", err)
 		writeStreamingOrJSONError(gw, sw, w, http.StatusBadGateway, errTypeStreamError, "upstream stream error")
