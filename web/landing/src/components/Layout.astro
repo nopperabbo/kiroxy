@@ -5,7 +5,17 @@ interface Props {
   path?: string;
 }
 const { title, description, path = '/' } = Astro.props;
-const canonical = new URL(path, Astro.site ?? 'https://kiroxy.dev').toString();
+// Build canonical absolute URL using BOTH site origin and base path. The
+// previous version called `new URL(path, Astro.site)` which discarded the
+// base path because URL() resolves relative paths against the origin, not
+// the path component. With site=https://nopperabbo.github.io and
+// base=/kiroxy/, we need https://nopperabbo.github.io/kiroxy/ as the
+// document's canonical URL — not the bare origin.
+const origin = (Astro.site ?? new URL('https://kiroxy.dev')).origin;
+const baseRaw = (process.env.BASE || '/kiroxy').replace(/\/$/, '');
+const base = baseRaw.startsWith('/') ? baseRaw : '/' + baseRaw;
+const canonicalPath = path.startsWith('/') ? path : '/' + path;
+const canonical = origin + base + canonicalPath;
 
 import '../styles/base.css';
 ---
