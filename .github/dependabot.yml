@@ -1,5 +1,14 @@
-# Dependabot keeps Go, Node, and GitHub Actions dependencies fresh.
-# Security updates land immediately; minor/patch versions batch weekly.
+# Dependabot — pre-traction, solo dev cadence.
+#
+# Cadence rationale:
+#   - Monthly (not weekly) — solo maintainer, no CI to verify auto-PRs
+#     until billing is restored, no external contributors yet.
+#   - Aggressive grouping — minor + patch updates batched per ecosystem
+#     so one merge sweeps a whole ecosystem at once.
+#   - Major versions get their own PR — they need human review anyway.
+#
+# Bump back to weekly + per-package PRs after the project sees real
+# contributor traffic or when CI is back online.
 
 version: 2
 updates:
@@ -7,9 +16,9 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "go"
@@ -17,19 +26,18 @@ updates:
       prefix: "chore(deps)"
       include: "scope"
     groups:
-      otel:
-        patterns:
-          - "go.opentelemetry.io/*"
-      test-deps:
-        dependency-type: "development"
+      go-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
 
   # NPM — Mansion dashboard
   - package-ecosystem: "npm"
     directory: "/internal/server/mansion/client"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
     labels:
       - "dependencies"
       - "frontend"
@@ -37,38 +45,44 @@ updates:
       prefix: "chore(deps)"
       include: "scope"
     groups:
-      svelte:
-        patterns:
-          - "svelte"
-          - "@sveltejs/*"
-      vite:
-        patterns:
-          - "vite"
-          - "@vitejs/*"
+      mansion-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
 
   # NPM — Landing page
   - package-ecosystem: "npm"
     directory: "/web/landing"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 2
     labels:
       - "dependencies"
       - "landing"
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
+    groups:
+      landing-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 2
     labels:
       - "dependencies"
       - "ci"
     commit-message:
       prefix: "chore(ci)"
       include: "scope"
+    groups:
+      actions-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
