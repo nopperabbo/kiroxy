@@ -1,0 +1,9 @@
+# kiroxy is MIT and free forever. If it saves you a Kiro Pro subscription
+# or runs your local dev loop reliably, sponsorship helps cover infra
+# (CI minutes, domain) and keeps the maintainer caffeinated.
+
+github: [nopperabbo]
+# Add others as you set them up:
+# ko_fi: nopperabbo
+# buy_me_a_coffee: nopperabbo
+# custom: ["https://nopperabbo.dev/sponsor"]

@@ -1,0 +1,22 @@
+# Default code owner is the maintainer.
+# Until trusted contributors emerge, all changes route through @nopperabbo.
+*       @nopperabbo
+
+# Backend hot zones
+/cmd/                          @nopperabbo
+/internal/server/              @nopperabbo
+/internal/messages/            @nopperabbo
+/internal/pool/                @nopperabbo
+/internal/auth/                @nopperabbo
+/internal/tokenvault/          @nopperabbo
+
+# Frontend (Mansion + landing)
+/internal/server/mansion/      @nopperabbo
+/web/landing/                  @nopperabbo
+
+# Release-critical
+/.github/workflows/            @nopperabbo
+/.goreleaser.yml               @nopperabbo
+/Dockerfile                    @nopperabbo
+/CHANGELOG.md                  @nopperabbo
+/README.md                     @nopperabbo

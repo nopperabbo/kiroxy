@@ -4,10 +4,12 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/nopperabbo/kiroxy?style=flat-square)](go.mod)
 [![Issues](https://img.shields.io/github/issues/nopperabbo/kiroxy?style=flat-square)](https://github.com/nopperabbo/kiroxy/issues)
+[![Discussions](https://img.shields.io/github/discussions/nopperabbo/kiroxy?style=flat-square)](https://github.com/nopperabbo/kiroxy/discussions)
+[![Sponsor](https://img.shields.io/github/sponsors/nopperabbo?style=flat-square)](https://github.com/sponsors/nopperabbo)
 
 A single-user, self-hosted proxy that exposes your Kiro IDE subscription (Amazon Q Developer / AWS CodeWhisperer) as an **Anthropic Messages API** endpoint. Point your Claude Code, Cursor, or any Anthropic-compatible client at kiroxy, and it forwards requests to Kiro using your own credentials.
 
-**Status:** v1.4.0 — public release, MIT-licensed. See `CHANGELOG.md` for release notes, `docs/ARCHITECTURE.md` for the engineering overview, and `docs/TROUBLESHOOTING.md` for operator diagnostics.
+**Status:** v1.4.0 — public release, MIT-licensed. See [`CHANGELOG.md`](CHANGELOG.md) for release notes, [`ROADMAP.md`](ROADMAP.md) for what's next, [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the engineering overview, and [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for operator diagnostics.
 
 ---
 

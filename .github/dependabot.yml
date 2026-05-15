@@ -1,0 +1,74 @@
+# Dependabot keeps Go, Node, and GitHub Actions dependencies fresh.
+# Security updates land immediately; minor/patch versions batch weekly.
+
+version: 2
+updates:
+  # Go modules — backend
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "go"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      otel:
+        patterns:
+          - "go.opentelemetry.io/*"
+      test-deps:
+        dependency-type: "development"
+
+  # NPM — Mansion dashboard
+  - package-ecosystem: "npm"
+    directory: "/internal/server/mansion/client"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "frontend"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      svelte:
+        patterns:
+          - "svelte"
+          - "@sveltejs/*"
+      vite:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+
+  # NPM — Landing page
+  - package-ecosystem: "npm"
+    directory: "/web/landing"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "landing"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "chore(ci)"
+      include: "scope"
