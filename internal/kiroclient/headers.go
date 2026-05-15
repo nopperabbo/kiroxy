@@ -62,10 +62,171 @@ func legacyEndpointURL(region string) string {
 	return fmt.Sprintf("https://runtime.%s.kiro.dev/", region)
 }
 
+// kiroEndpoint represents one of the three accepted upstream paths for the
+// streaming /generateAssistantResponse operation. Each path is fronted by a
+// different Amazon service (or absent target — Kiro IDE's "native" primary
+// flow), but all three accept the same JSON request body and return the same
+// AWS EventStream response shape.
+//
+// The shape was reverse-engineered by Quorinex/Kiro-Go (MIT, 611★) and
+// reproduced here for fail-over symmetry: when the primary returns HTTP 429
+// (per-account quota exhausted at THIS gateway), kiroxy walks down the list
+// and re-issues the same request on the next service. Each service tracks
+// quota independently — the same account can usually answer through
+// CodeWhisperer or AmazonQ even when q.<region>.amazonaws.com (Kiro IDE)
+// reports exhaustion.
+//
+// Field semantics:
+//   - URL: the full operation URL. amazonaws.com (slot 0+2) and
+//     codewhisperer.us-east-1.amazonaws.com (slot 1) for us-east-1; for
+//     other regions kiroxy substitutes the region into the host segment but
+//     codewhisperer.<region>.amazonaws.com may not exist outside us-east-1.
+//   - Origin: the `ConversationState.CurrentMessage.UserInputMessage.Origin`
+//     payload field that upstream uses to attribute the request to a client
+//     class. All three slots use AI_EDITOR — Kiro IDE marks itself as such,
+//     and the fallback gateways accept the same value because they assume
+//     they're proxying for an editor.
+//   - AmzTarget: the X-Amz-Target header. Empty for the Kiro IDE primary
+//     because native Kiro IDE does NOT send this header (the URL path itself
+//     identifies the operation). Non-empty for the fallback services
+//     because they're standard AWS gateways requiring the header.
+//   - Name: human-readable label for logs / metrics.
+type kiroEndpoint struct {
+	URL       string
+	Origin    string
+	AmzTarget string
+	Name      string
+}
+
+// kiroEndpoints lists the three accepted upstream paths in fail-over order.
+// Order proven optimal by Quorinex/Kiro-Go's production telemetry — Kiro IDE
+// primary has the highest success rate; CodeWhisperer fallback handles ~80%
+// of primary 429s; AmazonQ catches the remainder.
+//
+// The Kiro IDE slot is duplicated host-wise with AmazonQ because both
+// nominally point at q.<region>.amazonaws.com — they're different services
+// behind the same hostname, dispatched via X-Amz-Target presence/value.
+var kiroEndpoints = []kiroEndpoint{
+	{
+		// Kiro IDE primary: omits X-Amz-Target so the gateway routes by URL path.
+		URL:       "https://q.%s.amazonaws.com/generateAssistantResponse",
+		Origin:    "AI_EDITOR",
+		AmzTarget: "",
+		Name:      "Kiro IDE",
+	},
+	{
+		// CodeWhisperer fallback: dedicated host + classic streaming target.
+		URL:       "https://codewhisperer.%s.amazonaws.com/generateAssistantResponse",
+		Origin:    "AI_EDITOR",
+		AmzTarget: "AmazonCodeWhispererStreamingService.GenerateAssistantResponse",
+		Name:      "CodeWhisperer",
+	},
+	{
+		// AmazonQ Developer fallback: same q.<region> host, different target.
+		URL:       "https://q.%s.amazonaws.com/generateAssistantResponse",
+		Origin:    "AI_EDITOR",
+		AmzTarget: "AmazonQDeveloperStreamingService.SendMessage",
+		Name:      "AmazonQ",
+	},
+}
+
+// resolveKiroEndpoints returns the per-region URL list of native endpoints.
+// Each kiroEndpoint.URL is a printf format string with one %s for the region;
+// this helper substitutes and returns concrete kiroEndpoint values.
+func resolveKiroEndpoints(region string) []kiroEndpoint {
+	out := make([]kiroEndpoint, len(kiroEndpoints))
+	for i, ep := range kiroEndpoints {
+		out[i] = kiroEndpoint{
+			URL:       fmt.Sprintf(ep.URL, region),
+			Origin:    ep.Origin,
+			AmzTarget: ep.AmzTarget,
+			Name:      ep.Name,
+		}
+	}
+	return out
+}
+
+// preferredEndpointName reads KIROXY_PREFERRED_ENDPOINT and returns the slot
+// label the operator wants tried FIRST. Recognized values (case-insensitive):
+//   - "kiro" / "kiroide" / "" / unset → slot 0 (Kiro IDE primary)
+//   - "codewhisperer" / "cw"          → slot 1 (CodeWhisperer fallback)
+//   - "amazonq" / "q"                  → slot 2 (AmazonQ fallback)
+//
+// Anything else falls through to the default. Operators usually leave this
+// unset; the override exists for emergency upstream-incident routing without
+// a redeploy.
+func preferredEndpointName() string {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("KIROXY_PREFERRED_ENDPOINT")))
+	switch v {
+	case "codewhisperer", "cw":
+		return "codewhisperer"
+	case "amazonq", "q":
+		return "amazonq"
+	default:
+		return "kiro"
+	}
+}
+
+// failoverEnabled reports whether endpoint fail-over should engage on 429.
+// Default: true. Operators disable via KIROXY_ENDPOINT_FAILOVER=0 if they
+// want predictable single-endpoint behavior (e.g., for traffic-shape
+// experiments or when one fallback is misbehaving).
+func failoverEnabled() bool {
+	v := os.Getenv("KIROXY_ENDPOINT_FAILOVER")
+	return v != "0"
+}
+
+// orderedKiroEndpoints returns the per-region native endpoint list reordered
+// so the operator's preferred slot is first. When fail-over is disabled the
+// returned slice has length 1 (only the preferred endpoint, no fallbacks).
+//
+// Upstream-incident playbook: if a specific service slot is throwing 5xx
+// across the entire pool, set KIROXY_PREFERRED_ENDPOINT=codewhisperer (or
+// amazonq) to bypass the broken slot without losing fail-over to the
+// remaining two. Setting KIROXY_ENDPOINT_FAILOVER=0 plus the preferred name
+// pins traffic to one slot for incident investigation.
+func orderedKiroEndpoints(region string) []kiroEndpoint {
+	all := resolveKiroEndpoints(region)
+	preferred := preferredEndpointName()
+
+	var primary int
+	switch preferred {
+	case "codewhisperer":
+		primary = 1
+	case "amazonq":
+		primary = 2
+	default:
+		primary = 0
+	}
+
+	if !failoverEnabled() {
+		return []kiroEndpoint{all[primary]}
+	}
+
+	if primary == 0 {
+		return all
+	}
+
+	// Preferred non-default + fail-over enabled: preferred first, then the
+	// remaining two in original order. Symmetric with Quorinex's algorithm.
+	out := make([]kiroEndpoint, 0, len(all))
+	out = append(out, all[primary])
+	for i, ep := range all {
+		if i != primary {
+			out = append(out, ep)
+		}
+	}
+	return out
+}
+
 // applyNativeHeaders sets the request header set that matches what native
 // Kiro IDE sends — verified against Quorinex/Kiro-Go source plus live
-// upstream probe in the session log. Caller must NOT also set X-Amz-Target
-// when invoking this helper (the native primary path omits that header).
+// upstream probe in the session log.
+//
+// amzTarget controls the X-Amz-Target header: empty string means the caller
+// is targeting the Kiro IDE primary endpoint which omits this header (URL
+// path identifies the operation). Non-empty values are set verbatim for
+// fallback endpoints (CodeWhisperer / AmazonQ) which require the header.
 //
 // machineID is appended to both User-Agent and x-amz-user-agent so the
 // per-account fingerprint propagates upstream. Empty machineID degrades
@@ -75,8 +236,10 @@ func legacyEndpointURL(region string) string {
 // invocationID/attempt/maxAttempts mirror the AWS SDK Pascal-case header
 // names ("Amz-Sdk-Invocation-Id", "Amz-Sdk-Request") that native traffic
 // uses; legacy lowercase variants exist only for backwards compatibility
-// with the old kiroxy code path.
-func applyNativeHeaders(req *http.Request, token, machineID, invocationID string, attempt, maxAttempts int) {
+// with the old kiroxy code path. The header value max=3 mirrors the native
+// SDK retry budget exposed to upstream — it's a hint, not a binding limit;
+// kiroxy's actual per-endpoint retry count is governed by maxRetries.
+func applyNativeHeaders(req *http.Request, token, machineID, amzTarget, invocationID string, attempt, maxAttempts int) {
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "*/*")
@@ -86,6 +249,9 @@ func applyNativeHeaders(req *http.Request, token, machineID, invocationID string
 	req.Header.Set("x-amzn-kiro-agent-mode", "vibe")
 	req.Header.Set("Amz-Sdk-Invocation-Id", invocationID)
 	req.Header.Set("Amz-Sdk-Request", fmt.Sprintf("attempt=%d; max=%d", attempt+1, maxAttempts+1))
+	if amzTarget != "" {
+		req.Header.Set("X-Amz-Target", amzTarget)
+	}
 }
 
 // applyLegacyHeaders sets the pre-native-shape header block kiroxy used

@@ -648,3 +648,73 @@ func TestRetryWait_ContextCancelled(t *testing.T) {
 		t.Fatal("expected context error")
 	}
 }
+
+func TestOrderedKiroEndpoints_Default(t *testing.T) {
+	t.Setenv("KIROXY_PREFERRED_ENDPOINT", "")
+	t.Setenv("KIROXY_ENDPOINT_FAILOVER", "")
+	got := orderedKiroEndpoints("us-east-1")
+	if len(got) != 3 {
+		t.Fatalf("expected 3 endpoints, got %d", len(got))
+	}
+	if got[0].Name != "Kiro IDE" {
+		t.Errorf("primary should be Kiro IDE, got %q", got[0].Name)
+	}
+	if got[0].AmzTarget != "" {
+		t.Errorf("Kiro IDE primary should omit X-Amz-Target, got %q", got[0].AmzTarget)
+	}
+	if got[1].Name != "CodeWhisperer" {
+		t.Errorf("fallback 1 should be CodeWhisperer, got %q", got[1].Name)
+	}
+	if got[2].Name != "AmazonQ" {
+		t.Errorf("fallback 2 should be AmazonQ, got %q", got[2].Name)
+	}
+}
+
+func TestOrderedKiroEndpoints_FailoverDisabled(t *testing.T) {
+	t.Setenv("KIROXY_PREFERRED_ENDPOINT", "")
+	t.Setenv("KIROXY_ENDPOINT_FAILOVER", "0")
+	got := orderedKiroEndpoints("us-east-1")
+	if len(got) != 1 {
+		t.Fatalf("fail-over disabled should return 1 endpoint, got %d", len(got))
+	}
+	if got[0].Name != "Kiro IDE" {
+		t.Errorf("expected single Kiro IDE endpoint, got %q", got[0].Name)
+	}
+}
+
+func TestOrderedKiroEndpoints_PreferredCodeWhisperer(t *testing.T) {
+	t.Setenv("KIROXY_PREFERRED_ENDPOINT", "codewhisperer")
+	t.Setenv("KIROXY_ENDPOINT_FAILOVER", "")
+	got := orderedKiroEndpoints("us-east-1")
+	if len(got) != 3 {
+		t.Fatalf("expected 3 endpoints, got %d", len(got))
+	}
+	if got[0].Name != "CodeWhisperer" {
+		t.Errorf("preferred CodeWhisperer should be first, got %q", got[0].Name)
+	}
+}
+
+func TestIsQuotaExhausted(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil", nil, false},
+		{"plain error", errors.New("network failure"), false},
+		{"429", &UpstreamError{Status: 429}, true},
+		{"throttling 200", &UpstreamError{Status: 200, Exception: "ThrottlingException"}, true},
+		{"too many requests", &UpstreamError{Status: 200, Exception: "TooManyRequestsException"}, true},
+		{"validation 400", &UpstreamError{Status: 400, Exception: "ValidationException"}, false},
+		{"server 500", &UpstreamError{Status: 500}, false},
+		{"unauthorized 401", &UpstreamError{Status: 401}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := isQuotaExhausted(tc.err)
+			if got != tc.want {
+				t.Errorf("isQuotaExhausted = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

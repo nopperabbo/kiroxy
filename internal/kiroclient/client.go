@@ -201,8 +201,16 @@ func (c *HTTPClient) endpointURL(region string) string {
 // machineID is appended to the User-Agent suffix when native headers are
 // enabled (default). Pass empty string when the caller has no per-account
 // machine_id available; the UA will degrade to the bare KiroIDE-<ver> form.
+//
+// Endpoint behavior:
+//   - Native shape (default): walks the kiroEndpoints list in fail-over order
+//     (Kiro IDE primary → CodeWhisperer → AmazonQ). Each endpoint runs the
+//     full retry budget independently. HTTP 429 after retries-exhausted on
+//     one endpoint advances to the next; other terminal errors return.
+//   - Legacy shape (KIROXY_NATIVE_HEADERS=0): single-endpoint flow targeting
+//     runtime.<region>.kiro.dev/. No fail-over — preserves the historical
+//     behavior for operators who explicitly opted out.
 func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string, payload *kiroproto.Payload, region string, machineID string) (*Response, error) {
-	endpoint := c.endpointURL(region)
 	machineID = trimMachineID(machineID)
 	useNative := nativeHeadersEnabled()
 
@@ -212,7 +220,6 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 		defer span.End()
 		span.SetAttributes(
 			attribute.String("kiro.region", region),
-			attribute.String("kiro.endpoint", endpoint),
 		)
 	}
 
@@ -233,17 +240,88 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 
 	currentToken := token
 	invocationID := uuid.New().String()
+
+	// Legacy shape: single endpoint, no fail-over. Preserves the
+	// pre-native-shape behavior precisely for operators on KIROXY_NATIVE_HEADERS=0.
+	if !useNative {
+		ep := kiroEndpoint{URL: c.endpointURL(region), AmzTarget: chooseAmzTarget(payload), Name: "legacy"}
+		return c.callOneEndpoint(ctx, ep, currentToken, machineID, invocationID, body, promptTokens, payload, useNative)
+	}
+
+	// Native shape with optional baseURL override (test injection): single
+	// endpoint, no fail-over. Tests rely on httptest.Server URLs which can't
+	// usefully fan out across the three native slots.
+	if c.baseURL != "" {
+		ep := kiroEndpoint{URL: c.baseURL, AmzTarget: "", Name: "override"}
+		return c.callOneEndpoint(ctx, ep, currentToken, machineID, invocationID, body, promptTokens, payload, useNative)
+	}
+
+	endpoints := orderedKiroEndpoints(region)
+	var lastErr error
+	for i, ep := range endpoints {
+		resp, err := c.callOneEndpoint(ctx, ep, currentToken, machineID, invocationID, body, promptTokens, payload, useNative)
+		if err == nil {
+			return resp, nil
+		}
+		lastErr = err
+
+		// Only fail-over on 429-after-retries-exhausted. Other terminal
+		// errors (auth, validation, structural exceptions) return
+		// immediately so callers see them quickly.
+		if !isQuotaExhausted(err) {
+			return nil, err
+		}
+
+		if i+1 < len(endpoints) {
+			_, short := logging.TraceIDs(ctx)
+			slog.WarnContext(ctx, "kiro: endpoint quota exhausted, failing over",
+				"trace_id", short,
+				"account_id", logging.AccountIDFromContext(ctx),
+				"endpoint_failed", ep.Name,
+				"endpoint_next", endpoints[i+1].Name)
+		}
+	}
+	return nil, lastErr
+}
+
+// callOneEndpoint runs the existing retry-attempt loop against a single
+// endpoint. Extracted so the outer GenerateAssistantResponse can wrap it
+// with endpoint fail-over semantics for the native shape while preserving
+// per-endpoint retry semantics for both shapes.
+//
+// Returns nil on success. Returns a *UpstreamError on 4xx/5xx after retries
+// exhausted, or a wrapped network error on persistent transport failure.
+// The outer caller inspects the error via isQuotaExhausted to decide
+// whether to fail over to the next endpoint.
+func (c *HTTPClient) callOneEndpoint(
+	ctx context.Context,
+	ep kiroEndpoint,
+	token, machineID, invocationID string,
+	body []byte,
+	promptTokens int,
+	payload *kiroproto.Payload,
+	useNative bool,
+) (*Response, error) {
+	currentToken := token
 	traceID, short := logging.TraceIDs(ctx)
 
+	if c.otel {
+		span := trace.SpanFromContext(ctx)
+		span.SetAttributes(
+			attribute.String("kiro.endpoint", ep.URL),
+			attribute.String("kiro.endpoint_name", ep.Name),
+		)
+	}
+
 	for attempt := 0; attempt <= maxRetries; attempt++ {
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, ep.URL, bytes.NewReader(body))
 		if err != nil {
 			return nil, fmt.Errorf("create request: %w", err)
 		}
 
 		req.Header.Set("Authorization", "Bearer "+currentToken)
 		if useNative {
-			applyNativeHeaders(req, currentToken, machineID, invocationID, attempt, maxRetries)
+			applyNativeHeaders(req, currentToken, machineID, ep.AmzTarget, invocationID, attempt, maxRetries)
 		} else {
 			applyLegacyHeaders(req, currentToken, invocationID, attempt, maxRetries, payload)
 		}
@@ -251,6 +329,7 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 		slog.DebugContext(ctx, "kiro request headers",
 			"trace_id", traceID,
 			"session_id", logging.SessionIDFromContext(ctx),
+			"endpoint", ep.Name,
 			"headers", logging.SafeHeaders{H: req.Header},
 		)
 
@@ -260,6 +339,7 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 				delay := backoffDelay(attempt)
 				slog.WarnContext(ctx, "kiro: request error, retrying",
 					"trace_id", short, "attempt", attempt+1, "max", maxRetries+1,
+					"endpoint", ep.Name,
 					"delay", delay, "err", err)
 				if waitErr := retryWait(ctx, delay); waitErr != nil {
 					return nil, waitErr
@@ -275,28 +355,18 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 			slog.DebugContext(ctx, "kiro response headers",
 				"trace_id", traceID,
 				"session_id", logging.SessionIDFromContext(ctx),
+				"endpoint", ep.Name,
 				"status", resp.StatusCode,
 				"headers", logging.SafeHeaders{H: resp.Header},
 			)
-			// Kiro sometimes returns 200 with Content-Type application/json
-			// (AWS exception envelope such as ThrottlingException or
-			// InternalServerException) instead of the expected
-			// application/vnd.amazon.eventstream. Detect and surface that
-			// explicitly — otherwise the eventstream parser reads a
-			// non-framed body and eventually errors with a confusing
-			// "reading prelude" message, masking the real upstream error.
 			if ct := resp.Header.Get("Content-Type"); !isEventStreamContentType(ct) {
-				// Peek at the first few bytes before consuming the body.
-				// Kiro occasionally returns a binary EventStream frame with
-				// Content-Type: application/json (native non-streaming path).
-				// In that case we must NOT read the body as JSON — instead
-				// rebuild the reader and pass it to the eventstream handler.
 				peek := make([]byte, 4)
 				n, _ := io.ReadFull(resp.Body, peek)
 				rebuilt := io.NopCloser(io.MultiReader(bytes.NewReader(peek[:n]), resp.Body))
 				if looksLikeEventStreamBody(string(peek[:n])) {
 					slog.WarnContext(ctx, "kiro: Content-Type mismatch, body looks like EventStream — passing through",
 						"trace_id", short, "account_id", logging.AccountIDFromContext(ctx),
+						"endpoint", ep.Name,
 						"content_type", ct)
 					body := io.ReadCloser(&idleReader{rc: rebuilt, idle: c.bodyReadIdleTimeout()})
 					return &Response{
@@ -308,12 +378,11 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 				}
 				errBody := readLimitedBody(rebuilt, upstreamBodyLimit)
 				exType, reason := resolveAWSExceptionFields(errBody, resp.Header)
-				// Retry transient AWS exceptions (throttling / internal / 5xx-equivalent)
-				// even though the HTTP status is 200.
 				if attempt < maxRetries && IsRetryableAWSException(exType) {
 					delay := backoffDelay(attempt)
 					slog.WarnContext(ctx, "kiro: 200 with non-eventstream exception, retrying",
 						"trace_id", short, "account_id", logging.AccountIDFromContext(ctx),
+						"endpoint", ep.Name,
 						"content_type", ct, "exception", exType, "reason", reason,
 						"attempt", attempt+1, "max", maxRetries+1,
 						"delay", delay, "body", errBody)
@@ -348,12 +417,14 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 				if err != nil {
 					slog.WarnContext(ctx, "kiro: token refresh failed",
 						"trace_id", short, "account_id", logging.AccountIDFromContext(ctx),
+						"endpoint", ep.Name,
 						"status", resp.StatusCode,
 						"exception", exType, "reason", reason, "err", err)
 				} else {
 					currentToken = newToken
 					slog.InfoContext(ctx, "kiro: unauthorized, token refreshed",
 						"trace_id", short, "account_id", logging.AccountIDFromContext(ctx),
+						"endpoint", ep.Name,
 						"status", resp.StatusCode,
 						"exception", exType, "reason", reason, "attempt", attempt+1, "max", maxRetries+1)
 					continue
@@ -376,6 +447,7 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 				delay := effectiveDelay(resp, attempt)
 				slog.WarnContext(ctx, "kiro: upstream error, retrying",
 					"trace_id", short, "account_id", logging.AccountIDFromContext(ctx),
+					"endpoint", ep.Name,
 					"status", resp.StatusCode,
 					"exception", exType, "reason", reason,
 					"attempt", attempt+1, "max", maxRetries+1,
@@ -398,14 +470,11 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 		default:
 			errBody := readLimitedBody(resp.Body, upstreamBodyLimit)
 			ex, reason := resolveAWSExceptionFields(errBody, resp.Header)
-			// Kiro upstream returns AWS exceptions like ThrottlingException with
-			// HTTP 400 (application/x-amz-json-1.0). Treat retryable ones the same
-			// way we already do for 429/5xx so a transient capacity hiccup does
-			// not surface as a 502 to the caller.
 			if IsRetryableAWSException(ex) && attempt < maxRetries {
 				delay := backoffDelay(attempt)
 				slog.WarnContext(ctx, "kiro: retryable AWS exception, retrying",
 					"trace_id", short, "account_id", logging.AccountIDFromContext(ctx),
+					"endpoint", ep.Name,
 					"status", resp.StatusCode,
 					"exception", ex, "reason", reason,
 					"attempt", attempt+1, "max", maxRetries+1,
@@ -427,7 +496,32 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 		}
 	}
 
-	err = fmt.Errorf("kiro api: max retries exceeded")
+	err := fmt.Errorf("kiro api: max retries exceeded")
 	c.recordError(ctx, err)
 	return nil, err
+}
+
+// isQuotaExhausted reports whether the supplied error is an upstream
+// quota-exhaustion signal that warrants endpoint fail-over. Currently this
+// matches HTTP 429 with any AWS exception classification, plus 200 OK
+// envelopes carrying ThrottlingException / TooManyRequestsException.
+//
+// We deliberately do NOT fail over on 5xx because those are typically
+// transient gateway issues that affect ALL three endpoints (they share the
+// same underlying Bedrock + Kiro Service backend); fail-over would just
+// burn three accounts' budgets on the same outage. Pool-level account
+// rotation is the right answer for 5xx storms.
+func isQuotaExhausted(err error) bool {
+	var ue *UpstreamError
+	if !errors.As(err, &ue) {
+		return false
+	}
+	if ue.Status == http.StatusTooManyRequests {
+		return true
+	}
+	switch ue.Exception {
+	case "ThrottlingException", "TooManyRequestsException":
+		return true
+	}
+	return false
 }
