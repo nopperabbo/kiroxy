@@ -9,8 +9,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"local/kiroxy/internal/anthropic"
-	"local/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
 )
 
 // scanCurrentMessage walks message content once and extracts tool_results and

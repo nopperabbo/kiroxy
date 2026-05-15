@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"local/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
 )
 
 func TestConvertTools_Basic(t *testing.T) {

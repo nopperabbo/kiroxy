@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"local/kiroxy/internal/anthropic"
-	"local/kiroxy/internal/logging"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/logging"
 )
 
 // formatContextWindow renders a context window size as a human label like

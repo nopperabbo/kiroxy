@@ -8,7 +8,7 @@ package reqconv
 import (
 	"testing"
 
-	"local/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
 )
 
 func TestExtractSystemPrompt(t *testing.T) {

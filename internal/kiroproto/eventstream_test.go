@@ -16,7 +16,7 @@ import (
 	"io"
 	"testing"
 
-	tu "local/kiroxy/internal/testutil"
+	tu "github.com/nopperabbo/kiroxy/internal/testutil"
 )
 
 // crc32Test is the CRC-32 (IEEE) table for test frame building.

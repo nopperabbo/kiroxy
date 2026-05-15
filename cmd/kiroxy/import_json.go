@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 // kiroTokenEntry is the shape emitted by the Desktop-flow extractor.

@@ -9,7 +9,7 @@ import (
 	"context"
 	"testing"
 
-	"local/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
 )
 
 func TestNewUpstreamAttemptCapture_DisabledReturnsNil(t *testing.T) {

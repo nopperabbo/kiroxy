@@ -8,7 +8,7 @@ import (
 	"context"
 	"time"
 
-	"local/kiroxy/internal/server/variants/muji"
+	"github.com/nopperabbo/kiroxy/internal/server/variants/muji"
 )
 
 // mujiSnap is the SnapFn the muji.Register call expects. It pulls the

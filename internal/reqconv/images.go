@@ -9,8 +9,8 @@ import (
 	"log/slog"
 	"strings"
 
-	"local/kiroxy/internal/anthropic"
-	"local/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
 )
 
 // ExtractImages extracts image blocks from message content and converts to Kiro format.

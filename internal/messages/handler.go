@@ -12,14 +12,14 @@ import (
 
 	"github.com/google/uuid"
 
-	"local/kiroxy/internal/anthropic"
-	"local/kiroxy/internal/auth"
-	"local/kiroxy/internal/httpx"
-	"local/kiroxy/internal/logging"
-	"local/kiroxy/internal/metrics"
-	"local/kiroxy/internal/models"
-	"local/kiroxy/internal/reqconv"
-	"local/kiroxy/internal/toolsearch"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/auth"
+	"github.com/nopperabbo/kiroxy/internal/httpx"
+	"github.com/nopperabbo/kiroxy/internal/logging"
+	"github.com/nopperabbo/kiroxy/internal/metrics"
+	"github.com/nopperabbo/kiroxy/internal/models"
+	"github.com/nopperabbo/kiroxy/internal/reqconv"
+	"github.com/nopperabbo/kiroxy/internal/toolsearch"
 )
 
 const headerCCSessionID = "X-Claude-Code-Session-Id"

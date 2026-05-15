@@ -9,9 +9,9 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"local/kiroxy/internal/anthropic"
-	"local/kiroxy/internal/kiroproto"
-	"local/kiroxy/internal/toolsearch"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/toolsearch"
 )
 
 // defaultThinkingBudget is the default thinking token budget (medium).

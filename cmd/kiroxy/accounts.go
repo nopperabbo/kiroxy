@@ -17,10 +17,10 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"local/kiroxy/internal/builderid"
-	"local/kiroxy/internal/config"
-	"local/kiroxy/internal/pool"
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/builderid"
+	"github.com/nopperabbo/kiroxy/internal/config"
+	"github.com/nopperabbo/kiroxy/internal/pool"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 func runAddAccount(ctx context.Context, args []string) error {

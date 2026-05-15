@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"local/kiroxy/internal/kiroclient"
-	"local/kiroxy/internal/kiroproto"
-	"local/kiroxy/internal/pool"
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/kiroclient"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/pool"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 // trackingKiroClient records the access token used for every request, so the

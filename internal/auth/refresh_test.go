@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	tu "local/kiroxy/internal/testutil"
+	tu "github.com/nopperabbo/kiroxy/internal/testutil"
 	_ "modernc.org/sqlite"
 )
 

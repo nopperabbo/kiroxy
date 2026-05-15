@@ -8,7 +8,7 @@ package respconv
 import (
 	"testing"
 
-	"local/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
 )
 
 func TestBuildNonStreamingResponse_TextOnly(t *testing.T) {

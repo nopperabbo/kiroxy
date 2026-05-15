@@ -18,10 +18,10 @@ import (
 	"sync"
 	"time"
 
-	"local/kiroxy/internal/auth"
-	"local/kiroxy/internal/logging"
-	"local/kiroxy/internal/metrics"
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/auth"
+	"github.com/nopperabbo/kiroxy/internal/logging"
+	"github.com/nopperabbo/kiroxy/internal/metrics"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 // ErrNoAccount is returned by Pick when the pool is empty or every account is

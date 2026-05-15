@@ -1,4 +1,4 @@
-module local/kiroxy
+module github.com/nopperabbo/kiroxy
 
 go 1.26
 

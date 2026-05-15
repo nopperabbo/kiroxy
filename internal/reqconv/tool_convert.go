@@ -6,8 +6,8 @@
 package reqconv
 
 import (
-	"local/kiroxy/internal/anthropic"
-	"local/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
 )
 
 // ConvertTools converts Anthropic tool definitions to Kiro tool entries.

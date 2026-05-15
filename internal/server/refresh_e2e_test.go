@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"local/kiroxy/internal/auth"
-	"local/kiroxy/internal/pool"
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/auth"
+	"github.com/nopperabbo/kiroxy/internal/pool"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 // TestE2E_ExpiredTokenTriggersRefreshOnRequest spins up a real kiroxy

@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"local/kiroxy/internal/openai"
-	"local/kiroxy/internal/safego"
+	"github.com/nopperabbo/kiroxy/internal/openai"
+	"github.com/nopperabbo/kiroxy/internal/safego"
 )
 
 // handleChatCompletions implements POST /v1/chat/completions. It parses the

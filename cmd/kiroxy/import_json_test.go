@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 // mintJWT builds an unsigned test JWT (header.payload.) from the given

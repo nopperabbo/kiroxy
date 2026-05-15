@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"testing"
 
-	"local/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
 )
 
 func TestBuildFrame_ParseStream(t *testing.T) {

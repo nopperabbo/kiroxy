@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"local/kiroxy/internal/safego"
+	"github.com/nopperabbo/kiroxy/internal/safego"
 )
 
 // DefaultStickinessTTL is the per-session pin lifetime. 60s was chosen

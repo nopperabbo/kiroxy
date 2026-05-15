@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"local/kiroxy/internal/server"
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/server"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 // inboundKeyProvider adapts tokenvault.Vault to server.InboundKeyProvider.

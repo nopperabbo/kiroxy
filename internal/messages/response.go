@@ -12,11 +12,11 @@ import (
 	"log/slog"
 	"net/http"
 
-	"local/kiroxy/internal/httpx"
-	"local/kiroxy/internal/kiroclient"
-	"local/kiroxy/internal/kiroproto"
-	"local/kiroxy/internal/logging"
-	"local/kiroxy/internal/respconv"
+	"github.com/nopperabbo/kiroxy/internal/httpx"
+	"github.com/nopperabbo/kiroxy/internal/kiroclient"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/logging"
+	"github.com/nopperabbo/kiroxy/internal/respconv"
 )
 
 const retryReasonEmptyVisibleEndTurn = "empty_visible_end_turn"

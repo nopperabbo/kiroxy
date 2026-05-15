@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 func TestParseTriplets_HappyPath(t *testing.T) {

@@ -15,14 +15,14 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"local/kiroxy/internal/anthropic"
-	"local/kiroxy/internal/auth"
-	"local/kiroxy/internal/httpx"
-	"local/kiroxy/internal/kiroproto"
-	"local/kiroxy/internal/logging"
-	"local/kiroxy/internal/reqconv"
-	"local/kiroxy/internal/respconv"
-	"local/kiroxy/internal/toolsearch"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/auth"
+	"github.com/nopperabbo/kiroxy/internal/httpx"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/logging"
+	"github.com/nopperabbo/kiroxy/internal/reqconv"
+	"github.com/nopperabbo/kiroxy/internal/respconv"
+	"github.com/nopperabbo/kiroxy/internal/toolsearch"
 )
 
 const maxToolSearchRounds = 3

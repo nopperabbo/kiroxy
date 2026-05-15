@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"local/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
 )
 
 func TestSSEWriter_TextOnly(t *testing.T) {

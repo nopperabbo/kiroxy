@@ -5,7 +5,7 @@
 
 package toolsearch
 
-import "local/kiroxy/internal/kiroproto"
+import "github.com/nopperabbo/kiroxy/internal/kiroproto"
 
 // KiroToolSearchName is the name of the Kiro-side tool search tool.
 const KiroToolSearchName = "ToolSearch"

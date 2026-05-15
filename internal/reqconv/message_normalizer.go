@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"local/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
 )
 
 const (

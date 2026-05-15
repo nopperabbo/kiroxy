@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"local/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
 )
 
 // unmarshalRequest is a small helper for the tests: parse an OpenAI request

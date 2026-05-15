@@ -9,8 +9,8 @@ import (
 	"encoding/json/v2"
 
 	"github.com/google/uuid"
-	"local/kiroxy/internal/anthropic"
-	"local/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
 )
 
 // NonStreamingStats holds token usage and context info from a non-streaming response.

@@ -8,7 +8,7 @@ package reqconv
 import (
 	"testing"
 
-	"local/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
 )
 
 func TestExtractTextContent(t *testing.T) {

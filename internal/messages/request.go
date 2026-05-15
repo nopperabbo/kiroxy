@@ -15,9 +15,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"local/kiroxy/internal/anthropic"
-	"local/kiroxy/internal/httpx"
-	"local/kiroxy/internal/tokencount"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/httpx"
+	"github.com/nopperabbo/kiroxy/internal/tokencount"
 )
 
 // HandleCountTokens serves POST /v1/messages/count_tokens.

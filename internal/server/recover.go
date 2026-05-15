@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
-	"local/kiroxy/internal/httpx"
+	"github.com/nopperabbo/kiroxy/internal/httpx"
 )
 
 // recoverMiddleware catches panics from any downstream handler, logs them

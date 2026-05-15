@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"local/kiroxy/internal/models"
+	"github.com/nopperabbo/kiroxy/internal/models"
 )
 
 // aliasTable is the canonical OpenAI → Claude alias map. Order in the

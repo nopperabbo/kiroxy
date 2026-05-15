@@ -8,7 +8,7 @@ package toolsearch
 import (
 	"testing"
 
-	"local/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
 )
 
 func TestNewContext(t *testing.T) {

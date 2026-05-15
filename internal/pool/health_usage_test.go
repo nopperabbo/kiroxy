@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"local/kiroxy/internal/kiroclient"
+	"github.com/nopperabbo/kiroxy/internal/kiroclient"
 )
 
 // TestWeight_NoUsageDataMeansNoPenalty verifies the nil-safety

@@ -9,7 +9,7 @@ import (
 	"encoding/json/jsontext"
 	"unicode/utf8"
 
-	"local/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
 )
 
 // ProcessEvent processes a single Kiro event and returns the delta for this event.

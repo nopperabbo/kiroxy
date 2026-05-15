@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 func newPoolWithVault(t *testing.T) (*Pool, *tokenvault.Vault) {

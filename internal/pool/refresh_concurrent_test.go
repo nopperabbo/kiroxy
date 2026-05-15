@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"local/kiroxy/internal/auth"
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/auth"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 func newVaultForTest(t *testing.T) *tokenvault.Vault {

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"local/kiroxy/internal/metrics"
+	"github.com/nopperabbo/kiroxy/internal/metrics"
 )
 
 // WithMetrics attaches a metrics Sink to the service. Passing nil (or

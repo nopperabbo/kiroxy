@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"local/kiroxy/internal/kiroclient"
-	"local/kiroxy/internal/pool"
-	"local/kiroxy/internal/server"
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/kiroclient"
+	"github.com/nopperabbo/kiroxy/internal/pool"
+	"github.com/nopperabbo/kiroxy/internal/server"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 // TestDashboardProvider_UsageFieldsPropagate confirms that a fresh

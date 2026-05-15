@@ -8,7 +8,7 @@ package reqconv
 import (
 	"strings"
 
-	"local/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
 )
 
 // ExtractTextContent extracts plain text from message content.

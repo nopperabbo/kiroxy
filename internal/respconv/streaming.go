@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"local/kiroxy/internal/anthropic"
-	"local/kiroxy/internal/kiroproto"
-	"local/kiroxy/internal/safego"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/safego"
 )
 
 // keepaliveInterval is how often the SSE writer emits a `ping` event during

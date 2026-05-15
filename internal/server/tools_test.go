@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"local/kiroxy/internal/doctor"
+	"github.com/nopperabbo/kiroxy/internal/doctor"
 )
 
 type stubTools struct {

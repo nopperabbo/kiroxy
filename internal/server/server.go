@@ -7,17 +7,17 @@ import (
 	"net/http"
 	"time"
 
-	"local/kiroxy/internal/kiroclient"
-	"local/kiroxy/internal/messages"
-	"local/kiroxy/internal/metrics"
-	"local/kiroxy/internal/server/mansion"
-	"local/kiroxy/internal/server/next"
-	"local/kiroxy/internal/server/variants/brutal"
-	"local/kiroxy/internal/server/variants/linearpremium"
-	"local/kiroxy/internal/server/variants/muji"
-	"local/kiroxy/internal/server/variants/neon"
-	"local/kiroxy/internal/server/variants/nord"
-	"local/kiroxy/internal/server/variants/paper"
+	"github.com/nopperabbo/kiroxy/internal/kiroclient"
+	"github.com/nopperabbo/kiroxy/internal/messages"
+	"github.com/nopperabbo/kiroxy/internal/metrics"
+	"github.com/nopperabbo/kiroxy/internal/server/mansion"
+	"github.com/nopperabbo/kiroxy/internal/server/next"
+	"github.com/nopperabbo/kiroxy/internal/server/variants/brutal"
+	"github.com/nopperabbo/kiroxy/internal/server/variants/linearpremium"
+	"github.com/nopperabbo/kiroxy/internal/server/variants/muji"
+	"github.com/nopperabbo/kiroxy/internal/server/variants/neon"
+	"github.com/nopperabbo/kiroxy/internal/server/variants/nord"
+	"github.com/nopperabbo/kiroxy/internal/server/variants/paper"
 )
 
 // Options is how main constructs a Server.

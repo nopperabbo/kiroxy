@@ -15,7 +15,7 @@ package pool
 import (
 	"time"
 
-	"local/kiroxy/internal/kiroclient"
+	"github.com/nopperabbo/kiroxy/internal/kiroclient"
 )
 
 const (

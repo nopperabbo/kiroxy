@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"local/kiroxy/internal/metrics"
+	"github.com/nopperabbo/kiroxy/internal/metrics"
 )
 
 // TestMetricsEndpoint_NoRegistry_Returns503 verifies the zero-config path:

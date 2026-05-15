@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"local/kiroxy/internal/pool"
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/pool"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 func TestDashboardProvider_HealthFieldsSurface(t *testing.T) {

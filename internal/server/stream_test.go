@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"local/kiroxy/internal/auth"
-	"local/kiroxy/internal/kiroclient"
-	"local/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/auth"
+	"github.com/nopperabbo/kiroxy/internal/kiroclient"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
 )
 
 // slowStreamClient emits a multi-frame AWS EventStream body with configurable

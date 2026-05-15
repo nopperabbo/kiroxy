@@ -13,7 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"local/kiroxy/internal/metrics"
+	"github.com/nopperabbo/kiroxy/internal/metrics"
 )
 
 func TestSnapshot_ClassifiesEnabledDisabledCooldown(t *testing.T) {

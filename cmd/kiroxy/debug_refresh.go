@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 func runDebugRefresh(ctx context.Context, args []string) error {

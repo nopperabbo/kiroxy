@@ -11,9 +11,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"local/kiroxy/internal/httpx"
-	"local/kiroxy/internal/kiroclient"
-	"local/kiroxy/internal/logging"
+	"github.com/nopperabbo/kiroxy/internal/httpx"
+	"github.com/nopperabbo/kiroxy/internal/kiroclient"
+	"github.com/nopperabbo/kiroxy/internal/logging"
 )
 
 // Re-exports of httpx error type constants so in-package callers stay concise.

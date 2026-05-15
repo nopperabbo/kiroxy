@@ -7,8 +7,8 @@ package reqconv
 
 import (
 	"github.com/google/uuid"
-	"local/kiroxy/internal/anthropic"
-	"local/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
 )
 
 // ExtractThinkingToolUses extracts thinking content blocks from assistant messages

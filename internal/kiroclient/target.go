@@ -5,7 +5,7 @@
 
 package kiroclient
 
-import "local/kiroxy/internal/kiroproto"
+import "github.com/nopperabbo/kiroxy/internal/kiroproto"
 
 // chooseAmzTarget picks the AWS RPC target header based on whether the caller
 // supplied a profileArn. The CodeWhisperer target rejects requests without

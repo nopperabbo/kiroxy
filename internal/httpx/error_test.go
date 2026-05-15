@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"local/kiroxy/internal/httpx"
+	"github.com/nopperabbo/kiroxy/internal/httpx"
 )
 
 func TestWriteError_AuthenticationError(t *testing.T) {

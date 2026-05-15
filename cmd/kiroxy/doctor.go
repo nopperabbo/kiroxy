@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"os"
 
-	"local/kiroxy/internal/config"
-	"local/kiroxy/internal/doctor"
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/config"
+	"github.com/nopperabbo/kiroxy/internal/doctor"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 // runDoctor executes the doctor health-check subcommand from the CLI.

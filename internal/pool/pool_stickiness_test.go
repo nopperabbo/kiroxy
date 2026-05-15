@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"local/kiroxy/internal/logging"
+	"github.com/nopperabbo/kiroxy/internal/logging"
 )
 
 func TestPool_StickinessPinsSessionToSameAccount(t *testing.T) {

@@ -6,7 +6,7 @@
 package toolsearch
 
 import (
-	"local/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
 )
 
 const (

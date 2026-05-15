@@ -6,8 +6,8 @@
 package respconv
 
 import (
-	"local/kiroxy/internal/anthropic"
-	"local/kiroxy/internal/toolsearch"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/toolsearch"
 )
 
 // WriteServerToolUse writes a server_tool_use content block start + input delta + stop.

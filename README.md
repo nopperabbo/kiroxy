@@ -24,9 +24,9 @@ VERSION=0.3.0
 OS_ARCH=Linux_amd64   # or Darwin_arm64, etc.
 
 curl -sSL -o kiroxy.tar.gz \
-  "https://github.com/OWNER/REPO/releases/download/v${VERSION}/kiroxy_${VERSION}_${OS_ARCH}.tar.gz"
+  "https://github.com/nopperabbo/kiroxy/releases/download/v${VERSION}/kiroxy_${VERSION}_${OS_ARCH}.tar.gz"
 curl -sSL -o checksums.txt \
-  "https://github.com/OWNER/REPO/releases/download/v${VERSION}/kiroxy_${VERSION}_checksums.txt"
+  "https://github.com/nopperabbo/kiroxy/releases/download/v${VERSION}/kiroxy_${VERSION}_checksums.txt"
 
 # Verify the archive matches the published checksum.
 grep " kiroxy_${VERSION}_${OS_ARCH}.tar.gz$" checksums.txt | shasum -a 256 -c -

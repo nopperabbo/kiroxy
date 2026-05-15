@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"local/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
 )
 
 // anthropicResponse mirrors the fields we care about from the Anthropic

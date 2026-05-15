@@ -9,7 +9,7 @@ import (
 	"slices"
 	"testing"
 
-	"local/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
 )
 
 func TestExtractToolReferences(t *testing.T) {

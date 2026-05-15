@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"local/kiroxy/internal/kiroclient"
+	"github.com/nopperabbo/kiroxy/internal/kiroclient"
 )
 
 // TestUsagePoller_Disabled_NoOp confirms that an unwired poller (nil

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"local/kiroxy/internal/doctor"
+	"github.com/nopperabbo/kiroxy/internal/doctor"
 )
 
 // ToolsProvider is the data source for /dashboard/api/tools/*. The server

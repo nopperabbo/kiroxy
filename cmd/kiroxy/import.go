@@ -12,7 +12,7 @@ import (
 	"os"
 	"strings"
 
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 type importOutcome int

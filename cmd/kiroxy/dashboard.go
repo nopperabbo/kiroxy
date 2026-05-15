@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"local/kiroxy/internal/pool"
-	"local/kiroxy/internal/server"
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/pool"
+	"github.com/nopperabbo/kiroxy/internal/server"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 type dashboardProvider struct {

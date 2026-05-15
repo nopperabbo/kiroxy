@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"local/kiroxy/internal/models"
+	"github.com/nopperabbo/kiroxy/internal/models"
 )
 
 // ModelEntry is one row of the /dashboard/api/models response. The shape

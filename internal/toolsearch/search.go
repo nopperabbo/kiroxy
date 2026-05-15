@@ -13,7 +13,7 @@ import (
 	"slices"
 	"strings"
 
-	"local/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
 )
 
 var (

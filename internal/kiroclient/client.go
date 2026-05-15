@@ -22,9 +22,9 @@ import (
 	"golang.org/x/net/http2"
 
 	"github.com/google/uuid"
-	"local/kiroxy/internal/kiroproto"
-	"local/kiroxy/internal/logging"
-	"local/kiroxy/internal/tracing"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/logging"
+	"github.com/nopperabbo/kiroxy/internal/tracing"
 )
 
 const (

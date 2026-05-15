@@ -7,7 +7,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"local/kiroxy/internal/metrics"
+	"github.com/nopperabbo/kiroxy/internal/metrics"
 )
 
 // Stats is a point-in-time summary of pool health. Accounts are classified

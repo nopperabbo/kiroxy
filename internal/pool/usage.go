@@ -25,11 +25,11 @@ import (
 	"sync"
 	"time"
 
-	"local/kiroxy/internal/auth"
-	"local/kiroxy/internal/kiroclient"
-	"local/kiroxy/internal/metrics"
-	"local/kiroxy/internal/safego"
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/auth"
+	"github.com/nopperabbo/kiroxy/internal/kiroclient"
+	"github.com/nopperabbo/kiroxy/internal/metrics"
+	"github.com/nopperabbo/kiroxy/internal/safego"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 // UsagePollFn is the upstream dependency the poller needs. It must be

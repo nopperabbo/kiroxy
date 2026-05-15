@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
-	"local/kiroxy/internal/kiroproto"
-	tu "local/kiroxy/internal/testutil"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
+	tu "github.com/nopperabbo/kiroxy/internal/testutil"
 )
 
 // newTCP4TestServer creates an httptest.Server bound to tcp4 to avoid IPv6 bind failures in sandboxed environments.

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"local/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
 )
 
 func TestNormalize_FullPipeline(t *testing.T) {

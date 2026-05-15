@@ -5,7 +5,7 @@
 
 package reqconv
 
-import "local/kiroxy/internal/anthropic"
+import "github.com/nopperabbo/kiroxy/internal/anthropic"
 
 // ExtractToolReferences scans conversation history for tool_reference blocks
 // and returns the referenced tool names. These appear in:

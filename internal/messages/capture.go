@@ -15,8 +15,8 @@ import (
 	"net/http"
 	"slices"
 
-	"local/kiroxy/internal/kiroproto"
-	"local/kiroxy/internal/logging"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/logging"
 )
 
 type upstreamCapturedEvent struct {

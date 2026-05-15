@@ -8,8 +8,8 @@ package reqconv
 import (
 	"testing"
 
-	"local/kiroxy/internal/anthropic"
-	"local/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
 )
 
 func TestApplyToolCachePoints_WithCacheControl(t *testing.T) {

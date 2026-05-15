@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 
-	"local/kiroxy/internal/doctor"
-	"local/kiroxy/internal/pool"
-	"local/kiroxy/internal/tokenvault"
+	"github.com/nopperabbo/kiroxy/internal/doctor"
+	"github.com/nopperabbo/kiroxy/internal/pool"
+	"github.com/nopperabbo/kiroxy/internal/tokenvault"
 )
 
 // toolsProvider adapts the existing vault + pool into server.ToolsProvider.

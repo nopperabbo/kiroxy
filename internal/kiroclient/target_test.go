@@ -3,7 +3,7 @@ package kiroclient
 import (
 	"testing"
 
-	"local/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
 )
 
 func TestChooseAmzTarget_SwitchesOnProfileARN(t *testing.T) {

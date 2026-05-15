@@ -17,13 +17,13 @@ import (
 
 	"golang.org/x/net/http2"
 
-	"local/kiroxy/internal/anthropic"
-	"local/kiroxy/internal/auth"
-	"local/kiroxy/internal/httpx"
-	"local/kiroxy/internal/kiroclient"
-	"local/kiroxy/internal/kiroproto"
-	"local/kiroxy/internal/logging"
-	"local/kiroxy/internal/metrics"
+	"github.com/nopperabbo/kiroxy/internal/anthropic"
+	"github.com/nopperabbo/kiroxy/internal/auth"
+	"github.com/nopperabbo/kiroxy/internal/httpx"
+	"github.com/nopperabbo/kiroxy/internal/kiroclient"
+	"github.com/nopperabbo/kiroxy/internal/kiroproto"
+	"github.com/nopperabbo/kiroxy/internal/logging"
+	"github.com/nopperabbo/kiroxy/internal/metrics"
 )
 
 // invocation bundles everything callAndHandle needs for one upstream attempt.

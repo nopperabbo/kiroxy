@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	tu "local/kiroxy/internal/testutil"
+	tu "github.com/nopperabbo/kiroxy/internal/testutil"
 )
 
 // successBody is the canonical happy-path JSON shape returned by
