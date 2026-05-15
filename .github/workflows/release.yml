@@ -27,7 +27,7 @@ jobs:
       GOEXPERIMENT: jsonv2
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # Full history + tags so goreleaser can build the changelog and
           # resolve previous tag correctly.
