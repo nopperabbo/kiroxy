@@ -75,6 +75,13 @@ func (s *Service) HandleMessages(w http.ResponseWriter, r *http.Request) {
 	}
 	rm.setModel(anthropicModel, req.Stream)
 
+	if blocked := s.checkTierGate(ctx, short, creds, anthropicModel); blocked {
+		rm.errKind(metrics.RequestKindAuth)
+		httpx.WriteError(w, http.StatusPaymentRequired, errTypeInvalidRequest,
+			"selected upstream account does not subscribe to a tier that allows this model")
+		return
+	}
+
 	s.logRequest(ctx, short, ccSessionID, kiroModel, contextWindowSize, req, thinking)
 
 	thinkingBudget := resolveThinkingBudget(ctx, req)

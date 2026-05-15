@@ -39,6 +39,16 @@ type StructuralRecorder interface {
 	RecordStructuralError(accountID string, reason string)
 }
 
+// UsageLimitsLooker is an optional interface that lets the messages handler
+// read the most recent UsageLimits snapshot for a picked account without
+// importing the pool package directly. The pool's UsagePoller writes
+// snapshots and this read is best-effort: callers must accept nil (no
+// snapshot yet, or polling disabled) and never block the request hot path
+// on a missing tier signal.
+type UsageLimitsLooker interface {
+	GetUsage(accountID string) *kiroclient.UsageLimits
+}
+
 // Service owns message execution and token counting flows.
 type Service struct {
 	auth           TokenGetter

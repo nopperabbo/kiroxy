@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/nopperabbo/kiroxy/internal/auth"
+	"github.com/nopperabbo/kiroxy/internal/kiroclient"
 	"github.com/nopperabbo/kiroxy/internal/logging"
 	"github.com/nopperabbo/kiroxy/internal/metrics"
 	"github.com/nopperabbo/kiroxy/internal/tokenvault"
@@ -671,6 +672,21 @@ func (tg *TokenGetter) RecordStructuralError(accountID string, reason string) {
 		return
 	}
 	tg.Pool.RecordStructuralError(accountID, reason)
+}
+
+// GetUsage forwards to Pool.GetUsage so callers holding only a *TokenGetter
+// (the messages.Service does) can read the most-recent UsageLimits snapshot
+// for an account without holding a direct *Pool reference. Maps to
+// messages.UsageLimitsLooker via duck typing.
+//
+// Returns nil when accountID is empty, the pool is unset (test/fake paths),
+// or the UsagePoller has not yet recorded a snapshot for that account.
+// Callers MUST treat nil as "tier unknown, fail open" — never block on it.
+func (tg *TokenGetter) GetUsage(accountID string) *kiroclient.UsageLimits {
+	if accountID == "" || tg.Pool == nil {
+		return nil
+	}
+	return tg.Pool.GetUsage(accountID)
 }
 
 // GetToken implements messages.TokenGetter. It picks an account from the
