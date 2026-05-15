@@ -32,6 +32,15 @@
     if (t === 0) return 0;
     return accounts.reduce((s, a) => s + a.errors, 0) / t;
   });
+
+  let minimapCounts = $derived.by(() => {
+    const counts = { healthy: 0, warm: 0, cooldown: 0, error: 0, disabled: 0 };
+    for (const a of accounts) {
+      const st = accountStatus(a);
+      counts[st]++;
+    }
+    return counts;
+  });
 </script>
 
 <section class="pulse" aria-label="pool pulse">
@@ -44,6 +53,27 @@
       </span>
     </div>
   </header>
+
+  {#if accounts.length > 12}
+    <div class="pulse__minimap" aria-label="pool health minimap">
+      <div class="minimap__legend mono caps faint">
+        {minimapCounts.healthy} ok · {minimapCounts.warm} warm · {minimapCounts.cooldown} cool · {minimapCounts.error} err · {minimapCounts.disabled} off
+      </div>
+      <div class="minimap__cells" role="presentation">
+        {#each accounts as a (a.id)}
+          {@const st = accountStatus(a)}
+          <button
+            type="button"
+            class="minimap__cell minimap__cell--{st}"
+            class:minimap__cell--selected={store.selectedAccountId === a.id}
+            onclick={() => focus(a.id)}
+            title="{a.id} — {st}"
+            aria-label="account {a.id}, status {st}"
+          ></button>
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   <div class="pulse__grid">
     {#each accounts as a (a.id)}
@@ -288,5 +318,52 @@
     align-items: center;
     gap: var(--sp-2);
     text-align: center;
+  }
+
+  .pulse__minimap {
+    margin-block: var(--sp-3) var(--sp-5);
+    padding: var(--sp-3) var(--sp-4);
+    background: var(--c-surface-sunken);
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+  .minimap__legend {
+    font-size: var(--fs-2xs);
+    letter-spacing: var(--tr-wide);
+  }
+  .minimap__cells {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(14px, 1fr));
+    gap: 3px;
+  }
+  .minimap__cell {
+    aspect-ratio: 1;
+    border: 1px solid var(--c-rule);
+    border-radius: 2px;
+    padding: 0;
+    cursor: pointer;
+    background: var(--c-surface);
+    transition: transform var(--mo-fast) var(--ease-std), outline-color var(--mo-fast) var(--ease-std);
+    outline: 0 solid transparent;
+  }
+  .minimap__cell:hover {
+    transform: scale(1.4);
+    z-index: 2;
+    position: relative;
+  }
+  .minimap__cell:focus-visible {
+    outline: 1px solid var(--c-accent);
+    outline-offset: 1px;
+  }
+  .minimap__cell--healthy { background: color-mix(in oklch, var(--c-success) 65%, var(--c-surface)); border-color: color-mix(in oklch, var(--c-success) 50%, var(--c-rule)); }
+  .minimap__cell--warm { background: var(--c-success); border-color: var(--c-success); }
+  .minimap__cell--cooldown { background: color-mix(in oklch, var(--c-info) 70%, var(--c-surface)); border-color: var(--c-info); }
+  .minimap__cell--error { background: var(--c-danger); border-color: var(--c-danger); }
+  .minimap__cell--disabled { background: var(--c-surface-2); border-color: var(--c-rule); opacity: 0.5; }
+  .minimap__cell--selected {
+    box-shadow: inset 0 0 0 1.5px var(--c-accent);
   }
 </style>
