@@ -27,7 +27,7 @@ type slowStreamClient struct {
 	written  atomic.Int64
 }
 
-func (c *slowStreamClient) GenerateAssistantResponse(ctx context.Context, _ string, _ *kiroproto.Payload, _ string) (*kiroclient.Response, error) {
+func (c *slowStreamClient) GenerateAssistantResponse(ctx context.Context, _ string, _ *kiroproto.Payload, _ string, _ string) (*kiroclient.Response, error) {
 	pr, pw := io.Pipe()
 	go func() {
 		defer pw.Close()

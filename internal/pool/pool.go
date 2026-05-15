@@ -18,6 +18,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/nopperabbo/kiroxy/internal/auth"
 	"github.com/nopperabbo/kiroxy/internal/kiroclient"
 	"github.com/nopperabbo/kiroxy/internal/logging"
@@ -735,7 +737,37 @@ func (tg *TokenGetter) GetToken(ctx context.Context) (*auth.Credentials, error) 
 			if md.AuthMethod != "" {
 				creds.AuthType = md.AuthMethod
 			}
+			creds.MachineID = md.MachineID
 		}
 	}
+	if creds.MachineID == "" && b != nil {
+		creds.MachineID = ensureMachineID(ctx, tg.Vault, p.Provider, p.ID, b)
+	}
 	return creds, nil
+}
+
+// ensureMachineID lazy-generates a per-account UUID and persists it to
+// vault metadata when the bundle has no machine_id yet. The generated ID
+// is appended to outbound User-Agent headers so the per-account
+// fingerprint matches what native Kiro IDE installs send (a unique UUID
+// per install). Returns the existing machine_id when one is already
+// stored or empty when persistence fails — callers fail open and the
+// outbound UA degrades to the bare KiroIDE-<ver> form.
+func ensureMachineID(ctx context.Context, vault *tokenvault.Vault, provider, connectionID string, b *tokenvault.Bundle) string {
+	if vault == nil || b == nil {
+		return ""
+	}
+	id := uuid.NewString()
+	patch := map[string]any{"machine_id": id}
+	tokens := tokenvault.Tokens{
+		AccessToken:  b.AccessToken,
+		RefreshToken: b.RefreshToken,
+		Source:       b.Source,
+	}
+	if _, err := vault.CommitWithMetaPatch(ctx, provider, connectionID, b.Generation, tokens, patch); err != nil {
+		slog.Debug("pool: persist machine_id failed; passing through without it",
+			slog.String("account_id", connectionID), slog.String("err", err.Error()))
+		return ""
+	}
+	return id
 }

@@ -13,6 +13,14 @@ import (
 	"strings"
 )
 
+// eventStreamMagic is the first 4 bytes of every AWS Event Stream frame.
+// Per the AWS Event Stream encoding spec (smithy.io/2.0/spec/streaming#event-stream-encoding),
+// an encoded message starts with a 4-byte big-endian total byte length.
+// Since the minimum valid frame is ~16 bytes, the MSB is always 0x00 for
+// any realistic response — making \x00\x00 a reliable binary prefix test.
+// Reference: github.com/aws/aws-sdk-go-v2 eventstream prelude constants.
+const eventStreamMagicByte0 = 0x00
+
 // UpstreamError is returned when the Kiro API responds with an HTTP error
 // (any non-success status) or an unexpected Content-Type on a 200 response.
 // Callers can use errors.As to extract structured fields for logging.
@@ -146,4 +154,19 @@ func isEventStreamContentType(ct string) bool {
 		return false
 	}
 	return strings.EqualFold(mt, want)
+}
+
+// looksLikeEventStreamBody peeks at the first byte of body to detect a binary
+// AWS EventStream frame even when the upstream sent Content-Type: application/json.
+// Kiro (native endpoint, non-streaming mode) occasionally does this — it returns
+// the eventstream body without correcting the Content-Type header. Without this
+// guard kiroxy reads binary frame bytes as UTF-8 JSON, fails JSON parsing, and
+// surfaces a spurious 502 with a garbled error body.
+//
+// The EventStream prelude starts with a 4-byte big-endian total-length that is
+// 0x00 0x00 0x00 <N> for any payload under 16MB (all real Kiro responses qualify).
+// Plain JSON error bodies always start with '{', '"', '[', or whitespace (0x20-0x7E).
+// A leading 0x00 byte is therefore a reliable EventStream indicator.
+func looksLikeEventStreamBody(body string) bool {
+	return len(body) > 0 && body[0] == eventStreamMagicByte0
 }

@@ -29,7 +29,7 @@ type stubKiroClient struct {
 	lastModel string
 }
 
-func (c *stubKiroClient) GenerateAssistantResponse(_ context.Context, token string, payload *kiroproto.Payload, _ string) (*kiroclient.Response, error) {
+func (c *stubKiroClient) GenerateAssistantResponse(_ context.Context, token string, payload *kiroproto.Payload, _ string, _ string) (*kiroclient.Response, error) {
 	c.lastToken = token
 	if payload != nil {
 		c.lastModel = payload.ConversationState.CurrentMessage.UserInputMessage.ModelID

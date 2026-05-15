@@ -126,6 +126,16 @@ func isRotatableUpstreamError(err error) (*kiroclient.UpstreamError, bool) {
 			// is rejecting it permanently. Rotate to a different account whose
 			// credentials may still be valid.
 			return ue, true
+		case http.StatusPaymentRequired:
+			// 402 = ServiceQuotaExceededException (MONTHLY_REQUEST_COUNT).
+			// This account has exhausted its monthly quota. Rotate so a
+			// different account can serve the request. isQuotaFailure will
+			// cool this account down immediately via RecordFailure.
+			return ue, true
+		}
+		// ServiceQuotaExceededException may arrive as non-402 in some regions.
+		if ue.Exception == "ServiceQuotaExceededException" {
+			return ue, true
 		}
 		return ue, false
 	}
@@ -221,10 +231,11 @@ func isQuotaFailure(ue *kiroclient.UpstreamError) bool {
 		return false
 	}
 	switch ue.Exception {
-	case "ThrottlingException", "TooManyRequestsException":
+	case "ThrottlingException", "TooManyRequestsException", "ServiceQuotaExceededException":
 		return true
 	}
-	return ue.Status == http.StatusTooManyRequests
+	// 402 Payment Required is also a quota signal (MONTHLY_REQUEST_COUNT).
+	return ue.Status == http.StatusTooManyRequests || ue.Status == http.StatusPaymentRequired
 }
 
 // rotationFailureReason builds a short, structured reason string suitable for
@@ -293,7 +304,7 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 
 	upstreamStart := time.Now()
 	callCtx := logging.WithAccountID(ctx, inv.creds.AccountID)
-	apiResp, err := s.client.GenerateAssistantResponse(callCtx, inv.creds.AccessToken, inv.payload, inv.creds.Region)
+	apiResp, err := s.client.GenerateAssistantResponse(callCtx, inv.creds.AccessToken, inv.payload, inv.creds.Region, inv.creds.MachineID)
 	for poolAttempt := 0; err != nil && poolAttempt < upstreamPoolRetries; poolAttempt++ {
 		ue, ok := isRotatableUpstreamError(err)
 		if !ok {
@@ -345,7 +356,7 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 		inv.creds = newCreds
 		inv.payload.ProfileARN = newCreds.ProfileARN
 		callCtx = logging.WithAccountID(ctx, newCreds.AccountID)
-		apiResp, err = s.client.GenerateAssistantResponse(callCtx, newCreds.AccessToken, inv.payload, newCreds.Region)
+		apiResp, err = s.client.GenerateAssistantResponse(callCtx, newCreds.AccessToken, inv.payload, newCreds.Region, newCreds.MachineID)
 	}
 	if err != nil {
 		logUpstreamError(callCtx, short, err)

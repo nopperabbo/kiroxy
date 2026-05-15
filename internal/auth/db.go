@@ -28,6 +28,14 @@ type Credentials struct {
 	ProfileARN   string // from state table, key "api.codewhisperer.profile"
 	AuthType     string // "social" or "idc" — determined by which token key was found
 	AccountID    string // pool-assigned ID, empty when loaded directly from CLI db
+
+	// MachineID is the per-account install fingerprint kiroxy appends to the
+	// User-Agent suffix as `KiroIDE-<ver>-<machine_id>`. Native Kiro IDE
+	// generates one UUID per install; a pool of accounts presenting the same
+	// UA is an obvious anomaly upstream sees. Empty for accounts loaded
+	// directly from the kiro-cli SQLite DB; pool-managed accounts get a
+	// lazy-generated UUID persisted to vault metadata on first GetToken.
+	MachineID string
 }
 
 // ErrNoCredentials is returned when no token key is found in the database.

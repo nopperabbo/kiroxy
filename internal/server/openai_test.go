@@ -21,7 +21,7 @@ type stubKiroClientMulti struct {
 	body []byte
 }
 
-func (c *stubKiroClientMulti) GenerateAssistantResponse(_ context.Context, _ string, _ *kiroproto.Payload, _ string) (*kiroclient.Response, error) {
+func (c *stubKiroClientMulti) GenerateAssistantResponse(_ context.Context, _ string, _ *kiroproto.Payload, _ string, _ string) (*kiroclient.Response, error) {
 	return &kiroclient.Response{
 		StatusCode: http.StatusOK,
 		Body:       io.NopCloser(bytes.NewReader(c.body)),

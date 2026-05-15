@@ -36,7 +36,7 @@ type stubKC struct {
 	err  error
 }
 
-func (c *stubKC) GenerateAssistantResponse(_ context.Context, _ string, _ *kiroproto.Payload, _ string) (*kiroclient.Response, error) {
+func (c *stubKC) GenerateAssistantResponse(_ context.Context, _ string, _ *kiroproto.Payload, _ string, _ string) (*kiroclient.Response, error) {
 	if c.err != nil {
 		return nil, c.err
 	}

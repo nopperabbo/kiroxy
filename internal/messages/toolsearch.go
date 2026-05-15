@@ -69,7 +69,7 @@ func (o *toolSearchOrchestrator) handleStreaming(ctx context.Context, w http.Res
 		sw.SetToolNameMap(nameMap.ReverseMap())
 
 		callCtx := logging.WithAccountID(ctx, o.creds.AccountID)
-		apiResp, err := o.service.client.GenerateAssistantResponse(callCtx, o.creds.AccessToken, payload, o.creds.Region)
+		apiResp, err := o.service.client.GenerateAssistantResponse(callCtx, o.creds.AccessToken, payload, o.creds.Region, o.creds.MachineID)
 		if err != nil {
 			logUpstreamError(callCtx, short, err, "round", round+1)
 			writeStreamingOrJSONError(gw, sw, w, http.StatusBadGateway, errTypeAPI, "upstream API error")
@@ -197,7 +197,7 @@ func (o *toolSearchOrchestrator) handleNonStreaming(ctx context.Context, w http.
 		}
 
 		callCtx := logging.WithAccountID(ctx, o.creds.AccountID)
-		apiResp, err := o.service.client.GenerateAssistantResponse(callCtx, o.creds.AccessToken, payload, o.creds.Region)
+		apiResp, err := o.service.client.GenerateAssistantResponse(callCtx, o.creds.AccessToken, payload, o.creds.Region, o.creds.MachineID)
 		if err != nil {
 			logUpstreamError(callCtx, short, err, "round", round+1)
 			httpx.WriteError(w, http.StatusBadGateway, errTypeAPI, "upstream API error")

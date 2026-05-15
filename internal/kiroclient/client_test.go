@@ -29,14 +29,21 @@ func newTCP4TestServer(t *testing.T, handler http.Handler) *httptest.Server {
 
 func TestHTTPClient_Success(t *testing.T) {
 	srv := newTCP4TestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Amz-Target") != amzTargetCodeWhisperer {
-			t.Errorf("X-Amz-Target = %q", r.Header.Get("X-Amz-Target"))
+		// Native shape: no X-Amz-Target on primary endpoint, application/json content-type.
+		if got := r.Header.Get("X-Amz-Target"); got != "" {
+			t.Errorf("X-Amz-Target should be omitted on native primary; got %q", got)
 		}
 		if !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
 			t.Error("missing Bearer token")
 		}
-		if r.Header.Get("Content-Type") != "application/x-amz-json-1.0" {
-			t.Errorf("Content-Type = %q", r.Header.Get("Content-Type"))
+		if got := r.Header.Get("Content-Type"); got != "application/json" {
+			t.Errorf("Content-Type = %q, want application/json", got)
+		}
+		if got := r.Header.Get("x-amzn-kiro-agent-mode"); got != "vibe" {
+			t.Errorf("x-amzn-kiro-agent-mode = %q, want vibe", got)
+		}
+		if got := r.Header.Get("x-amzn-codewhisperer-optout"); got != "true" {
+			t.Errorf("x-amzn-codewhisperer-optout = %q, want true", got)
 		}
 		w.Header().Set("Content-Type", "application/vnd.amazon.eventstream")
 		w.WriteHeader(http.StatusOK)
@@ -55,7 +62,7 @@ func TestHTTPClient_Success(t *testing.T) {
 		},
 		ProfileARN: "arn:aws:codewhisperer:us-east-1:123:profile/test",
 	}
-	resp, err := c.GenerateAssistantResponse(context.Background(), "test-token", payload, "us-east-1")
+	resp, err := c.GenerateAssistantResponse(context.Background(), "test-token", payload, "us-east-1", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,10 +76,50 @@ func TestHTTPClient_Success(t *testing.T) {
 	}
 }
 
+// TestHTTPClient_LegacyHeaders verifies that KIROXY_NATIVE_HEADERS=0 falls
+// back to the historical CodeWhisperer-runtime header shape: X-Amz-Target
+// set, Content-Type application/x-amz-json-1.0, codewhisperer-optout=false,
+// no kiro-agent-mode header. This guards the rollback path so an upstream
+// regression doesn't strand operators on a broken native shape.
+func TestHTTPClient_LegacyHeaders(t *testing.T) {
+	t.Setenv("KIROXY_NATIVE_HEADERS", "0")
+
+	srv := newTCP4TestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("X-Amz-Target"); got != amzTargetCodeWhisperer {
+			t.Errorf("legacy X-Amz-Target = %q, want %q", got, amzTargetCodeWhisperer)
+		}
+		if got := r.Header.Get("Content-Type"); got != "application/x-amz-json-1.0" {
+			t.Errorf("legacy Content-Type = %q", got)
+		}
+		if got := r.Header.Get("x-amzn-kiro-agent-mode"); got != "" {
+			t.Errorf("legacy must NOT set kiro-agent-mode; got %q", got)
+		}
+		w.Header().Set("Content-Type", "application/vnd.amazon.eventstream")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	c := NewHTTPClient(WithBaseURL(srv.URL))
+	payload := &kiroproto.Payload{
+		ConversationState: kiroproto.ConversationState{
+			ChatTriggerType: "MANUAL", AgentTaskType: "vibe",
+			CurrentMessage: kiroproto.CurrentMessage{UserInputMessage: kiroproto.UserInputMessage{Content: "Hi"}},
+		},
+		ProfileARN: "arn:aws:codewhisperer:us-east-1:123:profile/test",
+	}
+	resp, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+}
+
 func TestHTTPClient_CorrectHeaders(t *testing.T) {
 	srv := newTCP4TestServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("X-Amz-Target") != "AmazonQDeveloperStreamingService.SendMessage" {
-			t.Errorf("wrong X-Amz-Target: %q (expected AmazonQ target because payload has no profileArn)", r.Header.Get("X-Amz-Target"))
+		// Native primary path: X-Amz-Target should NOT be set even when payload has no ProfileARN
+		// (the AmazonQ-fallback target is only relevant under KIROXY_NATIVE_HEADERS=0).
+		if got := r.Header.Get("X-Amz-Target"); got != "" {
+			t.Errorf("X-Amz-Target should be omitted on native; got %q", got)
 		}
 		if r.Header.Get("Accept") != "*/*" {
 			t.Errorf("wrong Accept: %q", r.Header.Get("Accept"))
@@ -84,7 +131,7 @@ func TestHTTPClient_CorrectHeaders(t *testing.T) {
 
 	c := NewHTTPClient(WithBaseURL(srv.URL))
 	payload := &kiroproto.Payload{ConversationState: kiroproto.ConversationState{AgentTaskType: "vibe", ChatTriggerType: "MANUAL", CurrentMessage: kiroproto.CurrentMessage{UserInputMessage: kiroproto.UserInputMessage{Content: "Hi"}}}}
-	resp, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1")
+	resp, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +156,7 @@ func TestHTTPClient_PayloadSerialization(t *testing.T) {
 		},
 		ProfileARN: "arn:test",
 	}
-	resp, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1")
+	resp, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +196,7 @@ func TestHTTPClient_Retry403_WithRefresh(t *testing.T) {
 		}),
 	)
 	payload := &kiroproto.Payload{ConversationState: kiroproto.ConversationState{AgentTaskType: "vibe", ChatTriggerType: "MANUAL", CurrentMessage: kiroproto.CurrentMessage{UserInputMessage: kiroproto.UserInputMessage{Content: "Hi"}}}}
-	resp, err := c.GenerateAssistantResponse(context.Background(), "old-token", payload, "us-east-1")
+	resp, err := c.GenerateAssistantResponse(context.Background(), "old-token", payload, "us-east-1", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +224,7 @@ func TestHTTPClient_Retry429(t *testing.T) {
 	c := NewHTTPClient(WithBaseURL(srv.URL))
 	c.httpClient.Timeout = 30 * time.Second
 	payload := &kiroproto.Payload{ConversationState: kiroproto.ConversationState{AgentTaskType: "vibe", ChatTriggerType: "MANUAL", CurrentMessage: kiroproto.CurrentMessage{UserInputMessage: kiroproto.UserInputMessage{Content: "Hi"}}}}
-	resp, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1")
+	resp, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +243,7 @@ func TestHTTPClient_403_NoRefresher(t *testing.T) {
 
 	c := NewHTTPClient(WithBaseURL(srv.URL))
 	payload := &kiroproto.Payload{ConversationState: kiroproto.ConversationState{AgentTaskType: "vibe", ChatTriggerType: "MANUAL", CurrentMessage: kiroproto.CurrentMessage{UserInputMessage: kiroproto.UserInputMessage{Content: "Hi"}}}}
-	_, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1")
+	_, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1", "")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -216,7 +263,7 @@ func TestHTTPClient_400_NoRetry(t *testing.T) {
 
 	c := NewHTTPClient(WithBaseURL(srv.URL))
 	payload := &kiroproto.Payload{ConversationState: kiroproto.ConversationState{AgentTaskType: "vibe", ChatTriggerType: "MANUAL", CurrentMessage: kiroproto.CurrentMessage{UserInputMessage: kiroproto.UserInputMessage{Content: "Hi"}}}}
-	_, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1")
+	_, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1", "")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -227,16 +274,21 @@ func TestHTTPClient_400_NoRetry(t *testing.T) {
 
 func TestHTTPClient_EndpointURL(t *testing.T) {
 	tests := []struct {
-		name    string
-		baseURL string
-		region  string
-		want    string
+		name           string
+		baseURL        string
+		region         string
+		nativeOverride string
+		want           string
 	}{
-		{"region-based", "", "us-west-2", "https://runtime.us-west-2.kiro.dev/"},
-		{"override", "http://localhost:8080", "us-west-2", "http://localhost:8080"},
+		{"native-default", "", "us-west-2", "", "https://q.us-west-2.amazonaws.com/generateAssistantResponse"},
+		{"legacy-rollback", "", "us-west-2", "0", "https://runtime.us-west-2.kiro.dev/"},
+		{"override", "http://localhost:8080", "us-west-2", "", "http://localhost:8080"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.nativeOverride != "" {
+				t.Setenv("KIROXY_NATIVE_HEADERS", tt.nativeOverride)
+			}
 			var opts []HTTPClientOption
 			if tt.baseURL != "" {
 				opts = append(opts, WithBaseURL(tt.baseURL))
@@ -301,7 +353,7 @@ func TestHTTPClient_ContextTimeout(t *testing.T) {
 	defer cancel()
 
 	payload := &kiroproto.Payload{ConversationState: kiroproto.ConversationState{AgentTaskType: "vibe", ChatTriggerType: "MANUAL", CurrentMessage: kiroproto.CurrentMessage{UserInputMessage: kiroproto.UserInputMessage{Content: "Hi"}}}}
-	_, err := c.GenerateAssistantResponse(ctx, "tok", payload, "us-east-1")
+	_, err := c.GenerateAssistantResponse(ctx, "tok", payload, "us-east-1", "")
 	if err == nil {
 		t.Fatal("expected error from context timeout")
 	}
@@ -322,7 +374,7 @@ func TestHTTPClient_NonEventStreamContentType(t *testing.T) {
 
 	c := NewHTTPClient(WithBaseURL(srv.URL))
 	payload := &kiroproto.Payload{ConversationState: kiroproto.ConversationState{AgentTaskType: "vibe", ChatTriggerType: "MANUAL", CurrentMessage: kiroproto.CurrentMessage{UserInputMessage: kiroproto.UserInputMessage{Content: "Hi"}}}}
-	_, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1")
+	_, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1", "")
 	if err == nil {
 		t.Fatal("expected error for non-eventstream Content-Type")
 	}
@@ -366,7 +418,7 @@ func TestHTTPClient_NonEventStreamThrottlingRetries(t *testing.T) {
 
 	c := NewHTTPClient(WithBaseURL(srv.URL))
 	payload := &kiroproto.Payload{ConversationState: kiroproto.ConversationState{AgentTaskType: "vibe", ChatTriggerType: "MANUAL", CurrentMessage: kiroproto.CurrentMessage{UserInputMessage: kiroproto.UserInputMessage{Content: "Hi"}}}}
-	resp, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1")
+	resp, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1", "")
 	if err != nil {
 		t.Fatalf("unexpected error after retry: %v", err)
 	}
@@ -454,7 +506,7 @@ func TestUpstreamError_429(t *testing.T) {
 
 	c := NewHTTPClient(WithBaseURL(srv.URL))
 	payload := &kiroproto.Payload{ConversationState: kiroproto.ConversationState{AgentTaskType: "vibe", ChatTriggerType: "MANUAL", CurrentMessage: kiroproto.CurrentMessage{UserInputMessage: kiroproto.UserInputMessage{Content: "Hi"}}}}
-	_, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1")
+	_, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1", "")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -481,7 +533,7 @@ func TestUpstreamError_400(t *testing.T) {
 
 	c := NewHTTPClient(WithBaseURL(srv.URL))
 	payload := &kiroproto.Payload{ConversationState: kiroproto.ConversationState{AgentTaskType: "vibe", ChatTriggerType: "MANUAL", CurrentMessage: kiroproto.CurrentMessage{UserInputMessage: kiroproto.UserInputMessage{Content: "Hi"}}}}
-	_, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1")
+	_, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1", "")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -511,7 +563,7 @@ func TestUpstreamError_XAmznErrorTypeHeader(t *testing.T) {
 
 	c := NewHTTPClient(WithBaseURL(srv.URL))
 	payload := &kiroproto.Payload{ConversationState: kiroproto.ConversationState{AgentTaskType: "vibe", ChatTriggerType: "MANUAL", CurrentMessage: kiroproto.CurrentMessage{UserInputMessage: kiroproto.UserInputMessage{Content: "Hi"}}}}
-	_, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1")
+	_, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1", "")
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -545,7 +597,7 @@ func TestHTTPClient_BodyReadIdleTimeout(t *testing.T) {
 		WithBodyReadIdleTimeout(50*time.Millisecond),
 	)
 	payload := &kiroproto.Payload{ConversationState: kiroproto.ConversationState{AgentTaskType: "vibe", ChatTriggerType: "MANUAL", CurrentMessage: kiroproto.CurrentMessage{UserInputMessage: kiroproto.UserInputMessage{Content: "Hi"}}}}
-	resp, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1")
+	resp, err := c.GenerateAssistantResponse(context.Background(), "tok", payload, "us-east-1", "")
 	if err != nil {
 		t.Fatalf("GenerateAssistantResponse should succeed (200), got error: %v", err)
 	}

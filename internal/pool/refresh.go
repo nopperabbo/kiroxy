@@ -113,6 +113,7 @@ type accountMetadata struct {
 	ClientID     string `json:"client_id"`     // Phase 6.3 scaffold — IdC OAuth device-registration clientId
 	ClientSecret string `json:"client_secret"` // Phase 6.3 scaffold — IdC OAuth device-registration clientSecret
 	SSORegion    string `json:"region"`        // Phase 6.3 scaffold — OIDC endpoint region (Builder ID flow's sess.Region)
+	MachineID    string `json:"machine_id"`    // Native-shape: per-account install fingerprint appended to UA. Lazy-generated on first GetToken if empty.
 }
 
 // parseAccountMetadata is tolerant of missing/malformed JSON — callers

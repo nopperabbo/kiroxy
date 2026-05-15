@@ -31,7 +31,7 @@ type trackingKiroClient struct {
 	failCount  atomic.Int32
 }
 
-func (c *trackingKiroClient) GenerateAssistantResponse(ctx context.Context, token string, _ *kiroproto.Payload, _ string) (*kiroclient.Response, error) {
+func (c *trackingKiroClient) GenerateAssistantResponse(ctx context.Context, token string, _ *kiroproto.Payload, _ string, _ string) (*kiroclient.Response, error) {
 	c.mu.Lock()
 	c.tokensSeen = append(c.tokensSeen, token)
 	c.mu.Unlock()

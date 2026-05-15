@@ -14,7 +14,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -53,7 +52,7 @@ const (
 
 // Client is the interface for calling the Kiro API.
 type Client interface {
-	GenerateAssistantResponse(ctx context.Context, token string, payload *kiroproto.Payload, region string) (*Response, error)
+	GenerateAssistantResponse(ctx context.Context, token string, payload *kiroproto.Payload, region string, machineID string) (*Response, error)
 }
 
 // Response wraps the HTTP response from the Kiro API.
@@ -176,26 +175,36 @@ func (c *HTTPClient) recordError(ctx context.Context, err error) {
 	}
 }
 
-// endpointURL returns the Kiro API URL for a region.
+// endpointURL returns the Kiro API URL for a region. Returns the native
+// shape (q.<region>.amazonaws.com/generateAssistantResponse) by default
+// and the legacy shape (runtime.<region>.kiro.dev/) when
+// KIROXY_NATIVE_HEADERS=0. Native is the path genuine Kiro IDE talks to;
+// legacy is preserved for debugging or upstream-rollback scenarios.
 //
-// AWS deprecates legacy `q.<region>.amazonaws.com` on 2026-05-15 in favour
-// of `runtime.<region>.kiro.dev`. Defaults to new endpoint; legacy is
-// available via KIROXY_USE_LEGACY_ENDPOINT=1 until 2026-08-15.
-//
-// Reference: jwadow/kiro-gateway#146 (deadline), PR #155 (migration).
+// The earlier comment in this position claimed jwadow/kiro-gateway#146
+// would deprecate q.<region>.amazonaws.com on 2026-05-15 and migrate to
+// runtime.<region>.kiro.dev. Live curl probes against q.us-east-1 on
+// 2026-05-15 returned HTTP 200 + real eventstream — the deprecation has
+// not happened. kiroxy now treats q.<region> as the primary path. If
+// upstream genuinely cuts over later, KIROXY_NATIVE_HEADERS=0 falls back.
 func (c *HTTPClient) endpointURL(region string) string {
 	if c.baseURL != "" {
 		return c.baseURL
 	}
-	if os.Getenv("KIROXY_USE_LEGACY_ENDPOINT") == "1" {
-		return fmt.Sprintf("https://q.%s.amazonaws.com/", region)
+	if !nativeHeadersEnabled() {
+		return legacyEndpointURL(region)
 	}
-	return fmt.Sprintf("https://runtime.%s.kiro.dev/", region)
+	return nativeEndpointURL(region)
 }
 
 // GenerateAssistantResponse sends a request to the Kiro API with retry logic.
-func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string, payload *kiroproto.Payload, region string) (*Response, error) {
+// machineID is appended to the User-Agent suffix when native headers are
+// enabled (default). Pass empty string when the caller has no per-account
+// machine_id available; the UA will degrade to the bare KiroIDE-<ver> form.
+func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string, payload *kiroproto.Payload, region string, machineID string) (*Response, error) {
 	endpoint := c.endpointURL(region)
+	machineID = trimMachineID(machineID)
+	useNative := nativeHeadersEnabled()
 
 	if c.otel {
 		var span trace.Span
@@ -233,14 +242,11 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 		}
 
 		req.Header.Set("Authorization", "Bearer "+currentToken)
-		req.Header.Set("Content-Type", "application/x-amz-json-1.0")
-		req.Header.Set("Accept", "*/*")
-		req.Header.Set("X-Amz-Target", chooseAmzTarget(payload))
-		req.Header.Set("User-Agent", userAgentValue)
-		req.Header.Set("x-amz-user-agent", amzUserAgentValue)
-		req.Header.Set("x-amzn-codewhisperer-optout", "false")
-		req.Header.Set("amz-sdk-invocation-id", invocationID)
-		req.Header.Set("amz-sdk-request", fmt.Sprintf("attempt=%d; max=%d", attempt+1, maxRetries+1))
+		if useNative {
+			applyNativeHeaders(req, currentToken, machineID, invocationID, attempt, maxRetries)
+		} else {
+			applyLegacyHeaders(req, currentToken, invocationID, attempt, maxRetries, payload)
+		}
 
 		slog.DebugContext(ctx, "kiro request headers",
 			"trace_id", traceID,
@@ -280,7 +286,27 @@ func (c *HTTPClient) GenerateAssistantResponse(ctx context.Context, token string
 			// non-framed body and eventually errors with a confusing
 			// "reading prelude" message, masking the real upstream error.
 			if ct := resp.Header.Get("Content-Type"); !isEventStreamContentType(ct) {
-				errBody := readLimitedBody(resp.Body, upstreamBodyLimit)
+				// Peek at the first few bytes before consuming the body.
+				// Kiro occasionally returns a binary EventStream frame with
+				// Content-Type: application/json (native non-streaming path).
+				// In that case we must NOT read the body as JSON — instead
+				// rebuild the reader and pass it to the eventstream handler.
+				peek := make([]byte, 4)
+				n, _ := io.ReadFull(resp.Body, peek)
+				rebuilt := io.NopCloser(io.MultiReader(bytes.NewReader(peek[:n]), resp.Body))
+				if looksLikeEventStreamBody(string(peek[:n])) {
+					slog.WarnContext(ctx, "kiro: Content-Type mismatch, body looks like EventStream — passing through",
+						"trace_id", short, "account_id", logging.AccountIDFromContext(ctx),
+						"content_type", ct)
+					body := io.ReadCloser(&idleReader{rc: rebuilt, idle: c.bodyReadIdleTimeout()})
+					return &Response{
+						StatusCode:   resp.StatusCode,
+						Body:         body,
+						Header:       resp.Header,
+						PromptTokens: promptTokens,
+					}, nil
+				}
+				errBody := readLimitedBody(rebuilt, upstreamBodyLimit)
 				exType, reason := resolveAWSExceptionFields(errBody, resp.Header)
 				// Retry transient AWS exceptions (throttling / internal / 5xx-equivalent)
 				// even though the HTTP status is 200.
