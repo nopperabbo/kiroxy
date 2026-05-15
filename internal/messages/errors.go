@@ -13,6 +13,7 @@ import (
 
 	"local/kiroxy/internal/httpx"
 	"local/kiroxy/internal/kiroclient"
+	"local/kiroxy/internal/logging"
 )
 
 // Re-exports of httpx error type constants so in-package callers stay concise.
@@ -55,7 +56,7 @@ func handleUpstreamError(w http.ResponseWriter, isException bool, invalidReason 
 // proxy bug. This avoids polluting ERROR streams with mundane upstream
 // 400s like UnknownOperationException that are entirely upstream-side.
 func logUpstreamError(ctx context.Context, short string, err error, extra ...any) {
-	attrs := []any{"trace_id", short, "err", err}
+	attrs := []any{"trace_id", short, "account_id", logging.AccountIDFromContext(ctx), "err", err}
 	attrs = append(attrs, extra...)
 	level := slog.LevelError
 	var ue *kiroclient.UpstreamError

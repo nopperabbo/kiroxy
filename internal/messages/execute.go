@@ -348,7 +348,7 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 		apiResp, err = s.client.GenerateAssistantResponse(callCtx, newCreds.AccessToken, inv.payload, newCreds.Region)
 	}
 	if err != nil {
-		logUpstreamError(ctx, short, err)
+		logUpstreamError(callCtx, short, err)
 		// If the terminal error is structural (UnknownOpException, AccessDenied,
 		// non-PROMPT_TOO_LONG ValidationException), quarantine the account so
 		// the broken-shape signal stops pulling traffic. Distinct from
