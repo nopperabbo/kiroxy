@@ -95,12 +95,24 @@ func (c *RefreshConfig) effectiveBaseBackoff() time.Duration {
 
 // accountMetadata is the subset of vault.Bundle.Metadata fields the refresher
 // cares about. Every field is optional; missing fields result in zero-values.
+//
+// IdC fields (ClientID, ClientSecret, SSORegion) are scaffolded for the future
+// IdC refresh path. They are written by cmd/kiroxy/accounts.go.addAccountViaOAuth
+// (Phase 6.2) but not yet consumed by any refresh code (Phase 6.3 deferred per
+// Karpathy-min: vault has 0 IdC accounts today). Parser-side support landing
+// now means a later "extract auth.RefreshOIDC + plumb into pool" change touches
+// only the call sites, not the schema. Without these tags, the JSON values are
+// silently dropped on parse, so a future implementor would have to extend
+// schema + onboarding + parser + refresh fn in the same commit — fragile.
 type accountMetadata struct {
-	AuthMethod string `json:"auth_method"`
-	ProfileArn string `json:"profile_arn"`
-	ExpiresAt  int64  `json:"expires_at"` // absolute unix seconds
-	ExpiresIn  int64  `json:"expires_in"` // fallback — used with added_at
-	AddedAt    string `json:"added_at"`
+	AuthMethod   string `json:"auth_method"`
+	ProfileArn   string `json:"profile_arn"`
+	ExpiresAt    int64  `json:"expires_at"` // absolute unix seconds
+	ExpiresIn    int64  `json:"expires_in"` // fallback — used with added_at
+	AddedAt      string `json:"added_at"`
+	ClientID     string `json:"client_id"`     // Phase 6.3 scaffold — IdC OAuth device-registration clientId
+	ClientSecret string `json:"client_secret"` // Phase 6.3 scaffold — IdC OAuth device-registration clientSecret
+	SSORegion    string `json:"region"`        // Phase 6.3 scaffold — OIDC endpoint region (Builder ID flow's sess.Region)
 }
 
 // parseAccountMetadata is tolerant of missing/malformed JSON — callers

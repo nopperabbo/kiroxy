@@ -54,3 +54,41 @@ func TestParseAccountMetadata_Tolerant(t *testing.T) {
 		})
 	}
 }
+
+// TestParseAccountMetadata_IdCFields locks in the Phase 6.3 scaffold: the
+// parser MUST extract client_id, client_secret, and region from a Builder ID
+// OAuth bundle's metadata JSON (matching what cmd/kiroxy/accounts.go writes
+// at addAccountViaOAuth). Existing social bundles must produce zero-valued
+// IdC fields — guards against regression where a parser tweak silently
+// breaks the future RefreshOIDC plumbing path.
+func TestParseAccountMetadata_IdCFields(t *testing.T) {
+	// Real shape produced by addAccountViaOAuth (cmd/kiroxy/accounts.go:123).
+	idcRaw := `{"client_id":"abc-client","client_secret":"shh-secret","region":"us-west-2","source":"builder-id-oauth","auth_method":"idc"}`
+	md := parseAccountMetadata(idcRaw)
+	if md.AuthMethod != "idc" {
+		t.Errorf("AuthMethod = %q, want %q", md.AuthMethod, "idc")
+	}
+	if md.ClientID != "abc-client" {
+		t.Errorf("ClientID = %q, want %q", md.ClientID, "abc-client")
+	}
+	if md.ClientSecret != "shh-secret" {
+		t.Errorf("ClientSecret = %q, want %q", md.ClientSecret, "shh-secret")
+	}
+	if md.SSORegion != "us-west-2" {
+		t.Errorf("SSORegion = %q, want %q", md.SSORegion, "us-west-2")
+	}
+
+	// Social bundles must NOT carry IdC fields — they're optional, omitted by
+	// social onboarding, and parsing must produce zero-values. If this ever
+	// regresses, RefreshOIDC plumbing would route social accounts through the
+	// IdC code path and explode.
+	socialRaw := `{"auth_method":"social","profile_arn":"arn:aws:codewhisperer:foo","expires_at":99999}`
+	smd := parseAccountMetadata(socialRaw)
+	if smd.AuthMethod != "social" {
+		t.Errorf("social AuthMethod = %q, want %q", smd.AuthMethod, "social")
+	}
+	if smd.ClientID != "" || smd.ClientSecret != "" || smd.SSORegion != "" {
+		t.Errorf("social bundle leaked IdC fields: ClientID=%q ClientSecret=%q SSORegion=%q",
+			smd.ClientID, smd.ClientSecret, smd.SSORegion)
+	}
+}
