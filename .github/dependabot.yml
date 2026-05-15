@@ -50,6 +50,26 @@ updates:
           - "minor"
           - "patch"
 
+  # NPM — Dashboard Next (experimental)
+  - package-ecosystem: "npm"
+    directory: "/internal/server/next/client"
+    schedule:
+      interval: "monthly"
+      day: "monday"
+    open-pull-requests-limit: 2
+    labels:
+      - "dependencies"
+      - "frontend"
+      - "experimental"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      next-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
   # NPM — Landing page
   - package-ecosystem: "npm"
     directory: "/web/landing"
