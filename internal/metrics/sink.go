@@ -74,6 +74,14 @@ const (
 	CooldownReasonUnauthorized CooldownReason = "unauthorized"
 	// CooldownReasonManual: operator-initiated disable via dashboard / CLI.
 	CooldownReasonManual CooldownReason = "manual"
+	// CooldownReasonStructural: upstream returned a structural API error
+	// (e.g. UnknownOperationException, ValidationException) indicating the
+	// request shape or account credentials are incompatible with the
+	// upstream contract. These errors do NOT recover via retry/rotate —
+	// the account needs operator attention (re-onboard, fix metadata, or
+	// remove from pool). 24h cooldown lets the operator see the dashboard
+	// signal without the account being silently broken forever.
+	CooldownReasonStructural CooldownReason = "structural"
 )
 
 // ObserveRequest records one completed /v1/messages invocation.

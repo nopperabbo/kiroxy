@@ -28,6 +28,17 @@ type FailureRecorder interface {
 	RecordFailure(accountID string, quota bool, reason string)
 }
 
+// StructuralRecorder is an optional interface for marking an account as
+// broken at the API contract level. Distinct from FailureRecorder: a
+// structural error signals the account's request shape is fundamentally
+// incompatible with the upstream (UnknownOperationException, AccessDenied,
+// migrated/deprecated account, missing metadata) and will NOT recover via
+// retry or rotation. Implementations should apply the maximum cooldown so
+// the account stops pulling traffic until an operator inspects it.
+type StructuralRecorder interface {
+	RecordStructuralError(accountID string, reason string)
+}
+
 // Service owns message execution and token counting flows.
 type Service struct {
 	auth           TokenGetter

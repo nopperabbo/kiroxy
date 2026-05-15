@@ -518,6 +518,52 @@ func (p *Pool) RecordUnauthorized(id string, reason string) {
 	}
 }
 
+// RecordStructuralError marks an account as broken at the API contract level
+// (UnknownOperationException, ValidationException, etc.). Unlike transient
+// errors which recover via retry/rotate, structural errors signal the
+// account's request shape is fundamentally incompatible with the upstream
+// — typically because metadata is missing/wrong (e.g. Builder ID account
+// with auth_method NULL routing to wrong AmazonQ target) or the account
+// has been migrated/deprecated server-side.
+//
+// Applies the maximum cooldown immediately so the bad account stops
+// pulling traffic. Does NOT delete the account — operator must inspect
+// the dashboard, fix or remove. Tagged metric so structural errors are
+// distinguishable from quota/transient on the alerting side.
+func (p *Pool) RecordStructuralError(id string, reason string) {
+	p.mu.Lock()
+	a := p.accounts[id]
+	if a == nil {
+		p.mu.Unlock()
+		return
+	}
+	a.ErrorCount++
+	h := p.health[id]
+	if h == nil {
+		h = &HealthState{}
+		p.health[id] = h
+	}
+	prev := h.CooldownUntil
+	now := time.Now()
+	wasInactive := prev.IsZero() || !prev.After(now)
+	h.Consecutive++
+	h.LastError = reason
+	h.CooldownUntil = now.Add(p.policy.MaxCooldown)
+	slog.Warn("pool: account structural error — needs operator attention",
+		slog.String("account_id", id),
+		slog.String("reason", reason),
+		slog.String("cooldown_until", h.CooldownUntil.Format(time.RFC3339)))
+	sink := p.metricsSink
+	stick := p.stickiness
+	p.mu.Unlock()
+	if wasInactive {
+		sink.Cooldown(metrics.CooldownReasonStructural)
+	}
+	if stick != nil {
+		stick.Release(id)
+	}
+}
+
 // RecordLatency blends one latency sample into the per-account EWMA
 // without altering success/failure state. Useful for tracking
 // first-byte / time-to-first-event before the final outcome is
@@ -603,6 +649,20 @@ func (tg *TokenGetter) RecordFailure(accountID string, quota bool, reason string
 		kind = FailureQuota
 	}
 	tg.Pool.RecordFailure(accountID, kind, reason)
+}
+
+// RecordStructuralError forwards a structural-error signal to the pool. A
+// structural error is an upstream rejection that does NOT recover via
+// retry/rotate (UnknownOperationException, AccessDeniedException, etc.) —
+// the account itself is incompatible with the upstream contract and needs
+// operator attention. Maps to messages.StructuralRecorder via duck typing.
+//
+// No-op when accountID is empty or the pool is unset (test/fake paths).
+func (tg *TokenGetter) RecordStructuralError(accountID string, reason string) {
+	if accountID == "" || tg.Pool == nil {
+		return
+	}
+	tg.Pool.RecordStructuralError(accountID, reason)
 }
 
 // GetToken implements messages.TokenGetter. It picks an account from the

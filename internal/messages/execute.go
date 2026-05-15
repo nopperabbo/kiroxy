@@ -243,6 +243,40 @@ func rotationFailureReason(ue *kiroclient.UpstreamError) string {
 	return "upstream_error"
 }
 
+// isStructuralError reports whether a terminal upstream error indicates the
+// account itself is broken at the API contract level. These will NOT recover
+// via retry or rotation — the account needs operator attention (re-onboard,
+// fix metadata, or remove from pool).
+//
+// Excluded by design:
+//   - PROMPT_TOO_LONG: caller-side data error (1M-token Bedrock limit). The
+//     account is healthy; the user just sent too much context.
+//   - INVALID_CONVERSATION_STATE / STALE_CONVERSATION / CONTENT_LENGTH_EXCEEDS_THRESHOLD:
+//     conversation-state errors handled separately by retryableInvalidStateReasons.
+//   - Throttling / 5xx / transport timeouts: transient, handled by RecordFailure.
+func isStructuralError(err error) (*kiroclient.UpstreamError, bool) {
+	var ue *kiroclient.UpstreamError
+	if !errors.As(err, &ue) {
+		return nil, false
+	}
+	switch ue.Exception {
+	case "UnknownOperationException",
+		"AccessDeniedException",
+		"ResourceNotFoundException",
+		"UnrecognizedClientException",
+		"InvalidSignatureException":
+		return ue, true
+	case "ValidationException":
+		// User-data errors masquerade as ValidationException; only flag the
+		// ones that signal account-shape incompatibility, not user input.
+		if ue.Reason == "PROMPT_TOO_LONG" {
+			return ue, false
+		}
+		return ue, true
+	}
+	return ue, false
+}
+
 // callAndHandle performs one upstream call for the invocation and streams or
 // buffers the response to w. Returns a non-empty reason if the request failed
 // with a retryable invalidStateEvent before any bytes were written to w.
@@ -315,6 +349,17 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 	}
 	if err != nil {
 		logUpstreamError(ctx, short, err)
+		// If the terminal error is structural (UnknownOpException, AccessDenied,
+		// non-PROMPT_TOO_LONG ValidationException), quarantine the account so
+		// the broken-shape signal stops pulling traffic. Distinct from
+		// RecordFailure which uses the consecutive-error ladder — structural
+		// errors apply max cooldown immediately. Skip when account ID is
+		// missing (test/fake paths) or the recorder isn't implemented.
+		if rec, ok := s.auth.(StructuralRecorder); ok && inv.creds != nil && inv.creds.AccountID != "" {
+			if ue, isStructural := isStructuralError(err); isStructural {
+				rec.RecordStructuralError(inv.creds.AccountID, rotationFailureReason(ue))
+			}
+		}
 		inv.metrics.errKind(metrics.RequestKindUpstream)
 		httpx.WriteError(w, http.StatusBadGateway, errTypeAPI, "upstream API error")
 		return ""
