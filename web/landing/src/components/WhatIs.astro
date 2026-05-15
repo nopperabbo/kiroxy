@@ -1,0 +1,239 @@
+---
+// "What is kiroxy" — pull-quote with a sidebar metric. Breaks the
+// rhythm of (eyebrow + heading + cards) that every other section
+// uses. Pure prose left, single hero number right.
+---
+<section id="what" aria-labelledby="what-title" class="alt">
+  <div class="container what-grid">
+    <div class="what-copy">
+      <span class="eyebrow">what it is</span>
+      <h2 id="what-title" class="big">A proxy, not a platform.</h2>
+      <p class="prose">
+        You have a Kiro subscription. You want Claude Code, Cursor,
+        Continue, opencode, or any Anthropic-compatible client to use it
+        without sending code through a third party.
+        <span class="ink">kiroxy stands that endpoint up in five minutes.</span>
+      </p>
+      <p class="prose">
+        It speaks the Anthropic Messages API and the OpenAI Chat
+        Completions API on the inbound side, and routes to your own Kiro
+        accounts on the outbound side. One Go binary. One config file.
+        That's the product.
+      </p>
+    </div>
+
+    <aside class="what-stat" aria-label="ratio of kiroxy to platform-sized alternatives">
+      <div class="stat-group">
+        <span class="stat-eyebrow">scope</span>
+        <span class="stat-number">
+          <span class="stat-num">22</span><span class="stat-unit">MiB</span>
+        </span>
+        <span class="stat-vs">vs</span>
+        <span class="stat-compare">~250 MiB · LiteLLM stack</span>
+        <span class="stat-compare">~700 MiB · Portkey stack</span>
+      </div>
+
+      <div class="stat-group">
+        <span class="stat-eyebrow">deps</span>
+        <span class="stat-number">
+          <span class="stat-num">13</span><span class="stat-unit">direct deps</span>
+        </span>
+        <span class="stat-vs">vs</span>
+        <span class="stat-compare">~80 · LiteLLM (pip)</span>
+        <span class="stat-compare">~250 · Portkey (npm)</span>
+      </div>
+
+      <dl class="stat-grid">
+        <div><dt>binary</dt><dd>one</dd></div>
+        <div><dt>config</dt><dd>one</dd></div>
+        <div><dt>deps</dt><dd>vendored</dd></div>
+        <div><dt>egress</dt><dd>0 bytes</dd></div>
+      </dl>
+
+      <p class="stat-note">
+        kiroxy ships as one binary because it does one thing.
+        That's a feature, not a marketing line.
+      </p>
+    </aside>
+  </div>
+</section>
+
+<style>
+  .what-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: clamp(28px, 5vw, 80px);
+    align-items: start;
+  }
+  @media (max-width: 880px) {
+    .what-grid { grid-template-columns: 1fr; gap: var(--sp-7); }
+  }
+
+  .eyebrow { margin-bottom: var(--sp-4); }
+
+  .big {
+    font-size: clamp(1.875rem, 4vw, 2.75rem);
+    font-weight: var(--fw-medium);
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+    margin-bottom: var(--sp-6);
+    color: var(--c-text);
+    max-width: 22ch;
+  }
+
+  .prose {
+    font-family: var(--font-text);
+    font-size: clamp(1rem, 1.5vw, 1.125rem);
+    color: var(--c-text-dim);
+    line-height: var(--lh-relaxed);
+    max-width: 56ch;
+  }
+  .prose + .prose { margin-top: var(--sp-5); }
+  .ink { color: var(--c-text); font-weight: var(--fw-medium); }
+
+  /* ── Stat sidebar ────────────────────────────────────────────────── */
+  .what-stat {
+    border-left: 1px solid var(--c-rule);
+    padding-left: var(--sp-7);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-6);
+    align-self: stretch;
+    padding-top: var(--sp-3);
+  }
+  @media (max-width: 880px) {
+    .what-stat {
+      border-left: 0;
+      border-top: 1px solid var(--c-rule);
+      padding-left: 0;
+      padding-top: var(--sp-7);
+    }
+  }
+  .stat-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+  .stat-group:nth-child(2) .stat-num {
+    color: var(--c-text);
+  }
+  .stat-eyebrow {
+    font-family: var(--font-display);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    text-transform: uppercase;
+    letter-spacing: var(--tr-caps);
+    font-weight: var(--fw-medium);
+  }
+  .stat-number {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--sp-3);
+  }
+  .stat-num {
+    font-family: var(--font-display);
+    font-size: clamp(3.25rem, 8vw, 5rem);
+    font-weight: var(--fw-semibold);
+    color: var(--c-accent);
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-unit {
+    font-family: var(--font-mono);
+    font-size: var(--fs-md);
+    color: var(--c-text-dim);
+    letter-spacing: 0.02em;
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .stat-vs {
+    font-family: var(--font-display);
+    font-size: var(--fs-xs);
+    color: var(--c-text-ghost);
+    text-transform: uppercase;
+    letter-spacing: var(--tr-caps);
+    margin-top: var(--sp-3);
+  }
+  .stat-compare {
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+    letter-spacing: 0.01em;
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .stat-note {
+    margin-top: var(--sp-5);
+    font-family: var(--font-text);
+    font-size: var(--fs-sm);
+    color: var(--c-text-dim);
+    line-height: var(--lh-relaxed);
+    font-style: italic;
+    max-width: 36ch;
+  }
+
+  /* ── Stat grid — diff-set from feature #6 bars ─────────────────── */
+  .stat-grid {
+    margin: var(--sp-5) 0 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-4);
+    padding-top: var(--sp-5);
+    border-top: 1px solid var(--c-rule);
+  }
+  .stat-grid > div {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+    min-width: 0;
+  }
+  .stat-grid dt {
+    font-family: var(--font-display);
+    font-size: 10px;
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-caps);
+    text-transform: uppercase;
+    font-weight: var(--fw-medium);
+  }
+  .stat-grid dd {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--fs-md);
+    color: var(--c-text);
+    font-feature-settings: "liga" 0, "calt" 0, "tnum";
+  }
+
+  /* ── Comparison bars (legacy — unused after bars removed) ───────── */
+  .stat-bars {
+    margin-top: var(--sp-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+  .bar-row {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) 36px;
+    align-items: center;
+    gap: var(--sp-3);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    letter-spacing: 0.01em;
+    font-feature-settings: "liga" 0, "calt" 0, "tnum";
+    font-variant-numeric: tabular-nums;
+  }
+  .bar-track {
+    height: 6px;
+    background: color-mix(in oklch, var(--c-rule), transparent 40%);
+    border-radius: 1px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    display: block;
+    height: 100%;
+    background: var(--c-text-faint);
+    border-radius: 1px;
+  }
+  .bar-fill-amb { background: var(--c-accent); }
+  .bar-val { text-align: right; color: var(--c-text-dim); }
+</style>

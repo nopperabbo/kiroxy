@@ -1,0 +1,593 @@
+---
+// Features — not a list of boxes. Each feature is a micro-diagram that
+// demonstrates the feature using the same visual vocabulary as the hero
+// topology: hairline borders, Mansion pool dots, monospace endpoints,
+// amber reserved for hot-path continuation, zero decoration.
+//
+// The 9 cards are authored inline below (not data-driven) so the visuals
+// can be hand-tuned per feature instead of squeezed into a shared shape.
+---
+<section id="features" aria-labelledby="features-title">
+  <div class="container">
+    <span class="eyebrow">features</span>
+    <h2 id="features-title" class="section-heading">What lives in the binary.</h2>
+    <p class="section-lead">
+      No surprises. Read the source, audit the wire, run a benchmark — every
+      tile here is grounded in code shipped on main.
+    </p>
+
+    <ul class="grid" role="list">
+      <!-- 1. Multi-account pool -->
+      <li class="card">
+        <h3 class="card-title">Multi-account pool</h3>
+        <p class="card-body">LRU rotation across N accounts with per-account cooldowns and proactive refresh.</p>
+        <div class="viz viz-pool" aria-hidden="true">
+          <ul class="viz-dots" role="list">
+            <li data-s="ok"></li><li data-s="ok"></li><li data-s="ok"></li>
+            <li data-s="ok"></li><li data-s="ok"></li><li data-s="cool"></li>
+            <li data-s="idle"></li><li data-s="idle"></li>
+          </ul>
+          <div class="viz-weights">
+            <span style="--h: 82%"></span>
+            <span style="--h: 74%"></span>
+            <span style="--h: 68%"></span>
+            <span style="--h: 61%"></span>
+            <span style="--h: 55%"></span>
+            <span style="--h: 12%"></span>
+            <span style="--h: 8%"></span>
+            <span style="--h: 8%"></span>
+          </div>
+        </div>
+      </li>
+
+      <!-- 2. Anthropic compatible -->
+      <li class="card">
+        <h3 class="card-title">Anthropic compatible</h3>
+        <p class="card-body"><code>/v1/messages</code> with full streaming SSE and count_tokens. Drop-in for Claude Code.</p>
+        <pre class="viz viz-endpoints" aria-hidden="true"><span><span class="verb">POST</span> /v1/messages<span class="caret"></span></span>
+<span><span class="verb">POST</span> /v1/messages/count_tokens</span>
+<span><span class="verb verb-get">GET</span>  /v1/models</span></pre>
+      </li>
+
+      <!-- 3. OpenAI compatible -->
+      <li class="card">
+        <h3 class="card-title">OpenAI compatible</h3>
+        <p class="card-body"><code>/v1/chat/completions</code> translation shim. Cursor, Continue, Cline, aider — same key.</p>
+        <pre class="viz viz-endpoints" aria-hidden="true"><span><span class="verb">POST</span> /v1/chat/completions</span>
+<span><span class="verb verb-get">GET</span>  /v1/models</span>
+<span class="muted"><span class="verb">POST</span> <s>/v1/embeddings</s>      <em>not supported</em></span></pre>
+      </li>
+
+      <!-- 4. Prometheus + Grafana -->
+      <li class="card">
+        <h3 class="card-title">Prometheus + Grafana</h3>
+        <p class="card-body"><code>/metrics</code> endpoint, 12-panel starter dashboard JSON, request + error + latency histograms.</p>
+        <div class="viz viz-sparkline" aria-hidden="true">
+          <div class="viz-cap">req/min · last 1h</div>
+          <svg viewBox="0 0 160 44" preserveAspectRatio="none" width="100%" height="44">
+            <line x1="0" y1="8" x2="160" y2="8" class="grid-dash"/>
+            <line x1="0" y1="22" x2="160" y2="22" class="grid-dash"/>
+            <line x1="0" y1="36" x2="160" y2="36" class="grid-dash"/>
+            <path d="M0 32 L10 30 L20 28 L30 26 L40 23 L50 27 L60 20 L70 15 L80 17 L90 12 L100 9 L110 13 L120 8 L130 11 L140 6 L150 10 L160 5" class="line"/>
+          </svg>
+          <div class="viz-scale">
+            <span>0</span>
+            <span>50</span>
+            <span>100</span>
+          </div>
+        </div>
+      </li>
+
+      <!-- 5. Streaming SSE fidelity -->
+      <li class="card">
+        <h3 class="card-title">Streaming SSE fidelity</h3>
+        <p class="card-body"><code>message_start</code> → <code>content_block_delta</code> → <code>message_stop</code>, framed correctly across retries.</p>
+        <div class="viz viz-sse" aria-hidden="true">
+          <ul class="viz-sse-dots" role="list">
+            <li style="--d: 0s"></li>
+            <li style="--d: 0.12s"></li>
+            <li style="--d: 0.24s"></li>
+            <li style="--d: 0.36s"></li>
+            <li style="--d: 0.48s"></li>
+            <li style="--d: 0.6s"></li>
+          </ul>
+          <div class="viz-cap">event-stream · framed correctly</div>
+        </div>
+      </li>
+
+      <!-- 6. Single Go binary -->
+      <li class="card">
+        <h3 class="card-title">Single Go binary</h3>
+        <p class="card-body">22 MiB native build. Distroless Docker image at ~30 MiB, nonroot, read-only rootfs.</p>
+        <div class="viz viz-bars" aria-hidden="true">
+          <div class="bar-row">
+            <span class="bar-label">kiroxy</span>
+            <span class="bar bar-accent"><span style="width: 3.1%"></span></span>
+            <span class="bar-num">22 MiB</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">LiteLLM</span>
+            <span class="bar"><span style="width: 35%"></span></span>
+            <span class="bar-num">~250</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">Portkey</span>
+            <span class="bar"><span style="width: 100%"></span></span>
+            <span class="bar-num">~700</span>
+          </div>
+        </div>
+      </li>
+
+      <!-- 7. Onboarder sidecar -->
+      <li class="card">
+        <h3 class="card-title">Onboarder sidecar</h3>
+        <p class="card-body">Optional Python tool with Camoufox for batch account onboarding when device-code is closed.</p>
+        <div class="viz viz-flow" aria-hidden="true">
+          <div class="flow-step">
+            <span class="flow-name">probe</span>
+            <span class="flow-sub">challenge check</span>
+          </div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step">
+            <span class="flow-name">solve</span>
+            <span class="flow-sub">device-code · turnstile</span>
+          </div>
+          <span class="flow-arrow">→</span>
+          <div class="flow-step flow-hot">
+            <span class="flow-name">store</span>
+            <span class="flow-sub">pool · vault</span>
+          </div>
+        </div>
+        <div class="viz-cap viz-cap-flow">optional · python · camoufox</div>
+      </li>
+
+      <!-- 8. Open source MIT -->
+      <li class="card">
+        <h3 class="card-title">Open source, MIT</h3>
+        <p class="card-body">Donor projects credited in NOTICE. Every ported file carries an origin header.</p>
+        <div class="viz viz-mit" aria-hidden="true">
+          <div class="mit-row">
+            <svg viewBox="0 0 16 16" width="16" height="16" class="octo">
+              <path fill="currentColor" d="M8 .2a8 8 0 0 0-2.5 15.6c.4.07.55-.17.55-.38v-1.4c-2.2.48-2.7-1.05-2.7-1.05-.36-.92-.89-1.16-.89-1.16-.73-.5.06-.49.06-.49.8.06 1.22.83 1.22.83.72 1.23 1.88.88 2.34.67.07-.52.28-.88.51-1.08-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.83-2.15-.08-.2-.36-1.02.08-2.13 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.11.16 1.93.08 2.13.52.56.83 1.28.83 2.15 0 3.07-1.87 3.74-3.65 3.94.29.25.55.74.55 1.49v2.21c0 .21.15.46.55.38A8 8 0 0 0 8 .2"/>
+            </svg>
+            <span class="mit-pill">MIT</span>
+            <span class="mit-pill mit-pill-muted">no CLA</span>
+          </div>
+          <dl class="mit-stats">
+            <div><dt>LICENSE</dt><dd>21 lines</dd></div>
+            <div><dt>NOTICE</dt><dd>tracked</dd></div>
+            <div><dt>FORKS</dt><dd>welcome</dd></div>
+          </dl>
+        </div>
+      </li>
+
+      <!-- 9. Self-hosted only -->
+      <li class="card">
+        <h3 class="card-title">Self-hosted only</h3>
+        <p class="card-body">Loopback by default. No telemetry, no phone home. The vault stays on your disk.</p>
+        <div class="viz viz-local" aria-hidden="true">
+          <div class="local-row">
+            <svg viewBox="0 0 16 16" width="14" height="14" class="lock">
+              <path fill="none" stroke="currentColor" stroke-width="1.2" d="M4.5 7v-2a3.5 3.5 0 1 1 7 0v2"/>
+              <rect x="3" y="7" width="10" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/>
+              <circle cx="8" cy="11" r="1" fill="currentColor"/>
+            </svg>
+            <span class="local-chip">127.0.0.1:8787</span>
+          </div>
+          <dl class="local-stats">
+            <div><dt>OUTBOUND</dt><dd>0 B</dd></div>
+            <div><dt>TELEMETRY</dt><dd>none</dd></div>
+            <div><dt>VAULT</dt><dd>your disk</dd></div>
+          </dl>
+        </div>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<style>
+  .grid {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    background: var(--c-surface-sunken);
+  }
+  .card {
+    padding: var(--sp-6);
+    border-right: 1px solid var(--c-rule);
+    border-bottom: 1px solid var(--c-rule);
+    background: transparent;
+    transition: background var(--mo-fast) var(--ease-std);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .card:hover {
+    background: var(--c-surface-2);
+  }
+  .card-title {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    color: var(--c-text);
+    letter-spacing: -0.01em;
+    margin: 0 0 var(--sp-3) 0;
+    line-height: var(--lh-snug);
+  }
+  .card-title::before {
+    content: "▸";
+    color: var(--c-accent);
+    margin-right: var(--sp-3);
+    font-size: 0.85em;
+  }
+  .card-body {
+    font-family: var(--font-text);
+    font-size: var(--fs-sm);
+    color: var(--c-text-dim);
+    line-height: var(--lh-relaxed);
+    margin: 0 0 var(--sp-5) 0;
+    max-width: none;
+  }
+  .card-body code {
+    font-size: 0.92em;
+    color: var(--c-text);
+    background: color-mix(in oklch, var(--c-surface), transparent 20%);
+    padding: 1px 5px;
+    border-radius: var(--r-xs);
+    border: 1px solid var(--c-rule);
+  }
+
+  /* ── Viz base — bottom-aligned so the card footer sits at the same row
+        when cards in the same row have different body lengths. ─────── */
+  .viz {
+    margin-top: auto;
+    padding-top: var(--sp-2);
+  }
+  .viz-cap {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-wide);
+    text-transform: uppercase;
+    margin-top: var(--sp-3);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+
+  /* 1. Pool ────────────────────────────────────────────────────────── */
+  .viz-dots {
+    list-style: none;
+    display: flex;
+    gap: 6px;
+    padding: 0;
+    margin: 0 0 var(--sp-3) 0;
+  }
+  .viz-dots li {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--c-success);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--c-success), transparent 82%);
+  }
+  .viz-dots li[data-s="cool"] {
+    background: var(--c-warn);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--c-warn), transparent 82%);
+  }
+  .viz-dots li[data-s="idle"] {
+    background: transparent;
+    border: 1px solid var(--c-border);
+    box-shadow: none;
+  }
+  .viz-weights {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    height: 14px;
+    align-items: end;
+    padding: 0 1px;
+  }
+  .viz-weights span {
+    display: block;
+    background: var(--c-border-strong);
+    height: var(--h, 50%);
+    border-radius: 1px;
+  }
+
+  /* 2 + 3. Endpoint stacks ─────────────────────────────────────────── */
+  .viz-endpoints {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    line-height: var(--lh-snug);
+    margin: 0;
+    padding: var(--sp-3) var(--sp-4);
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-sm);
+    background: color-mix(in oklch, var(--c-surface-sunken), transparent 30%);
+    white-space: pre;
+    overflow-x: auto;
+    color: var(--c-text-dim);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .viz-endpoints span { display: block; }
+  .viz-endpoints .verb {
+    color: var(--c-text);
+    font-weight: var(--fw-semibold);
+    display: inline;
+  }
+  .viz-endpoints .verb-get { color: var(--c-text-faint); }
+  .viz-endpoints .muted { color: var(--c-text-faint); }
+  .viz-endpoints .muted s { text-decoration-color: var(--c-text-faint); }
+  .viz-endpoints .muted em {
+    font-style: normal;
+    font-size: 0.92em;
+    color: var(--c-text-ghost);
+    margin-left: var(--sp-2);
+  }
+  .viz-endpoints .caret {
+    display: inline-block;
+    width: 8px;
+    height: 1em;
+    margin-left: 2px;
+    background: var(--c-accent);
+    vertical-align: -2px;
+    animation: caret-blink 1.1s steps(1, end) infinite;
+  }
+  @keyframes caret-blink {
+    0%, 50% { opacity: 1; }
+    50.01%, 100% { opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .viz-endpoints .caret { animation: none; }
+  }
+
+  /* 4. Sparkline ───────────────────────────────────────────────────── */
+  .viz-sparkline svg { display: block; overflow: visible; }
+  .viz-sparkline .grid,
+  .viz-sparkline .grid-dash {
+    stroke: var(--c-rule);
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+  }
+  .viz-sparkline .line {
+    fill: none;
+    stroke: var(--c-text-faint);
+    stroke-width: 1.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .viz-sparkline .viz-cap { margin-top: var(--sp-2); margin-bottom: var(--sp-2); }
+  .viz-scale {
+    display: flex;
+    justify-content: space-between;
+    margin-top: var(--sp-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-wide);
+    font-feature-settings: "liga" 0, "calt" 0, "tnum";
+  }
+
+  /* 5. SSE dots ────────────────────────────────────────────────────── */
+  .viz-sse-dots {
+    list-style: none;
+    display: flex;
+    gap: 10px;
+    padding: 8px 0;
+    margin: 0;
+  }
+  .viz-sse-dots li {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--c-text-dim);
+    animation: sse-pulse 1.4s ease-in-out infinite;
+    animation-delay: var(--d, 0s);
+  }
+  @keyframes sse-pulse {
+    0%, 70%, 100% { opacity: 0.3; transform: scale(1); }
+    35% { opacity: 0.9; transform: scale(1.15); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .viz-sse-dots li { animation: none; opacity: 0.6; }
+  }
+
+  /* 6. Binary size bars ────────────────────────────────────────────── */
+  .viz-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .bar-row {
+    display: grid;
+    grid-template-columns: 62px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    color: var(--c-text-faint);
+  }
+  .bar-label { letter-spacing: var(--tr-wide); }
+  .bar {
+    display: block;
+    height: 6px;
+    border: 1px solid var(--c-rule);
+    border-radius: 1px;
+    overflow: hidden;
+    background: transparent;
+  }
+  .bar span {
+    display: block;
+    height: 100%;
+    background: var(--c-border-strong);
+  }
+  .bar-accent span {
+    background: var(--c-accent);
+  }
+  .bar-num {
+    color: var(--c-text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 7. Flow ────────────────────────────────────────────────────────── */
+  .viz-flow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .flow-step {
+    padding: 5px 9px;
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-xs);
+    color: var(--c-text-dim);
+    letter-spacing: var(--tr-wide);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.1;
+    min-width: 0;
+  }
+  .flow-step .flow-name {
+    font-size: var(--fs-xs);
+    color: var(--c-text);
+    text-transform: lowercase;
+  }
+  .flow-step .flow-sub {
+    font-size: 9.5px;
+    color: var(--c-text-faint);
+    letter-spacing: 0.04em;
+  }
+  .flow-hot {
+    border-color: var(--c-accent);
+  }
+  .flow-hot .flow-name { color: var(--c-accent); }
+  .flow-arrow { color: var(--c-text-faint); }
+  .viz-cap-flow { margin-top: var(--sp-3); }
+
+  /* 8. MIT ─────────────────────────────────────────────────────────── */
+  .viz-mit {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    color: var(--c-text-dim);
+  }
+  .viz-mit .octo { color: var(--c-text); }
+  .mit-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+  .mit-pill {
+    padding: 2px 7px;
+    border: 1px solid color-mix(in oklch, var(--c-accent), transparent 55%);
+    color: var(--c-accent);
+    border-radius: var(--r-xs);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-medium);
+    letter-spacing: var(--tr-wide);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .mit-pill-muted {
+    color: var(--c-text-faint);
+    border-color: var(--c-rule);
+    font-weight: var(--fw-regular);
+  }
+  .mit-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-3);
+    margin: 0;
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--c-rule);
+  }
+  .mit-stats > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .mit-stats dt {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-caps);
+    text-transform: uppercase;
+  }
+  .mit-stats dd {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text);
+    margin: 0;
+    font-feature-settings: "liga" 0, "calt" 0, "tnum";
+  }
+
+  /* 9. Self-hosted ─────────────────────────────────────────────────── */
+  .viz-local {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    color: var(--c-text-dim);
+  }
+  .viz-local .lock { color: var(--c-text-faint); }
+  .local-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+  .local-chip {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text);
+    padding: 2px 7px;
+    border: 1px dashed var(--c-border);
+    border-radius: var(--r-xs);
+    letter-spacing: var(--tr-wide);
+    font-feature-settings: "liga" 0, "calt" 0, "tnum";
+  }
+  .local-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-3);
+    margin: 0;
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--c-rule);
+  }
+  .local-stats > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .local-stats dt {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-caps);
+    text-transform: uppercase;
+  }
+  .local-stats dd {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text);
+    margin: 0;
+    font-feature-settings: "liga" 0, "calt" 0, "tnum";
+  }
+
+  /* 3x3 grid for 9 features. Right border hidden on each rightmost item,
+     bottom border hidden on the last row. */
+  .card:nth-child(3n) { border-right: 0; }
+  .card:nth-child(n+7) { border-bottom: 0; }
+
+  @media (max-width: 980px) {
+    .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card { border-right: 1px solid var(--c-rule) !important; border-bottom: 1px solid var(--c-rule) !important; }
+    .card:nth-child(2n) { border-right: 0 !important; }
+    .card:nth-child(n+8) { border-bottom: 0 !important; }
+    .card:last-child:nth-child(odd) { border-bottom: 0 !important; }
+  }
+  @media (max-width: 600px) {
+    .grid { grid-template-columns: 1fr; }
+    .card { border-right: 0 !important; }
+    .card:last-child { border-bottom: 0 !important; }
+  }
+</style>

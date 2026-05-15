@@ -1,0 +1,246 @@
+---
+// Top navigation bar — hairline border, mark only (wordmark belongs to hero).
+// The "k" glyph is the persistent brand cue; the giant "kiroxy" display in
+// hero is the brand moment. Two surfaces, one statement, no duplicate.
+//
+// Below 768px, the link list collapses into a slide-down panel toggled by a
+// hamburger button. The button manages its own aria-expanded state via a
+// vanilla JS handler at the bottom of the file (no framework).
+---
+<header class="nav">
+  <div class="container nav-inner">
+    <a class="brand" href="/" aria-label="kiroxy home">
+      <span class="mark" aria-hidden="true">k</span>
+      <span class="brand-version">
+        <span class="brand-v">v0.3</span>
+        <span class="brand-status" aria-hidden="true"></span>
+      </span>
+    </a>
+
+    <button
+      class="nav-toggle"
+      type="button"
+      aria-expanded="false"
+      aria-controls="nav-links"
+      aria-label="Toggle navigation menu"
+    >
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </button>
+
+    <nav id="nav-links" class="nav-links" aria-label="Primary">
+      <a href="#what">what</a>
+      <a href="#features">features</a>
+      <a href="#install">install</a>
+      <a href="#dashboard">dashboard</a>
+      <a href="#docs">docs</a>
+      <a class="github-link" href="https://github.com/nopperabbo/kiroxy" rel="noopener">
+        <svg aria-hidden="true" viewBox="0 0 16 16" width="13" height="13">
+          <path fill="currentColor" d="M8 .2a8 8 0 0 0-2.5 15.6c.4.07.55-.17.55-.38v-1.4c-2.2.48-2.7-1.05-2.7-1.05-.36-.92-.89-1.16-.89-1.16-.73-.5.06-.49.06-.49.8.06 1.22.83 1.22.83.72 1.23 1.88.88 2.34.67.07-.52.28-.88.51-1.08-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.83-2.15-.08-.2-.36-1.02.08-2.13 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.11.16 1.93.08 2.13.52.56.83 1.28.83 2.15 0 3.07-1.87 3.74-3.65 3.94.29.25.55.74.55 1.49v2.21c0 .21.15.46.55.38A8 8 0 0 0 8 .2"/>
+        </svg>
+        <span>github</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+<script is:inline>
+  (() => {
+    const btn = document.querySelector('.nav-toggle');
+    const menu = document.getElementById('nav-links');
+    if (!btn || !menu) return;
+    const close = () => {
+      btn.setAttribute('aria-expanded', 'false');
+      menu.dataset.open = 'false';
+    };
+    btn.addEventListener('click', () => {
+      const open = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!open));
+      menu.dataset.open = String(!open);
+    });
+    // Close on link tap.
+    menu.querySelectorAll('a').forEach((a) => a.addEventListener('click', close));
+    // Close on viewport widen past breakpoint.
+    const mq = window.matchMedia('(min-width: 768px)');
+    mq.addEventListener('change', (e) => { if (e.matches) close(); });
+  })();
+</script>
+
+<style>
+  .nav {
+    border-bottom: 1px solid var(--c-rule);
+    background: color-mix(in oklch, var(--c-bg), transparent 10%);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(8px);
+  }
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    gap: var(--sp-5);
+    min-width: 0;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-3);
+    color: var(--c-text);
+    font-family: var(--font-display);
+    font-weight: var(--fw-medium);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--tr-wide);
+    flex-shrink: 0;
+  }
+  .brand:hover { color: var(--c-accent); text-decoration: none; }
+  .mark {
+    display: inline-grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--c-accent);
+    color: var(--c-accent);
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: var(--fw-semibold);
+    line-height: 1;
+  }
+  .brand-version {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--c-text-faint);
+    font-feature-settings: "tnum";
+    text-transform: lowercase;
+    letter-spacing: var(--tr-wide);
+  }
+  .brand-status {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--c-success);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--c-success), transparent 80%);
+  }
+
+  /* Hamburger button — three hairline bars that morph into an X when open.
+     Hidden ≥768px. WCAG: 44×44 hit area, focus-visible ring inherits global. */
+  .nav-toggle {
+    display: none;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    border-radius: var(--r-sm);
+    color: var(--c-text-dim);
+    transition: color var(--mo-fast) var(--ease-std);
+  }
+  .nav-toggle:hover { color: var(--c-accent); }
+  .nav-toggle span {
+    display: block;
+    width: 20px;
+    height: 1px;
+    background: currentColor;
+    transition:
+      transform var(--mo-med) var(--ease-std),
+      opacity var(--mo-fast) var(--ease-std);
+  }
+  .nav-toggle[aria-expanded="true"] span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+  }
+  .nav-toggle[aria-expanded="true"] span:nth-child(2) {
+    opacity: 0;
+  }
+  .nav-toggle[aria-expanded="true"] span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-5);
+    font-family: var(--font-display);
+    font-size: var(--fs-sm);
+    color: var(--c-text);
+  }
+  .nav-links a {
+    color: var(--c-text-dim);
+    transition: color var(--mo-fast) var(--ease-std);
+  }
+  .nav-links a:hover {
+    color: var(--c-accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-decoration-color: color-mix(in oklch, var(--c-accent), transparent 60%);
+    text-underline-offset: 6px;
+  }
+  .github-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: 4px 10px;
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-sm);
+    transition:
+      color var(--mo-fast) var(--ease-std),
+      border-color var(--mo-fast) var(--ease-std);
+  }
+  .github-link:hover {
+    border-color: var(--c-accent);
+  }
+
+  @media (max-width: 920px) {
+    .nav-links { gap: var(--sp-4); }
+  }
+
+  /* Mobile slide-down panel ≤768px. Replaces the inline link list with a
+     full-bleed sheet anchored to the nav, animated open via height + opacity. */
+  @media (max-width: 768px) {
+    .nav-toggle { display: inline-flex; }
+    .nav-links {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 100%;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: var(--sp-4) var(--pad-x) var(--sp-6);
+      background: var(--c-bg);
+      border-bottom: 1px solid var(--c-rule);
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+      overflow: hidden;
+      transition:
+        max-height var(--mo-med) var(--ease-std),
+        opacity var(--mo-fast) var(--ease-std);
+      font-size: var(--fs-md);
+    }
+    .nav-links[data-open="true"] {
+      max-height: 480px;
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .nav-links a {
+      padding: var(--sp-4) 0;
+      border-bottom: 1px solid var(--c-rule);
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+    }
+    .nav-links a:last-child { border-bottom: 0; }
+    .github-link {
+      padding: var(--sp-4) 0;
+      border: 0;
+      border-bottom: 1px solid var(--c-rule);
+    }
+    .github-link:hover { border-color: var(--c-rule); border-bottom-color: var(--c-rule); }
+  }
+</style>

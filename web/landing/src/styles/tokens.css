@@ -1,0 +1,158 @@
+/**
+ * kiroxy-landing — Design tokens.
+ *
+ * Direct descendant of the kiroxy Mansion dashboard tokens
+ * (internal/server/mansion/client/src/styles/tokens.css).
+ *
+ * Palette commitment: warm charcoal + aged-brass amber, JetBrains Mono
+ * display / Inter text, hairline ledger borders, no shadows-as-chrome.
+ * Dark-first; light mode is a considered port via light-dark().
+ */
+
+:root {
+  color-scheme: dark light;
+
+  /* ── Typography ──────────────────────────────────────────────── */
+  --font-display:
+    "JetBrains Mono Variable", "JetBrains Mono", ui-monospace,
+    "SF Mono", Menlo, Monaco, Consolas, monospace;
+  --font-text:
+    "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-display);
+
+  --fs-xs: 0.6875rem;   /* 11 */
+  --fs-sm: 0.75rem;     /* 12 */
+  --fs-base: 0.8125rem; /* 13 */
+  --fs-md: 0.875rem;    /* 14 */
+  --fs-lg: 1rem;        /* 16 */
+  --fs-xl: 1.1875rem;   /* 19 */
+  --fs-2xl: 1.4375rem;  /* 23 */
+  --fs-3xl: 2rem;       /* 32 */
+  --fs-display: clamp(2.25rem, 5vw, 3.75rem);
+
+  --lh-tight: 1.15;
+  --lh-snug: 1.3;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.65;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  --tr-tight: -0.018em;
+  --tr-display: -0.028em;
+  --tr-normal: 0;
+  --tr-wide: 0.04em;
+  --tr-caps: 0.12em;
+
+  /* ── Spacing (4 base) ────────────────────────────────────────── */
+  --sp-0: 0;
+  --sp-1: 2px;
+  --sp-2: 4px;
+  --sp-3: 8px;
+  --sp-4: 12px;
+  --sp-5: 16px;
+  --sp-6: 20px;
+  --sp-7: 28px;
+  --sp-8: 40px;
+  --sp-9: 56px;
+  --sp-10: 80px;
+  --sp-11: 112px;
+
+  /* ── Radius ──────────────────────────────────────────────────── */
+  --r-xs: 2px;
+  --r-sm: 3px;
+  --r-md: 5px;
+  --r-lg: 8px;
+  --r-pill: 999px;
+
+  /* ── Palette (OKLCH, Mansion direct) ─────────────────────────── */
+
+  /* Surfaces — warm charcoal dark / warm ivory light. */
+  --c-bg:            light-dark(oklch(97.5% 0.008 75),   oklch(14.5% 0.012 65));
+  --c-surface:       light-dark(oklch(100% 0 0),         oklch(17.5% 0.013 65));
+  --c-surface-2:     light-dark(oklch(95% 0.01 75),      oklch(20.5% 0.015 65));
+  --c-surface-hover: light-dark(oklch(92% 0.012 75),     oklch(24% 0.017 65));
+  --c-surface-sunken:light-dark(oklch(93.5% 0.008 70),   oklch(11.5% 0.01 65));
+
+  /* Borders — ledger hairlines. */
+  --c-border:        light-dark(oklch(88% 0.008 70),     oklch(26% 0.013 65));
+  --c-border-strong: light-dark(oklch(78% 0.012 70),     oklch(36% 0.015 65));
+  --c-rule:          light-dark(oklch(92% 0.005 70),     oklch(22% 0.01 65));
+
+  /* Ink — warm text. */
+  --c-text:       light-dark(oklch(22% 0.015 65), oklch(93% 0.01 75));
+  --c-text-dim:   light-dark(oklch(42% 0.016 65), oklch(70% 0.012 75));
+  --c-text-faint: light-dark(oklch(58% 0.012 65), oklch(50% 0.014 75));
+  --c-text-ghost: light-dark(oklch(72% 0.008 65), oklch(36% 0.012 75));
+
+  /* Accent — aged brass. */
+  --c-accent-h: 72;
+  --c-accent-c: 0.14;
+  --c-accent:
+    light-dark(
+      oklch(58% var(--c-accent-c) var(--c-accent-h)),
+      oklch(78% var(--c-accent-c) var(--c-accent-h))
+    );
+  --c-accent-strong:
+    light-dark(
+      oklch(48% 0.16 var(--c-accent-h)),
+      oklch(84% 0.16 var(--c-accent-h))
+    );
+  --c-accent-dim:
+    light-dark(
+      oklch(72% 0.08 var(--c-accent-h)),
+      oklch(58% 0.1 var(--c-accent-h))
+    );
+  --c-accent-bg:   color-mix(in oklch, var(--c-accent), transparent 88%);
+  --c-accent-wash: color-mix(in oklch, var(--c-accent), transparent 94%);
+
+  /* Ember — interaction hover. */
+  --c-ember:    light-dark(oklch(58% 0.14 45), oklch(74% 0.14 45));
+  --c-ember-bg: color-mix(in oklch, var(--c-ember), transparent 90%);
+
+  /* States. */
+  --c-success: light-dark(oklch(50% 0.14 155), oklch(74% 0.14 155));
+  --c-warn:    light-dark(oklch(60% 0.16 85),  oklch(80% 0.16 85));
+  --c-danger:  light-dark(oklch(52% 0.2 27),   oklch(72% 0.2 27));
+  --c-info:    light-dark(oklch(52% 0.14 230), oklch(74% 0.14 230));
+
+  /* Focus ring (WCAG 2.2 SC 2.4.11). */
+  --c-focus: var(--c-accent);
+  --ring: 0 0 0 2px var(--c-bg), 0 0 0 4px var(--c-focus);
+
+  /* ── Motion ──────────────────────────────────────────────────── */
+  --mo-fast: 120ms;
+  --mo-med:  200ms;
+  --mo-slow: 320ms;
+  --ease-std: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ── Layout ──────────────────────────────────────────────────── */
+  --pad-x: clamp(20px, 4vw, 48px);
+  --max-w: 1120px;
+  --max-prose: 68ch;
+}
+
+/* Explicit dark-only override. Dark is default regardless of
+   prefers-color-scheme; the landing is an operator tool by ethos. */
+:root {
+  color-scheme: dark;
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --c-border: light-dark(oklch(65% 0.015 70), oklch(48% 0.016 65));
+    --c-border-strong: light-dark(oklch(40% 0.015 70), oklch(65% 0.016 65));
+    --c-text-dim: light-dark(oklch(24% 0.016 65), oklch(84% 0.012 75));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --mo-fast: 1ms;
+    --mo-med: 1ms;
+    --mo-slow: 1ms;
+  }
+}

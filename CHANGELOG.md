@@ -2,6 +2,42 @@
 
 All notable changes to kiroxy will be documented in this file. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project follows semver from v0.1.0 onwards.
 
+## [v1.4.0] — 2026-05-15
+
+Public release. Frontend polish round complete, all 7 dashboard views production-grade, landing page included as `web/landing/`.
+
+### Added
+
+- **Mansion dashboard polish (P4–P7).** Final pass across all 7 views.
+  - P4 empty state warmth — philosophical voice across Live, Pool, Logs, Tools (was: clinical "no data")
+  - P5 mobile compact mode — Pool view collapses 14k → 5.4k px on iPhone 13, all tap targets ≥40px, zero horizontal scroll
+  - P6 standardized microinteraction timings — sort, level chips, filter chips
+  - P7 post-wizard floating guide — bottom-right card, 4 steps, Esc dismiss, auto-dismiss on first request landing
+- **Pool health minimap.** 8×10 cell density viz above account cards, click-to-focus, color-coded by status.
+- **Motion budget policy.** `internal/server/mansion/client/src/styles/motion-budget.css` documents 4 ambient idle-loop animation slots. Adding a 5th requires retiring one.
+- **Settings live-tick on uptime.** Real-time counter, no manual refresh.
+- **Landing page.** Full marketing site at `web/landing/` (Astro). Mobile-responsive, dark/light theme aware.
+
+### Improved
+
+- **WCAG AA contrast.** `.faint` text meets 4.5:1 in both light and dark schemes (was: 4.0 light, 3.29 dark).
+- **Light theme.** Token-driven via `light-dark()` CSS, `data-scheme` attribute swap, fully validated.
+- **All 7 dashboard surfaces in Topbar.** Was 3 (live/pool/metrics) + 4 hidden behind ⌘K palette.
+- **Mansion mobile responsiveness.** Topbar collapses tab labels at <960px, hamburger toggle visible at <560px, models table wrapped in horizontal scroll.
+
+### Fixed
+
+- **Topbar overflow at deep-link.** `.shell { overflow-x: clip }` prevents auto-zoom on first-load.
+- **CSS unused selector warnings.** Cleaned 16 false-positives down to 3.
+- **Tools doctor sparkline accent type bug.** Replaced literal `"amber"` with proper enum value `"accent"`.
+
+### Changed
+
+- **Module path rebrand.** Go module now `github.com/nopperabbo/kiroxy`.
+- **Sample run docs redacted.** Account emails removed from public artifacts.
+
+---
+
 ## [Unreleased]
 
 ### Added (Phase 5 — Worker panic-protection + log polish, 2026-05-14)

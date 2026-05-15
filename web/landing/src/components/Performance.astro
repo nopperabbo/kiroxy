@@ -1,0 +1,539 @@
+---
+const rows = [
+  { label: "single request",       c: "1",   rps: "6,566",  p50: "0.15",  p95: "0.18",  p99: "0.18",  envelope: "warmup" },
+  { label: "10 concurrent",        c: "10",  rps: "10,982", p50: "0.85",  p95: "1.25",  p99: "1.45",  envelope: "steady" },
+  { label: "100 concurrent burst", c: "100", rps: "20,758", p50: "2.90",  p95: "13.88", p99: "16.54", envelope: "burst",  hot: true },
+  { label: "sustained 60s",        c: "10",  rps: "23,810", p50: "0.29",  p95: "1.01",  p99: "2.92",  envelope: "soak",   hero: true },
+  { label: "realistic 20ms uplink",c: "5",   rps: "132",    p50: "37.71", p95: "39.04", p99: "40.93", envelope: "real",   honest: true },
+];
+
+const max_rps = 23810;
+---
+<section id="performance" aria-labelledby="perf-title" class="alt-bg">
+  <div class="container">
+    <div class="head">
+      <span class="eyebrow">performance</span>
+      <h2 id="perf-title" class="section-heading">Reference numbers, honest caveats.</h2>
+      <p class="section-lead">
+        Measured against a mock Kiro upstream on an M1 MacBookPro17,1 — the
+        event-stream pipeline kiroxy sits inside. Reproducible locally via
+        <code class="inline">scripts/loadtest/</code>. Not an SLA, just a
+        floor to spot regressions.
+      </p>
+    </div>
+
+    <div class="card">
+      <header class="card-head">
+        <span class="card-title">benchmark · v0.3.0 · go 1.26 · darwin/arm64 · 5 scenarios · all latencies in ms</span>
+      </header>
+
+      <div class="table-scroll" role="region" aria-label="Benchmark scenarios table" tabindex="0">
+        <table>
+          <thead>
+            <tr class="th-group">
+              <th scope="col" class="th-blank"></th>
+              <th scope="col" class="th-num"></th>
+              <th scope="col" class="th-num th-rps"><span class="th-group-label">throughput</span></th>
+              <th scope="col" colspan="3" class="th-num th-latency-group">
+                <span class="th-group-label th-group-latency">latency · milliseconds</span>
+              </th>
+              <th scope="col" class="th-env"><span class="th-group-label">envelope</span></th>
+            </tr>
+            <tr>
+              <th scope="col" class="th-label">scenario</th>
+              <th scope="col" class="th-num">
+                <span class="th-text">C</span>
+                <span class="th-hint">concurrency</span>
+              </th>
+              <th scope="col" class="th-num th-rps">
+                <span class="th-text">rps</span>
+                <span class="th-hint">requests/sec</span>
+              </th>
+              <th scope="col" class="th-num">
+                <span class="th-text">p50</span>
+                <span class="th-hint">median</span>
+              </th>
+              <th scope="col" class="th-num">
+                <span class="th-text">p95</span>
+                <span class="th-hint">95th</span>
+              </th>
+              <th scope="col" class="th-num th-p99">
+                <span class="th-text">p99</span>
+                <span class="th-hint">tail</span>
+              </th>
+              <th scope="col" class="th-env">
+                <span class="th-text">class</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr class={r.hero ? 'is-hero' : r.honest ? 'is-honest' : r.hot ? 'is-hot' : ''}>
+                <td class="td-label">
+                  {r.hero && <span class="row-tag" aria-label="reference scenario">★</span>}
+                  {r.honest && <span class="row-tag row-tag-honest" aria-label="realistic scenario">⌁</span>}
+                  {r.label}
+                </td>
+                <td class="td-num">{r.c}</td>
+                <td class="td-num td-rps">
+                  <span class="bar" aria-hidden="true" style={`--w:${(parseInt(r.rps.replace(/,/g, '')) / max_rps * 100).toFixed(1)}%`}></span>
+                  <span class="num">{r.rps}</span>
+                </td>
+                <td class="td-num td-ms">{r.p50}</td>
+                <td class="td-num td-ms">{r.p95}</td>
+                <td class="td-num td-ms td-p99">{r.p99}</td>
+                <td class="td-env">
+                  <span class={`pill pill-${r.envelope}`}>{r.envelope}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="rps-strip" aria-hidden="true">
+        <span class="rps-strip-label">rps profile</span>
+        <div class="rps-bars">
+          {rows.map((r) => {
+            const w = parseInt(r.rps.replace(/,/g, '')) / max_rps * 100;
+            const cls = r.hero ? 'amb' : r.honest ? 'amb' : '';
+            return (
+              <div class="rps-cell">
+                <span class={`rps-bar ${cls}`} style={`--w: ${w.toFixed(1)}%`}></span>
+                <span class="rps-cap">{r.envelope}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div class="bench-legend" aria-label="Table legend">
+        <span class="legend-item">
+          <span class="legend-mark legend-star">★</span>
+          <span>reference run — used in headlines</span>
+        </span>
+        <span class="legend-item">
+          <span class="legend-mark legend-honest">⌁</span>
+          <span>realistic uplink — 20ms RTT</span>
+        </span>
+        <span class="legend-item">
+          <span class="legend-mark legend-amber"></span>
+          <span>amber number — same row as ★ (reference scenario)</span>
+        </span>
+      </div>
+
+      <footer class="card-foot">
+        <div class="meta">
+          <span class="meta-k">soak run</span>
+          <span class="meta-v">
+            <strong>1,428,651</strong> requests · 0% err · single 83 ms GC spike at t=42s
+          </span>
+        </div>
+        <div class="meta">
+          <span class="meta-k">telemetry egress</span>
+          <span class="meta-v">
+            <strong>0 bytes</strong>. Scrape <code class="inline">/metrics</code> yourself.
+          </span>
+        </div>
+        <div class="meta">
+          <span class="meta-k">harness</span>
+          <span class="meta-v">
+            <a href="https://github.com/nopperabbo/kiroxy/blob/main/docs/BENCHMARKS.md" rel="noopener">docs/BENCHMARKS.md</a> ·
+            <a href="https://github.com/nopperabbo/kiroxy/tree/main/scripts/loadtest" rel="noopener">scripts/loadtest</a>
+          </span>
+        </div>
+      </footer>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ── Section background — alternating zone ─────────────────────── */
+  .alt-bg {
+    background:
+      linear-gradient(
+        180deg,
+        var(--c-bg) 0%,
+        color-mix(in oklch, var(--c-bg), var(--c-surface-sunken) 50%) 50%,
+        var(--c-bg) 100%
+      );
+  }
+
+  .head { margin-bottom: var(--sp-7); }
+
+  /* ── Card frame ─────────────────────────────────────────────────── */
+  .card {
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    background: var(--c-surface-sunken);
+  }
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    padding: var(--sp-3) var(--sp-5);
+    border-bottom: 1px solid var(--c-rule);
+    background: var(--c-surface);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-wide);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .card-tag {
+    color: var(--c-accent);
+    border: 1px solid color-mix(in oklch, var(--c-accent), transparent 65%);
+    padding: 1px 7px;
+    border-radius: var(--r-xs);
+  }
+
+  /* ── Table ──────────────────────────────────────────────────────── */
+  .table-scroll {
+    overflow-x: auto;
+    /* keyboard-focusable scroll container — give it a focus ring */
+  }
+  .table-scroll:focus-visible {
+    outline: none;
+    box-shadow: inset var(--ring);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    min-width: 720px;
+    font-feature-settings: "liga" 0, "calt" 0, "tnum";
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Header row — readable, two-line key+hint pattern */
+  thead th {
+    text-align: left;
+    padding: var(--sp-4) var(--sp-5);
+    background: var(--c-surface);
+    border-bottom: 2px solid var(--c-border);
+    color: var(--c-text);
+    font-weight: var(--fw-semibold);
+    vertical-align: bottom;
+    line-height: 1.1;
+  }
+  thead tr.th-group th {
+    padding: var(--sp-2) var(--sp-5);
+    border-bottom: 1px solid var(--c-rule);
+    background: color-mix(in oklch, var(--c-surface), var(--c-surface-sunken) 40%);
+  }
+  .th-group-label {
+    font-family: var(--font-display);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: var(--tr-caps);
+    color: var(--c-text-faint);
+    font-weight: var(--fw-medium);
+  }
+  .th-group-latency {
+    color: var(--c-accent);
+    border-bottom: 3px solid var(--c-accent);
+    padding-bottom: 4px;
+    font-weight: var(--fw-semibold);
+  }
+  .th-latency-group { text-align: center; }
+  thead th .th-text {
+    font-family: var(--font-display);
+    display: block;
+    font-size: var(--fs-sm);
+    color: var(--c-text);
+    letter-spacing: var(--tr-wide);
+    text-transform: uppercase;
+  }
+  thead th .th-hint {
+    display: block;
+    font-family: var(--font-text);
+    font-size: 10px;
+    color: var(--c-text-faint);
+    font-weight: var(--fw-regular);
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+    text-transform: lowercase;
+  }
+  .th-num,
+  .td-num { text-align: right; }
+  .th-env,
+  .td-env { text-align: center; width: 110px; }
+  .th-rps .th-text { color: var(--c-accent); }
+  .th-p99 .th-text { color: var(--c-warn); }
+
+  /* Body cells */
+  tbody tr { transition: background var(--mo-fast) var(--ease-std); }
+  tbody tr:nth-child(odd) { background: color-mix(in oklch, var(--c-surface), transparent 60%); }
+  tbody tr:hover { background: var(--c-surface-2); }
+
+  tbody td {
+    padding: var(--sp-4) var(--sp-5);
+    color: var(--c-text);
+    border-bottom: 1px solid var(--c-rule);
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  .td-label {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    color: var(--c-text);
+    font-family: var(--font-text);
+    white-space: nowrap;
+    min-width: 200px;
+  }
+  .row-tag {
+    color: var(--c-accent);
+    font-size: 12px;
+    line-height: 1;
+  }
+  .td-num { color: var(--c-text); white-space: nowrap; }
+  .td-rps {
+    position: relative;
+    padding-right: var(--sp-5);
+  }
+  .td-rps .num {
+    position: relative;
+    z-index: 1;
+    font-weight: var(--fw-semibold);
+    color: var(--c-text);
+  }
+  .td-rps .bar {
+    position: absolute;
+    right: 0;
+    top: 6px;
+    bottom: 6px;
+    width: var(--w);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--c-accent), transparent 78%) 30%,
+      color-mix(in oklch, var(--c-accent), transparent 70%)
+    );
+    border-radius: var(--r-xs);
+    pointer-events: none;
+  }
+  .td-ms .unit {
+    color: var(--c-text-ghost);
+    font-size: 10px;
+    margin-left: 2px;
+    letter-spacing: 0.02em;
+  }
+  .td-p99 {
+    color: var(--c-warn);
+    font-weight: var(--fw-medium);
+  }
+
+  /* Hero row — best soak result, pulled forward */
+  tr.is-hero {
+    background: color-mix(in oklch, var(--c-accent), transparent 92%) !important;
+  }
+  tr.is-hero td {
+    border-bottom-color: color-mix(in oklch, var(--c-accent), transparent 70%);
+    color: var(--c-text);
+  }
+  tr.is-hero .td-rps .num { color: var(--c-accent); }
+  tr.is-hero:hover {
+    background: color-mix(in oklch, var(--c-accent), transparent 86%) !important;
+  }
+
+  /* Honest row — realistic 20ms uplink. Secondary highlight (hairline left
+     rule, not full background tint) so the "honest ceiling" number gets
+     visual co-anchoring without stealing focus from the headline result. */
+  tr.is-honest td:first-child {
+    border-left: 2px solid color-mix(in oklch, var(--c-accent), transparent 50%);
+  }
+  tr.is-honest .td-rps .num { color: var(--c-text); }
+  .row-tag-honest {
+    color: color-mix(in oklch, var(--c-accent), transparent 40%);
+    font-size: 13px;
+  }
+
+  /* Hot row — burst with high tail */
+  tr.is-hot .td-p99 { color: var(--c-warn); }
+
+  /* ── RPS comparison strip ──────────────────────────────────────────
+     Horizontal mini-bar chart under the table. One bar per scenario,
+     shares the same width scale as .td-rps bars. Gives a spatial
+     read of throughput differences without another numeric column. */
+  .rps-strip {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: var(--sp-4);
+    align-items: center;
+    padding: var(--sp-4) var(--sp-5);
+    background: var(--c-surface);
+    border-top: 1px solid var(--c-rule);
+  }
+  .rps-strip-label {
+    font-family: var(--font-display);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-caps);
+    text-transform: uppercase;
+  }
+  .rps-bars {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--sp-3);
+  }
+  .rps-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .rps-bar {
+    display: block;
+    height: 6px;
+    border: 1px solid var(--c-rule);
+    border-radius: 1px;
+    overflow: hidden;
+    background: transparent;
+    position: relative;
+  }
+  .rps-bar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: var(--w, 0);
+    background: var(--c-border-strong);
+  }
+  .rps-bar.amb::before {
+    background: var(--c-accent);
+  }
+  .rps-cap {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-wide);
+    text-transform: uppercase;
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  @media (max-width: 720px) {
+    .rps-strip { grid-template-columns: 1fr; gap: var(--sp-3); }
+  }
+
+  /* ── Envelope pills ──────────────────────────────────────────────── */
+  .pill {
+    display: inline-block;
+    padding: 1px 8px;
+    border: 1px solid currentColor;
+    border-radius: var(--r-pill);
+    font-family: var(--font-display);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: var(--tr-caps);
+    font-feature-settings: "liga" 0, "calt" 0;
+    background: color-mix(in oklch, currentColor, transparent 92%);
+  }
+  .pill-warmup { color: var(--c-text-faint); }
+  .pill-steady { color: var(--c-info); }
+  .pill-burst  { color: var(--c-warn); }
+  .pill-soak   { color: var(--c-accent); }
+  .pill-real   { color: var(--c-success); }
+
+  /* ── Card footer ─────────────────────────────────────────────────── */
+  .card-foot {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    background: var(--c-surface);
+    border-top: 1px solid var(--c-rule);
+  }
+  @media (max-width: 720px) {
+    .card-foot { grid-template-columns: 1fr; }
+  }
+  .meta {
+    padding: var(--sp-5);
+    border-right: 1px solid var(--c-rule);
+    font-family: var(--font-text);
+  }
+  .meta:last-child { border-right: 0; }
+  @media (max-width: 720px) {
+    .meta { border-right: 0; border-bottom: 1px solid var(--c-rule); }
+    .meta:last-child { border-bottom: 0; }
+  }
+  .meta-k {
+    display: block;
+    font-family: var(--font-display);
+    font-size: var(--fs-xs);
+    color: var(--c-accent);
+    text-transform: uppercase;
+    letter-spacing: var(--tr-caps);
+    font-weight: var(--fw-medium);
+    margin-bottom: var(--sp-2);
+  }
+  .meta-v {
+    display: block;
+    font-size: var(--fs-sm);
+    color: var(--c-text-dim);
+    line-height: var(--lh-snug);
+  }
+  .meta-v strong {
+    color: var(--c-text);
+    font-weight: var(--fw-semibold);
+    font-variant-numeric: tabular-nums;
+  }
+  .meta-v a {
+    color: var(--c-text-dim);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklch, var(--c-accent), transparent 60%);
+    text-underline-offset: 3px;
+  }
+  .meta-v a:hover { color: var(--c-accent); }
+
+  code.inline {
+    font-family: var(--font-mono);
+    font-size: 0.92em;
+    padding: 1px 6px;
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-xs);
+    color: var(--c-text);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    tbody tr { transition: none; }
+  }
+
+  /* ── Legend ──────────────────────────────────────────────────────── */
+  .bench-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-5);
+    padding: var(--sp-4) var(--sp-6);
+    border-top: 1px solid var(--c-rule);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    letter-spacing: 0.01em;
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-3);
+  }
+  .legend-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 14px;
+    color: var(--c-accent);
+    font-size: 13px;
+    line-height: 1;
+  }
+  .legend-amber {
+    width: 18px;
+    height: 6px;
+    background: var(--c-accent);
+    border-radius: 1px;
+  }
+  @media (max-width: 720px) {
+    .bench-legend { gap: var(--sp-3); padding: var(--sp-4); }
+  }
+</style>

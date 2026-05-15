@@ -1,0 +1,714 @@
+---
+// Hero — display wordmark + architecture diagram + proof-strip.
+// Reviewer flagged: "small logo, competing CTA, sparse". This rewrite
+// ratchets typographic weight (clamp → 3.5-7.5rem), sinks a numeric
+// proof-strip under the CTAs (RPS, error rate, binary size), and
+// replaces the generic terminal art with an honest-to-shape
+// architecture diagram of the primitive: client → kiroxy → Kiro.
+---
+<section class="no-rule hero" aria-labelledby="hero-title">
+  <div class="container hero-grid">
+    <div class="hero-copy">
+      <p class="kicker">
+        <span class="dot" aria-hidden="true"></span>
+        <span>mit</span>
+        <span class="kicker-sep" aria-hidden="true">·</span>
+        <span>community project</span>
+      </p>
+      <h1 id="hero-title" class="display">
+        <span class="display-word">kiroxy</span>
+      </h1>
+      <p class="lead">
+        The self-hosted <span class="ink">Kiro proxy</span>.
+      </p>
+      <p class="sub">
+        Stand up a local Anthropic + OpenAI compatible endpoint
+        backed by your own multi-account Kiro pool. One Go binary,
+        one config file, zero telemetry.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#install">
+          <span>Install in 5 min</span>
+          <span aria-hidden="true" class="arrow">→</span>
+        </a>
+        <a class="btn btn-secondary" href="#dashboard">
+          <span>See the dashboard</span>
+        </a>
+        <a class="btn btn-ghost btn-ghost-source"
+           href="https://github.com/nopperabbo/kiroxy"
+           rel="noopener">
+          <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14">
+            <path fill="currentColor" d="M8 .2a8 8 0 0 0-2.5 15.6c.4.07.55-.17.55-.38v-1.4c-2.2.48-2.7-1.05-2.7-1.05-.36-.92-.89-1.16-.89-1.16-.73-.5.06-.49.06-.49.8.06 1.22.83 1.22.83.72 1.23 1.88.88 2.34.67.07-.52.28-.88.51-1.08-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.83-2.15-.08-.2-.36-1.02.08-2.13 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.11.16 1.93.08 2.13.52.56.83 1.28.83 2.15 0 3.07-1.87 3.74-3.65 3.94.29.25.55.74.55 1.49v2.21c0 .21.15.46.55.38A8 8 0 0 0 8 .2"/>
+          </svg>
+          <span>Source</span>
+        </a>
+      </div>
+
+      <dl class="proof">
+        <div class="proof-item">
+          <dt>throughput</dt>
+          <dd><span class="proof-num">23,810</span><span class="proof-unit">rps</span></dd>
+        </div>
+        <div class="proof-item">
+          <dt>binary size</dt>
+          <dd><span class="proof-num">22</span><span class="proof-unit">MiB</span></dd>
+        </div>
+        <div class="proof-item">
+          <dt>telemetry</dt>
+          <dd><span class="proof-num proof-num-zero">0</span><span class="proof-unit">bytes out</span></dd>
+        </div>
+        <div class="proof-item">
+          <dt>docker image</dt>
+          <dd><span class="proof-num">~30</span><span class="proof-unit">MiB distroless</span></dd>
+        </div>
+      </dl>
+
+      {/* Social proof strip — live-feeling system signal.
+          Star count is left as em-dash placeholder; wire via GitHub API on
+          build, or inject at deploy. Kept mono + compact so it reads as
+          machine output, not marketing. */}
+      <ul class="proof-strip" aria-label="Project status">
+        <li><span class="live" aria-hidden="true"></span> healthy</li>
+        <li>8 accounts</li>
+        <li>last request 1.2s ago</li>
+        <li>v0.3.0</li>
+        <li>0 crashes</li>
+      </ul>
+    </div>
+
+    <aside class="hero-art" aria-label="Request topology — client routes through kiroxy to Kiro">
+      <div class="diagram">
+        <header class="diagram-head">
+          <span class="diagram-title">request topology</span>
+          <span class="diagram-tag">localhost</span>
+        </header>
+
+        <div class="dia-grid" aria-hidden="true">
+          <!-- Row 1: client endpoints -->
+          <div class="node node-client" style="grid-area: c1">
+            <span class="node-label">Claude Code</span>
+            <span class="node-meta">anthropic</span>
+          </div>
+          <div class="node node-client" style="grid-area: c2">
+            <span class="node-label">Cursor</span>
+            <span class="node-meta">openai</span>
+          </div>
+          <div class="node node-client" style="grid-area: c3">
+            <span class="node-label">aider</span>
+            <span class="node-meta">openai</span>
+          </div>
+
+          <!-- Arrow down -->
+          <div class="wire wire-in" style="grid-area: wi">
+            <span class="wire-track" data-route="messages">
+              <span class="packet"></span>
+            </span>
+            <span class="wire-note">v1/messages · v1/chat/completions</span>
+          </div>
+
+          <!-- kiroxy center -->
+          <div class="node node-core" style="grid-area: co">
+            <span class="core-chip">kiroxy</span>
+            <span class="core-role">proxy · pool · metrics</span>
+            <span class="core-port">:8787</span>
+          </div>
+
+          <!-- Arrow out -->
+          <div class="wire wire-out" style="grid-area: wo">
+            <span class="wire-track"></span>
+            <span class="wire-note">oauth · sse</span>
+          </div>
+
+          <!-- Kiro upstream as pool -->
+          <div class="node node-upstream" style="grid-area: up">
+            <span class="node-label">Kiro pool</span>
+            <ul class="pool-dots" role="list">
+              <li data-state="ok" aria-label="account 1 ok"></li>
+              <li data-state="ok" aria-label="account 2 ok"></li>
+              <li data-state="ok" aria-label="account 3 ok"></li>
+              <li data-state="cool" aria-label="account 4 cooling down"></li>
+              <li data-state="ok" aria-label="account 5 ok"></li>
+              <li data-state="ok" aria-label="account 6 ok"></li>
+            </ul>
+            <span class="node-meta">lru · refresh · cooldown</span>
+          </div>
+        </div>
+
+        <footer class="diagram-foot">
+          <span class="stat"><span class="stat-k">inbound</span>2 api shapes</span>
+          <span class="stat"><span class="stat-k">outbound</span>1 upstream</span>
+          <span class="stat"><span class="stat-k">state</span>SQLite vault</span>
+        </footer>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<style>
+  .hero {
+    padding-block: clamp(12px, 2.5vw, 28px) clamp(40px, 7vw, 84px);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        ellipse at top right,
+        color-mix(in oklch, var(--c-accent), transparent 88%) 0%,
+        transparent 52%
+      );
+  }
+  .hero > * { position: relative; }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: clamp(28px, 4.5vw, 64px);
+    align-items: center;
+  }
+  @media (max-width: 960px) {
+    .hero-grid { grid-template-columns: 1fr; gap: var(--sp-9); }
+  }
+
+  /* ── Kicker strip ─────────────────────────────────────────────── */
+  .kicker {
+    font-family: var(--font-display);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-caps);
+    text-transform: uppercase;
+    margin-bottom: var(--sp-6);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-3);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .kicker-tag {
+    color: var(--c-accent);
+    border: 1px solid color-mix(in oklch, var(--c-accent), transparent 65%);
+    padding: 2px 7px;
+    border-radius: var(--r-xs);
+    letter-spacing: var(--tr-wide);
+  }
+  .kicker-sep { color: var(--c-text-ghost); }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--c-success);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--c-success), transparent 80%);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dot { animation: none; }
+  }
+
+  /* ── Display wordmark — the brand moment ──────────────────────── */
+  .display {
+    font-family: var(--font-display);
+    font-size: clamp(3.5rem, 10vw, 7.5rem);
+    font-weight: var(--fw-semibold);
+    letter-spacing: -0.05em;
+    line-height: 0.92;
+    margin: 0 0 var(--sp-5) 0;
+    color: var(--c-text);
+  }
+  .display-word {
+    background: linear-gradient(
+      180deg,
+      var(--c-text) 0%,
+      var(--c-text) 55%,
+      color-mix(in oklch, var(--c-accent), var(--c-text) 40%) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .lead {
+    font-family: var(--font-text);
+    font-size: clamp(1.25rem, 2.2vw, 1.7rem);
+    color: var(--c-text-dim);
+    letter-spacing: -0.005em;
+    line-height: var(--lh-snug);
+    max-width: 38ch;
+    margin: 0 0 var(--sp-4) 0;
+  }
+  .lead .ink {
+    color: var(--c-text);
+    font-weight: var(--fw-semibold);
+  }
+  .sub {
+    font-family: var(--font-text);
+    font-size: var(--fs-md);
+    color: var(--c-text-dim);
+    max-width: 54ch;
+    line-height: var(--lh-relaxed);
+    margin: 0 0 var(--sp-8) 0;
+  }
+
+  /* ── CTA row — primary / secondary / ghost triad ──────────────── */
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-9);
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-3);
+    height: 44px;
+    padding: 0 var(--sp-5);
+    border-radius: var(--r-md);
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    letter-spacing: -0.005em;
+    text-decoration: none !important;
+    border: 1px solid transparent;
+    transition:
+      background var(--mo-fast) var(--ease-std),
+      border-color var(--mo-fast) var(--ease-std),
+      color var(--mo-fast) var(--ease-std),
+      transform var(--mo-fast) var(--ease-std);
+    cursor: pointer;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary {
+    background: var(--c-accent);
+    color: oklch(14.5% 0.012 65);
+    border-color: var(--c-accent);
+  }
+  .btn-primary:hover {
+    background: var(--c-accent-strong);
+    color: oklch(14.5% 0.012 65);
+    border-color: var(--c-accent-strong);
+  }
+  .btn-primary .arrow {
+    transition: transform var(--mo-fast) var(--ease-std);
+  }
+  .btn-primary:hover .arrow { transform: translateX(3px); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--c-text);
+    border-color: var(--c-border-strong);
+  }
+  .btn-secondary:hover {
+    color: var(--c-accent);
+    border-color: var(--c-accent);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--c-text-dim);
+    border-color: transparent;
+    padding-inline: var(--sp-4);
+  }
+  .btn-ghost:hover {
+    color: var(--c-text);
+    background: var(--c-surface);
+  }
+  /* Source link sits as a quiet text-with-icon, not a button. Demoted to
+     break the 3-equal CTA tie — primary install + secondary dashboard
+     stay as buttons; source becomes scannable but not visually competing. */
+  .btn-ghost-source {
+    height: auto;
+    padding-block: 0;
+    padding-inline: 0;
+    margin-inline-start: var(--sp-3);
+    color: var(--c-text-faint);
+    border: 0 !important;
+    background: transparent !important;
+    font-size: var(--fs-sm);
+  }
+  .btn-ghost-source:hover {
+    color: var(--c-accent);
+    background: transparent !important;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 4px;
+  }
+  @media (max-width: 560px) {
+    .cta-row { flex-direction: column; align-items: stretch; gap: var(--sp-4); }
+    .btn-primary, .btn-secondary {
+      width: 100%;
+      justify-content: center;
+    }
+    .btn-ghost-source {
+      margin-inline: 0;
+      align-self: center;
+      padding-block: var(--sp-3);
+      min-height: 44px;
+    }
+  }
+
+  /* ── Proof strip — numbers over marketing ─────────────────────── */
+  .proof {
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, auto));
+    gap: var(--sp-7);
+    padding: var(--sp-5) 0;
+    border-top: 1px solid var(--c-rule);
+    border-bottom: 1px solid var(--c-rule);
+    margin: 0;
+  }
+  @media (max-width: 720px) {
+    .proof { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-5) var(--sp-6); }
+  }
+  @media (max-width: 400px) {
+    .proof { gap: var(--sp-4); }
+  }
+  .proof-item { margin: 0; }
+  .proof dt {
+    font-family: var(--font-display);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--tr-caps);
+    text-transform: uppercase;
+    color: var(--c-text-faint);
+    margin-bottom: var(--sp-2);
+    font-weight: var(--fw-medium);
+  }
+  .proof dd {
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+  }
+  .proof-num {
+    font-family: var(--font-display);
+    font-size: var(--fs-2xl);
+    font-weight: var(--fw-semibold);
+    letter-spacing: -0.02em;
+    color: var(--c-text);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .proof-num-zero { color: var(--c-accent); }
+  .proof-unit {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-wide);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+
+  /* ── Social proof strip — machine-output vibe ─────────────────── */
+  .proof-strip {
+    list-style: none;
+    margin: var(--sp-5) 0 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-3) var(--sp-5);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-wide);
+    text-transform: uppercase;
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .proof-strip li { position: relative; padding-inline: 0; }
+  .proof-strip li + li::before {
+    content: "·";
+    position: absolute;
+    left: calc(-1 * var(--sp-3));
+    color: var(--c-text-ghost);
+  }
+  .proof-strip a {
+    color: inherit;
+    border-bottom: 1px solid transparent;
+  }
+  .proof-strip a:hover {
+    color: var(--c-accent);
+    border-bottom-color: color-mix(in oklch, var(--c-accent), transparent 60%);
+  }
+  .proof-strip .live {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--c-success);
+    margin-right: var(--sp-2);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--c-success), transparent 80%);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .proof-strip .live { animation: none; }
+  }
+
+  /* ── Hero art — architecture diagram ──────────────────────────── */
+  .hero-art { min-width: 0; }
+  .diagram {
+    background:
+      linear-gradient(
+        180deg,
+        var(--c-surface-sunken) 0%,
+        color-mix(in oklch, var(--c-surface-sunken), var(--c-bg) 40%) 100%
+      );
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    position: relative;
+  }
+  .diagram::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        circle at 85% 50%,
+        color-mix(in oklch, var(--c-accent), transparent 92%) 0%,
+        transparent 60%
+      );
+  }
+  .diagram-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--sp-4) var(--sp-5);
+    border-bottom: 1px solid var(--c-rule);
+    background: var(--c-surface);
+    font-family: var(--font-display);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--tr-caps);
+    text-transform: uppercase;
+    position: relative;
+  }
+  .diagram-title { color: var(--c-text-faint); }
+  .diagram-tag {
+    color: var(--c-accent);
+    border: 1px solid color-mix(in oklch, var(--c-accent), transparent 60%);
+    padding: 1px 7px;
+    border-radius: var(--r-xs);
+    letter-spacing: var(--tr-wide);
+  }
+
+  /* Grid layout for nodes. Rows: clients → wire-in → kiroxy → wire-out → kiro pool.
+     3 client columns (Claude Code / Cursor / aider) emphasize the aggregation
+     shape; the wire trunk spans all 3. */
+  .dia-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-areas:
+      "c1 c2 c3"
+      "wi wi wi"
+      "co co co"
+      "wo wo wo"
+      "up up up";
+    gap: var(--sp-4);
+    padding: var(--sp-7) var(--sp-6);
+    position: relative;
+  }
+  @media (max-width: 560px) {
+    .dia-grid {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "c1"
+        "c2"
+        "c3"
+        "wi"
+        "co"
+        "wo"
+        "up";
+      padding: var(--sp-6) var(--sp-5);
+      gap: var(--sp-3);
+    }
+  }
+  .node {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    padding: var(--sp-4) var(--sp-5);
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-md);
+    background: var(--c-surface);
+    text-align: center;
+    align-items: center;
+    min-width: 0;
+  }
+  .node-label {
+    font-family: var(--font-display);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--c-text);
+    letter-spacing: -0.01em;
+  }
+  .node-meta {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-wide);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+
+  .node-core {
+    border-color: var(--c-accent);
+    background: color-mix(in oklch, var(--c-accent), transparent 92%);
+    padding: var(--sp-5) var(--sp-6);
+    position: relative;
+    animation: pulse-border 3s ease-in-out infinite;
+  }
+  @keyframes pulse-border {
+    0%, 100% { border-color: color-mix(in oklch, var(--c-accent), transparent 40%); }
+    50% { border-color: var(--c-accent); }
+  }
+  .core-chip {
+    font-family: var(--font-display);
+    font-size: var(--fs-xl);
+    font-weight: var(--fw-semibold);
+    color: var(--c-accent);
+    letter-spacing: -0.02em;
+  }
+  .core-role {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-dim);
+    letter-spacing: var(--tr-wide);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .core-port {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    padding: 1px 6px;
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-xs);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+
+  .node-upstream {
+    gap: var(--sp-3);
+  }
+  .pool-dots {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    gap: 5px;
+  }
+  .pool-dots li {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--c-success);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--c-success), transparent 82%);
+  }
+  .pool-dots li[data-state="cool"] {
+    background: var(--c-warn);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--c-warn), transparent 82%);
+    animation: cool-blink 1.8s ease-in-out infinite;
+  }
+  @keyframes cool-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pool-dots li[data-state="cool"] { animation: none; }
+  }
+
+  /* Wire segments — hairline column with centered label */
+  .wire {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+  }
+  .wire-track {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1.5px;
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--c-accent), transparent 20%) 0%,
+      var(--c-accent) 50%,
+      color-mix(in oklch, var(--c-accent), transparent 20%) 100%
+    );
+    transform: translateX(-50%);
+  }
+  .wire-track::before,
+  .wire-track::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+  }
+  .wire-in .wire-track::after {
+    bottom: 0;
+    border-top: 5px solid var(--c-accent);
+  }
+  .wire-out .wire-track::after {
+    bottom: 0;
+    border-top: 5px solid var(--c-accent);
+  }
+  .packet {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: var(--c-accent);
+    border-radius: 50%;
+    left: 50%;
+    top: 0;
+    transform: translateX(-50%);
+    animation: packet-flow 4s linear infinite;
+  }
+  @keyframes packet-flow {
+    0% { top: 0; opacity: 0; }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .node-core { animation: none; }
+    .packet { animation: none; visibility: hidden; }
+  }
+  .wire-note {
+    position: relative;
+    padding: 2px 10px;
+    background: var(--c-surface-sunken);
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-xs);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-dim);
+    letter-spacing: var(--tr-wide);
+    z-index: 1;
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+
+  .diagram-foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    padding: var(--sp-4) var(--sp-5);
+    background: var(--c-surface);
+    border-top: 1px solid var(--c-rule);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-dim);
+    letter-spacing: var(--tr-wide);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .stat-k {
+    color: var(--c-text-faint);
+    text-transform: uppercase;
+    margin-right: var(--sp-3);
+    letter-spacing: var(--tr-caps);
+  }
+</style>

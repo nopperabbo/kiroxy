@@ -1,0 +1,274 @@
+---
+// Install — three paths. Source, Docker, pre-built binary.
+// CTA is the CLI command, not a button. fly.io pattern.
+
+const sourceCmd = `git clone https://github.com/nopperabbo/kiroxy.git
+cd kiroxy
+make build
+./kiroxy serve
+# verify
+./kiroxy version`;
+
+const dockerCmd = `cp .env.example .env
+make docker-compose-up
+docker compose logs -f kiroxy
+# verify
+curl -sS http://127.0.0.1:8787/healthz`;
+
+const releaseCmd = [
+  '# option a — homebrew (macOS + linux)',
+  'brew install nopperabbo/tap/kiroxy',
+  '',
+  '# option b — release tarball',
+  'VERSION=0.3.0 OS_ARCH=Darwin_arm64',
+  'curl -sSL -o kiroxy.tar.gz \\',
+  '  https://github.com/nopperabbo/kiroxy/releases/download/v${VERSION}/kiroxy_${VERSION}_${OS_ARCH}.tar.gz',
+  'shasum -a 256 kiroxy.tar.gz | diff - kiroxy.sha256',
+  'tar -xzf kiroxy.tar.gz && ./kiroxy version',
+].join('\n');
+
+const releaseUrl = 'https://github.com/nopperabbo/kiroxy/releases/download/v${VERSION}/kiroxy_${VERSION}_${OS_ARCH}.tar.gz';
+
+const firstReqCmd = `curl -sS http://127.0.0.1:8787/v1/messages \\
+  -H "X-Api-Key: \$KIROXY_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -H "anthropic-version: 2023-06-01" \\
+  -d '{"model":"claude-sonnet-4-5","max_tokens":1024,"messages":[{"role":"user","content":"kiroxy"}]}'`;
+
+const firstReqBody = `'{"model":"claude-sonnet-4-5","max_tokens":1024,"messages":[{"role":"user","content":"kiroxy"}]}'`;
+---
+<section id="install" aria-labelledby="install-title">
+  <div class="container">
+    <span class="eyebrow">install</span>
+    <h2 id="install-title" class="section-heading">Five minutes, three paths.</h2>
+    <p class="section-lead">
+      Pick the one your machine is closest to. Each path ends with
+      <code class="inline">curl /healthz</code> returning 200.
+    </p>
+
+    <div class="paths">
+      <article class="path">
+        <header>
+          <span class="path-num" aria-hidden="true">01</span>
+          <h3>Build from source</h3>
+          <span class="path-hint">Go 1.26+ · recommended for contributors</span>
+        </header>
+        <div class="code-frame">
+          <div class="code-bar">
+            <span class="code-label">shell</span>
+            <button class="copy-btn" type="button" data-copy={sourceCmd}>copy</button>
+          </div>
+          <pre><code><span class="p">$</span> git clone https://github.com/nopperabbo/kiroxy.git
+<span class="p">$</span> cd kiroxy
+<span class="p">$</span> make build
+<span class="p">$</span> ./kiroxy serve
+<span class="c"># verify</span>
+<span class="p">$</span> ./kiroxy version</code></pre>
+        </div>
+      </article>
+
+      <article class="path">
+        <header>
+          <span class="path-num" aria-hidden="true">02</span>
+          <h3>Run with Docker</h3>
+          <span class="path-hint">distroless, nonroot, ~30 MiB</span>
+        </header>
+        <div class="code-frame">
+          <div class="code-bar">
+            <span class="code-label">shell</span>
+            <button class="copy-btn" type="button" data-copy={dockerCmd}>copy</button>
+          </div>
+          <pre><code><span class="p">$</span> cp .env.example .env
+<span class="p">$</span> make docker-compose-up
+<span class="p">$</span> docker compose logs -f kiroxy
+<span class="c"># verify</span>
+<span class="p">$</span> curl -sS http://127.0.0.1:8787/healthz</code></pre>
+        </div>
+      </article>
+
+      <article class="path">
+        <header>
+          <span class="path-num" aria-hidden="true">03</span>
+          <h3>Pre-built binary</h3>
+          <span class="path-hint">homebrew or release tarball · macOS + linux</span>
+        </header>
+        <div class="code-frame">
+          <div class="code-bar">
+            <span class="code-label">shell</span>
+            <button class="copy-btn" type="button" data-copy={releaseCmd}>copy</button>
+          </div>
+          <pre><code><span class="c"># option a — homebrew (macOS + linux)</span>
+<span class="p">$</span> brew install nopperabbo/tap/kiroxy
+
+<span class="c"># option b — release tarball</span>
+<span class="p">$</span> VERSION=0.3.0 OS_ARCH=Darwin_arm64
+<span class="p">$</span> curl -sSL -o kiroxy.tar.gz \
+    {releaseUrl}
+<span class="c"># verify</span>
+<span class="p">$</span> shasum -a 256 kiroxy.tar.gz | diff - kiroxy.sha256
+<span class="p">$</span> tar -xzf kiroxy.tar.gz && ./kiroxy version</code></pre>
+        </div>
+      </article>
+    </div>
+
+    <div class="first-call">
+      <h3>Then send your first request</h3>
+      <div class="code-frame">
+        <div class="code-bar">
+          <span class="code-label">shell</span>
+          <button class="copy-btn" type="button" data-copy={firstReqCmd}>copy</button>
+        </div>
+        <pre><code><span class="p">$</span> curl -sS http://127.0.0.1:8787/v1/messages \
+    -H <span class="s">"X-Api-Key: $KIROXY_API_KEY"</span> \
+    -H <span class="s">"Content-Type: application/json"</span> \
+    -H <span class="s">"anthropic-version: 2023-06-01"</span> \
+    -d <span class="s">{firstReqBody}</span></code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  document.querySelectorAll('.copy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const text = btn.getAttribute('data-copy') ?? '';
+      try {
+        await navigator.clipboard.writeText(text);
+        const prev = btn.textContent;
+        btn.textContent = 'copied';
+        btn.setAttribute('data-state', 'copied');
+        setTimeout(() => {
+          btn.textContent = prev ?? 'copy';
+          btn.removeAttribute('data-state');
+        }, 1200);
+      } catch {
+        /* clipboard unavailable — fail quiet */
+      }
+    });
+  });
+</script>
+
+<style>
+  .paths {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-5);
+    margin-bottom: var(--sp-8);
+  }
+  @media (max-width: 960px) {
+    .paths { grid-template-columns: 1fr; }
+  }
+
+  .path {
+    background: var(--c-surface-sunken);
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .path header {
+    padding: var(--sp-5) var(--sp-5) var(--sp-4);
+    border-bottom: 1px solid var(--c-rule);
+    background: var(--c-surface);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: 0 var(--sp-4);
+  }
+  .path-num {
+    grid-row: 1 / 3;
+    font-family: var(--font-display);
+    font-size: var(--fs-2xl);
+    color: var(--c-accent);
+    font-weight: var(--fw-medium);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    align-self: center;
+  }
+  .path h3 {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    margin: 0;
+    font-weight: var(--fw-medium);
+    color: var(--c-text);
+  }
+  .path-hint {
+    font-family: var(--font-text);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+  }
+
+  .code-frame {
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .code-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--sp-3) var(--sp-5);
+    border-bottom: 1px solid var(--c-rule);
+  }
+  .code-label {
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-wide);
+    text-transform: uppercase;
+  }
+  .copy-btn {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    padding: 4px 10px;
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-sm);
+    color: var(--c-text-dim);
+    background: var(--c-surface);
+    cursor: pointer;
+    letter-spacing: var(--tr-wide);
+    text-transform: uppercase;
+    transition: color var(--mo-fast), border-color var(--mo-fast);
+  }
+  .copy-btn:hover {
+    color: var(--c-accent);
+    border-color: var(--c-accent);
+  }
+  .copy-btn[data-state="copied"] {
+    color: var(--c-success);
+    border-color: var(--c-success);
+  }
+  .code-frame pre {
+    margin: 0;
+    padding: var(--sp-5);
+    overflow-x: auto;
+    line-height: var(--lh-relaxed);
+    color: var(--c-text-dim);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .code-frame code { background: none; }
+  .p { color: var(--c-accent); user-select: none; }
+  .s { color: var(--c-success); }
+  .c { color: var(--c-text-ghost); font-style: italic; }
+
+  .first-call h3 {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    margin-bottom: var(--sp-4);
+    color: var(--c-text);
+    font-weight: var(--fw-medium);
+  }
+
+  code.inline {
+    font-family: var(--font-mono);
+    font-size: 0.95em;
+    padding: 1px 6px;
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-xs);
+    color: var(--c-text);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+</style>

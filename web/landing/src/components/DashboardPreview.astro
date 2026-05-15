@@ -1,0 +1,678 @@
+---
+// Dashboard preview — two-panel treatment:
+//
+// 1. The existing LiveRequestStream mockup (kept verbatim) shows what the
+//    canonical home surface looks like at request-level granularity.
+// 2. A bespoke 3-column operator mockup (pool / live stream / metrics)
+//    replaces the blurry static screenshot that used to live here. Every
+//    pixel is SVG or HTML/CSS — sharp at any viewport, matches the
+//    Mansion vocabulary from the hero topology card.
+//
+// Copy preserved. Only the visual anchor changes.
+const requests = [
+  { acct: "acct-2", model: "claude-sonnet-4-5", verb: "POST", path: "/v1/messages",          status: 200, ms: "1.4s",  tin: "1,247", tout: "389", dollars: "$0.012", type: "stream", ts: "11:42:18", state: "ok" },
+  { acct: "acct-5", model: "claude-haiku-4.5",  verb: "POST", path: "/v1/chat/completions",  status: 200, ms: "0.9s",  tin: "412",   tout: "118", dollars: "$0.003", type: "json",   ts: "11:42:12", state: "ok" },
+  { acct: "acct-1", model: "claude-opus-4-7",   verb: "POST", path: "/v1/messages",          status: 200, ms: "3.1s",  tin: "3,820", tout: "1,201", dollars: "$0.054", type: "stream", ts: "11:42:07", state: "ok" },
+  { acct: "acct-7", model: "claude-sonnet-4-5", verb: "POST", path: "/v1/messages",          status: 429, ms: "0.22s", tin: "—",     tout: "—",    dollars: "—",     type: "err",    ts: "11:41:58", state: "warn" },
+  { acct: "acct-3", model: "claude-haiku-4.5",  verb: "POST", path: "/v1/messages/count_tokens", status: 200, ms: "0.04s", tin: "—", tout: "—",    dollars: "—",     type: "json",   ts: "11:41:52", state: "ok" },
+];
+
+// Pool panel (8 rows — 6 active, 2 cooling).
+const pool = [
+  { id: "e3ba0c18", kind: "workspace", count: "2.1k", state: "ok" },
+  { id: "7f4a92c1", kind: "workspace", count: "1.8k", state: "ok" },
+  { id: "9ce4d7b3", kind: "workspace", count: "1.6k", state: "ok" },
+  { id: "3ab87e2f", kind: "workspace", count: "1.4k", state: "ok" },
+  { id: "8d5f6b4a", kind: "workspace", count: "1.2k", state: "ok" },
+  { id: "4a2b8f92", kind: "workspace", count: "0",    state: "cool" },
+  { id: "6c9e1d73", kind: "kikirro",   count: "980",  state: "ok" },
+  { id: "2f7b4a5c", kind: "workspace", count: "0",    state: "cool" },
+];
+
+// Live stream panel — reverse-chron synthetic rows.
+const stream = [
+  { t: "23:47:18", ep: "/v1/messages",         model: "opus-4.7",   ms: "4.2s" },
+  { t: "23:47:12", ep: "/v1/messages",         model: "opus-4.7",   ms: "3.8s" },
+  { t: "23:47:05", ep: "/v1/chat/completions", model: "sonnet-4.6", ms: "1.1s" },
+  { t: "23:46:58", ep: "/v1/messages",         model: "opus-4.7",   ms: "5.6s" },
+  { t: "23:46:52", ep: "/v1/messages",         model: "haiku-4.5",  ms: "0.3s" },
+  { t: "23:46:44", ep: "/v1/messages",         model: "sonnet-4.6", ms: "1.4s" },
+  { t: "23:46:38", ep: "/v1/chat/completions", model: "haiku-4.5",  ms: "0.2s" },
+  { t: "23:46:29", ep: "/v1/messages",         model: "opus-4.7",   ms: "4.8s" },
+];
+---
+<section id="dashboard" aria-labelledby="dash-title" class="alt">
+  <div class="container">
+    <span class="eyebrow">dashboard</span>
+    <h2 id="dash-title" class="section-heading">A live feed, not a stat grid.</h2>
+    <p class="section-lead">
+      The home page is the <strong>LiveRequestStream</strong>: reverse-chron blocks
+      of actual requests as they happen. <kbd>⌘K</kbd> on any block opens
+      per-request actions — replay with a different model, copy permalink,
+      view upstream raw.
+    </p>
+
+    <div class="stage">
+      <header class="stage-bar">
+        <div class="left">
+          <span class="mark" aria-hidden="true">●</span>
+          <span class="title">kiroxy / live</span>
+          <span class="crumb" aria-hidden="true">›</span>
+          <span class="sub">requests · 8 accts · 5 min</span>
+        </div>
+        <div class="right">
+          <kbd>⌘K</kbd>
+          <span class="sep" aria-hidden="true">·</span>
+          <kbd>/</kbd>
+          <span class="hint">search</span>
+        </div>
+      </header>
+
+      <div class="stream" role="list" aria-label="Live request stream (example)">
+        {requests.map((r) => (
+          <article class="block" data-state={r.state} role="listitem">
+            <header class="block-head">
+              <span class="dot" data-state={r.state} aria-hidden="true"></span>
+              <span class="acct">{r.acct}</span>
+              <span class="model">{r.model}</span>
+              <span class="verb">{r.verb}</span>
+              <span class="path">{r.path}</span>
+              <span class={`status status-${r.state}`}>{r.status}</span>
+              <span class="ms">{r.ms}</span>
+            </header>
+            <footer class="block-foot">
+              <span>{r.tin} in · {r.tout} out</span>
+              <span class="sep" aria-hidden="true">·</span>
+              <span>{r.dollars}</span>
+              <span class="sep" aria-hidden="true">·</span>
+              <span>{r.type}</span>
+              <span class="sep" aria-hidden="true">·</span>
+              <span>{r.ts}</span>
+            </footer>
+          </article>
+        ))}
+      </div>
+
+      <footer class="stage-foot">
+        <span>⌘↩ inspect</span>
+        <span>⌘C copy id</span>
+        <span>⌘R replay</span>
+        <span>⌘L view logs</span>
+      </footer>
+    </div>
+
+    <p class="note">
+      The full <strong>Mansion</strong> operator dashboard, rendered by the
+      same binary serving <code class="inline">/v1/messages</code> — no separate
+      service, no external analytics. Mouse shortcuts above, keyboard shortcuts
+      below, pool health and metrics on every surface.
+    </p>
+
+    <!-- ── Operator mockup: bespoke 3-panel SVG/CSS.
+         Replaces the old static screenshot. Pool · Stream · Metrics. ─── -->
+    <figure class="ops" aria-label="kiroxy operator dashboard (synthetic data)">
+      <header class="ops-bar">
+        <span class="ops-brand">
+          kiroxy<span class="ops-caret">▍</span>
+        </span>
+        <span class="ops-status">
+          <span class="ops-live-dot" aria-hidden="true"></span>
+          <span>LIVE · 8 accounts · 2,147 req/h · p99 4.2s</span>
+        </span>
+        <span class="ops-kbd">⌘K</span>
+      </header>
+
+      <div class="ops-grid">
+        <!-- LEFT: Pool ──────────────────────────────────────────────── -->
+        <section class="ops-col ops-pool" aria-label="Account pool">
+          <header class="ops-col-head">POOL · 6 ACTIVE · 2 COOLING</header>
+          <ul role="list">
+            {pool.map((p) => (
+              <li data-state={p.state}>
+                <span class="pool-id">{p.id}</span>
+                <span class="pool-kind">{p.kind}</span>
+                <span class="pool-count">{p.count}</span>
+                <span class={`pool-dot pool-dot-${p.state}`} aria-hidden="true"></span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <!-- CENTER: Stream ──────────────────────────────────────────── -->
+        <section class="ops-col ops-stream" aria-label="Live request stream">
+          <header class="ops-col-head">
+            LIVE STREAM · LAST 60s
+            <span class="ops-live-dot ops-live-dim" aria-hidden="true"></span>
+          </header>
+          <ul role="list">
+            {stream.map((r, i) => (
+              <li style={`--i: ${i}`}>
+                <time>{r.t}</time>
+                <code class="ep">{r.ep}</code>
+                <span class="model">{r.model}</span>
+                <span class="ok">200</span>
+                <span class="dur">{r.ms}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <!-- RIGHT: Metrics ──────────────────────────────────────────── -->
+        <section class="ops-col ops-metrics" aria-label="Metrics">
+          <header class="ops-col-head">METRICS · 24h</header>
+
+          <div class="metric">
+            <label>req/min</label>
+            <svg viewBox="0 0 140 40" preserveAspectRatio="none" width="100%" height="40">
+              <line x1="0" y1="8" x2="140" y2="8" class="g"/>
+              <line x1="0" y1="20" x2="140" y2="20" class="g"/>
+              <line x1="0" y1="32" x2="140" y2="32" class="g"/>
+              <path
+                d="M0 30 L8 28 L16 26 L24 22 L32 24 L40 20 L48 18 L56 21 L64 16 L72 12 L80 14 L88 10 L96 13 L104 9 L112 11 L120 6 L128 9 L136 5 L140 7"
+                class="l"
+              />
+            </svg>
+          </div>
+
+          <div class="metric">
+            <label>p99 latency</label>
+            <div class="bars-h">
+              <div class="row"><span class="k">p50</span><span class="bar"><span style="width: 12%"></span></span><span class="v">120 ms</span></div>
+              <div class="row"><span class="k">p75</span><span class="bar"><span style="width: 28%"></span></span><span class="v">340 ms</span></div>
+              <div class="row"><span class="k">p90</span><span class="bar"><span style="width: 48%"></span></span><span class="v">890 ms</span></div>
+              <div class="row"><span class="k">p95</span><span class="bar"><span style="width: 68%"></span></span><span class="v">1.9 s</span></div>
+              <div class="row"><span class="k">p99</span><span class="bar bar-tip"><span style="width: 94%"></span></span><span class="v">4.2 s</span></div>
+            </div>
+          </div>
+
+          <div class="metric">
+            <label>pool weight</label>
+            <div class="bars-v">
+              <span style="--h: 82%"></span>
+              <span style="--h: 74%"></span>
+              <span style="--h: 68%"></span>
+              <span style="--h: 61%"></span>
+              <span style="--h: 55%"></span>
+              <span style="--h: 12%" data-cool></span>
+              <span style="--h: 44%"></span>
+              <span style="--h: 8%"  data-cool></span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <footer class="ops-foot">
+        INBOUND 2 api shapes · OUTBOUND 1 upstream · STATE SQLite vault · ⌘K cmd palette · / keyboard shortcuts
+      </footer>
+    </figure>
+  </div>
+</section>
+
+<style>
+  /* ── Existing live-stream stage — unchanged ────────────────────── */
+  .stage {
+    background: var(--c-surface-sunken);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+  }
+  .stage-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--sp-3) var(--sp-5);
+    background: var(--c-surface);
+    border-bottom: 1px solid var(--c-rule);
+    font-family: var(--font-display);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+  }
+  .left, .right { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+  .mark { color: var(--c-accent); }
+  .title { color: var(--c-text); letter-spacing: -0.01em; }
+  .crumb { color: var(--c-text-ghost); }
+  .sub { color: var(--c-text-faint); }
+  .right kbd {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 6px;
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-xs);
+    color: var(--c-text-dim);
+    background: var(--c-surface-sunken);
+  }
+  .hint { letter-spacing: var(--tr-wide); }
+  .right .sep { color: var(--c-text-ghost); }
+
+  .stream {
+    padding: var(--sp-2);
+    display: grid;
+    gap: 2px;
+    background: var(--c-surface-sunken);
+  }
+  .block {
+    padding: var(--sp-4) var(--sp-5);
+    border-radius: var(--r-sm);
+    background: transparent;
+    transition: background var(--mo-fast) var(--ease-std);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .block:hover { background: var(--c-surface-2); }
+  .block[data-state="ok"] { border-left: 2px solid transparent; }
+  .block[data-state="warn"] {
+    border-left: 2px solid var(--c-warn);
+    background: color-mix(in oklch, var(--c-warn), transparent 94%);
+  }
+  .block-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-3);
+    line-height: var(--lh-snug);
+  }
+  .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--c-success);
+    flex-shrink: 0;
+  }
+  .dot[data-state="warn"] { background: var(--c-warn); }
+  .acct { color: var(--c-text); font-weight: var(--fw-medium); }
+  .model { color: var(--c-accent); }
+  .verb {
+    color: var(--c-text-faint);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--tr-wide);
+  }
+  .path { color: var(--c-text-dim); }
+  .status {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    padding: 1px 7px;
+    border-radius: var(--r-xs);
+    border: 1px solid currentColor;
+    flex-shrink: 0;
+  }
+  .status-ok {
+    color: var(--c-success);
+    background: color-mix(in oklch, var(--c-success), transparent 88%);
+  }
+  .status-warn {
+    color: var(--c-warn);
+    background: color-mix(in oklch, var(--c-warn), transparent 88%);
+  }
+  .ms {
+    color: var(--c-text-dim);
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .block-foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    margin-top: var(--sp-2);
+    color: var(--c-text-faint);
+    font-size: var(--fs-xs);
+  }
+  .block-foot .sep { color: var(--c-text-ghost); }
+
+  .stage-foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-5);
+    padding: var(--sp-3) var(--sp-5);
+    background: var(--c-surface);
+    border-top: 1px solid var(--c-rule);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-wide);
+  }
+
+  .note {
+    margin-top: var(--sp-6);
+    margin-bottom: var(--sp-7);
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+  }
+
+  /* ── Operator mockup — 3-column SVG/CSS panel ──────────────────── */
+  .ops {
+    margin: 0;
+    background: var(--c-surface-sunken);
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    font-family: var(--font-mono);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .ops-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    padding: var(--sp-3) var(--sp-5);
+    background: var(--c-surface);
+    border-bottom: 1px solid var(--c-rule);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .ops-brand {
+    font-family: var(--font-display);
+    font-weight: var(--fw-semibold);
+    color: var(--c-text);
+    font-size: var(--fs-sm);
+    letter-spacing: -0.01em;
+  }
+  .ops-caret {
+    display: inline-block;
+    color: var(--c-accent);
+    margin-left: 2px;
+    animation: caret-blink 1.1s steps(1, end) infinite;
+    font-weight: var(--fw-medium);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ops-caret { animation: none; }
+  }
+  .ops-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--c-text-dim);
+    letter-spacing: var(--tr-wide);
+    font-size: 11px;
+  }
+  .ops-live-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--c-accent);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--c-accent), transparent 80%);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  .ops-live-dim {
+    background: color-mix(in oklch, var(--c-accent), transparent 40%);
+    box-shadow: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ops-live-dot { animation: none; }
+  }
+  .ops-kbd {
+    padding: 2px 7px;
+    border: 1px solid var(--c-accent);
+    border-radius: var(--r-xs);
+    color: var(--c-accent);
+    font-size: 10px;
+    letter-spacing: var(--tr-wide);
+  }
+
+  .ops-grid {
+    display: grid;
+    grid-template-columns: 30% 1fr 25%;
+    min-height: 320px;
+  }
+  .ops-col {
+    padding: var(--sp-4) var(--sp-5);
+    border-right: 1px solid var(--c-rule);
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+  .ops-col:last-child { border-right: 0; }
+  .ops-col-head {
+    font-size: 10px;
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-caps);
+    text-transform: uppercase;
+    padding-bottom: var(--sp-2);
+    border-bottom: 1px solid var(--c-rule);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+  }
+
+  /* Pool panel */
+  .ops-pool ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .ops-pool li {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: 5px 0;
+    border-bottom: 1px solid var(--c-rule);
+    font-size: 11px;
+  }
+  .ops-pool li:last-child { border-bottom: 0; }
+  .ops-pool li[data-state="cool"] { opacity: 0.55; }
+  .pool-id { color: var(--c-text); font-variant-numeric: tabular-nums; }
+  .pool-kind {
+    color: var(--c-text-faint);
+    font-size: 10px;
+    letter-spacing: var(--tr-wide);
+  }
+  .pool-count {
+    color: var(--c-text);
+    font-variant-numeric: tabular-nums;
+    min-width: 36px;
+    text-align: right;
+  }
+  .pool-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--c-success);
+  }
+  .pool-dot-cool {
+    background: color-mix(in oklch, var(--c-warn), transparent 30%);
+  }
+
+  /* Stream panel — the live feel. Rows cycle via stagger animation. */
+  .ops-stream ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .ops-stream li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: 5px 0;
+    border-bottom: 1px solid var(--c-rule);
+    font-size: 11px;
+    color: var(--c-text-dim);
+    animation: feed-in 0.6s ease both;
+    animation-delay: calc(var(--i, 0) * 40ms);
+  }
+  .ops-stream li:last-child { border-bottom: 0; }
+  @keyframes feed-in {
+    from { opacity: 0; transform: translateY(-2px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ops-stream li { animation: none; }
+  }
+  .ops-stream time {
+    color: var(--c-text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .ops-stream .ep {
+    color: var(--c-text);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ops-stream .model {
+    color: var(--c-text-faint);
+    font-size: 10px;
+    letter-spacing: var(--tr-wide);
+  }
+  .ops-stream .ok {
+    color: var(--c-success);
+    opacity: 0.75;
+    font-size: 10px;
+    padding: 0 5px;
+    border: 1px solid color-mix(in oklch, var(--c-success), transparent 60%);
+    border-radius: var(--r-xs);
+  }
+  .ops-stream .dur {
+    color: var(--c-text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Metrics panel */
+  .ops-metrics { gap: var(--sp-4); }
+  .metric {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .metric label {
+    font-size: 10px;
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-caps);
+    text-transform: uppercase;
+  }
+  .metric svg .g {
+    stroke: var(--c-rule);
+    stroke-width: 1;
+  }
+  .metric svg .l {
+    fill: none;
+    stroke: var(--c-accent);
+    stroke-width: 1.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .bars-h { display: flex; flex-direction: column; gap: 3px; }
+  .bars-h .row {
+    display: grid;
+    grid-template-columns: 26px 1fr auto;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--c-text-faint);
+  }
+  .bars-h .k { letter-spacing: var(--tr-wide); }
+  .bars-h .bar {
+    display: block;
+    height: 5px;
+    border: 1px solid var(--c-rule);
+    border-radius: 1px;
+    overflow: hidden;
+    background: transparent;
+    position: relative;
+  }
+  .bars-h .bar span {
+    display: block;
+    height: 100%;
+    background: var(--c-border-strong);
+  }
+  .bars-h .bar-tip span {
+    background: linear-gradient(
+      90deg,
+      var(--c-border-strong) 0%,
+      var(--c-border-strong) 85%,
+      var(--c-accent) 100%
+    );
+  }
+  .bars-h .v {
+    color: var(--c-text);
+    font-variant-numeric: tabular-nums;
+    font-size: 10px;
+  }
+
+  .bars-v {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    height: 40px;
+    align-items: end;
+    padding: 0 1px;
+  }
+  .bars-v span {
+    display: block;
+    background: var(--c-border-strong);
+    height: var(--h, 50%);
+    border-radius: 1px;
+  }
+  .bars-v span[data-cool] {
+    background: color-mix(in oklch, var(--c-border-strong), transparent 40%);
+  }
+
+  .ops-foot {
+    padding: var(--sp-3) var(--sp-5);
+    background: var(--c-surface);
+    border-top: 1px solid var(--c-rule);
+    font-size: 10px;
+    color: var(--c-text-ghost);
+    letter-spacing: var(--tr-wide);
+    text-transform: uppercase;
+  }
+
+  kbd {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    padding: 1px 5px;
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-xs);
+    color: var(--c-text);
+    background: var(--c-surface);
+  }
+
+  code.inline {
+    font-family: var(--font-mono);
+    font-size: 0.95em;
+    padding: 1px 6px;
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-xs);
+    color: var(--c-text);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+
+  /* ── Responsive ────────────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .ops-grid {
+      grid-template-columns: 1fr;
+    }
+    .ops-col {
+      border-right: 0;
+      border-bottom: 1px solid var(--c-rule);
+    }
+    .ops-col:last-child { border-bottom: 0; }
+    .ops-metrics { flex-direction: row; flex-wrap: wrap; gap: var(--sp-4) var(--sp-5); }
+    .ops-metrics .metric { flex: 1 1 180px; }
+    .ops-metrics .ops-col-head { flex-basis: 100%; }
+  }
+  @media (max-width: 720px) {
+    .path, .block-foot .sep, .block-foot span:nth-child(5) { display: none; }
+    .ops-metrics { flex-direction: column; }
+    .ops-bar { font-size: 10px; }
+    .ops-status { font-size: 10px; }
+  }
+  @media (max-width: 560px) {
+    .ops-status { display: none; }
+    .ops-bar { justify-content: space-between; }
+    .ops-pool li { grid-template-columns: auto 1fr auto auto; font-size: 10px; }
+  }
+</style>

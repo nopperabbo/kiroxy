@@ -1,0 +1,210 @@
+/* kiroxy-landing — Base styles.
+   Reset, typography defaults, and global primitives.
+   Kept deliberately small; componentry scopes its own styles. */
+
+@import "@fontsource-variable/jetbrains-mono/index.css";
+@import "@fontsource-variable/inter/index.css";
+@import "./tokens.css";
+
+/* ── Reset — minimal, modern. ───────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-text);
+  font-size: var(--fs-md);
+  line-height: var(--lh-normal);
+  color: var(--c-text);
+  background: var(--c-bg);
+  font-feature-settings: "cv05", "cv08", "cv11", "ss03";
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* Media — sensible defaults. */
+img, svg, video, canvas, audio, iframe, embed, object {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+button, input, textarea, select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+a {
+  color: var(--c-accent);
+  text-decoration: none;
+  text-underline-offset: 3px;
+  transition: color var(--mo-fast) var(--ease-std);
+}
+
+a:hover {
+  color: var(--c-accent-strong);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: var(--r-sm);
+}
+
+/* Mono blocks — disable ligatures (paths, URLs, shell rearrange incorrectly). */
+code, pre, kbd, samp, .mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "liga" 0, "calt" 0;
+}
+
+/* Headings — display = mono, Mansion convention. */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  color: var(--c-text);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tr-tight);
+  font-weight: var(--fw-medium);
+}
+
+h1 {
+  font-size: var(--fs-display);
+  letter-spacing: var(--tr-display);
+  font-weight: var(--fw-medium);
+}
+h2 { font-size: var(--fs-2xl); }
+h3 { font-size: var(--fs-xl); }
+h4 { font-size: var(--fs-lg); }
+
+p {
+  max-width: var(--max-prose);
+  color: var(--c-text-dim);
+  line-height: var(--lh-relaxed);
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--c-rule);
+}
+
+::selection {
+  background: var(--c-accent-bg);
+  color: var(--c-text);
+}
+
+/* ── Layout primitives. ─────────────────────────────────────────── */
+.container {
+  width: 100%;
+  max-width: var(--max-w);
+  margin-inline: auto;
+  padding-inline: var(--pad-x);
+}
+
+.prose {
+  max-width: var(--max-prose);
+}
+
+/* Section rhythm. */
+section {
+  padding-block: var(--sp-10);
+  border-top: 1px solid var(--c-rule);
+}
+
+@media (max-width: 720px) {
+  section {
+    padding-block: var(--sp-9);
+  }
+}
+
+section.no-rule {
+  border-top: 0;
+}
+
+/* Alternating section backgrounds — break the monotone card rhythm.
+   Applied manually via .alt; sections are given subtle surface-sunken
+   tint + a soft top/bottom gradient blend to avoid hard banding. */
+section.alt {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--c-bg), var(--c-surface-sunken) 70%) 0%,
+      color-mix(in oklch, var(--c-bg), var(--c-surface-sunken) 85%) 100%
+    );
+  border-top-color: transparent;
+}
+section.alt + section:not(.alt) { border-top: 1px solid var(--c-rule); }
+
+.eyebrow {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: var(--tr-caps);
+  text-transform: uppercase;
+  color: var(--c-accent);
+  margin-bottom: var(--sp-4);
+}
+
+.section-heading {
+  font-size: var(--fs-2xl);
+  margin-bottom: var(--sp-3);
+}
+
+.section-lead {
+  color: var(--c-text-dim);
+  max-width: var(--max-prose);
+  margin-bottom: var(--sp-8);
+}
+
+/* Skip link. */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: var(--sp-4);
+  background: var(--c-surface);
+  color: var(--c-text);
+  border: 1px solid var(--c-border);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  z-index: 999;
+}
+
+.skip-link:focus {
+  top: var(--sp-4);
+}
+
+/* Visually hidden utility. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

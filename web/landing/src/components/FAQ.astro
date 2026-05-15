@@ -1,0 +1,188 @@
+---
+const faq = [
+  {
+    q: "Is kiroxy an official Kiro product?",
+    a: "No. kiroxy is an independent community project with no affiliation to Amazon, AWS, or the Kiro team. It talks to the same endpoints your local Kiro IDE already talks to, using credentials you own.<br><br>Everything runs on your machine. The vault file lives at <code>~/.kiroxy/tokens.db</code> (mode 0600). Audit the wire anytime with <code>tcpdump -i lo0 port 8787</code>.",
+    html: true,
+  },
+  {
+    q: "Is this legal? Will my Kiro account get banned?",
+    a: "kiroxy is designed for single-user, self-hosted use against accounts you own. It doesn't resell access. That said — multi-account pooling against consumer Builder IDs can trigger AWS abuse detection. Stay reasonable: personal use, a handful of accounts, sane request cadence.",
+  },
+  {
+    q: "Does it support Gemini, OpenAI, or other providers?",
+    a: "No, and that's an anti-goal. kiroxy speaks Anthropic + OpenAI API shapes on the inbound side but only routes to Kiro upstream. If you want multi-provider, use LiteLLM or Portkey next to kiroxy — they speak the same shapes.",
+  },
+  {
+    q: "Is there a hosted version?",
+    a: "No. kiroxy is self-hosted only. There's no SaaS, no free tier, no waitlist. You run the binary on your machine or your own VPS.",
+  },
+  {
+    q: "Does kiroxy send telemetry anywhere?",
+    a: "No. Zero. The only outbound traffic is to the upstream Kiro endpoint you configured. Scrape your own /metrics endpoint for observability.",
+  },
+];
+---
+<section id="faq" aria-labelledby="faq-title">
+  <div class="container">
+    <span class="eyebrow">faq</span>
+    <h2 id="faq-title" class="section-heading">Questions that come up.</h2>
+    <p class="section-lead">
+      The first answer is open by default — most readers land here for it.
+      Click any row to read the rest.
+    </p>
+
+    <div class="list">
+      {faq.map((item, i) => (
+        <details class="item" open={i === 0}>
+          <summary>
+            <span class="num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+            <span class="q">{item.q}</span>
+            <span class="chev" aria-hidden="true">
+              <svg viewBox="0 0 16 16" width="14" height="14">
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  d="M3 6 l5 5 l5 -5"
+                />
+              </svg>
+            </span>
+          </summary>
+          <div class="answer">
+            {item.html ? (
+              <p class="a" set:html={item.a}></p>
+            ) : (
+              <p class="a">{item.a}</p>
+            )}
+          </div>
+        </details>
+      ))}
+    </div>
+
+    <p class="more">
+      Need something specific? Open an issue on
+      <a href="https://github.com/nopperabbo/kiroxy/issues" rel="noopener">github.com/nopperabbo/kiroxy</a> ·
+      we'll add the answer here if it comes up twice.
+    </p>
+  </div>
+</section>
+
+<style>
+  .section-lead { margin-bottom: var(--sp-7); }
+
+  .list {
+    border-top: 1px solid var(--c-border);
+    border-bottom: 1px solid var(--c-border);
+  }
+  .item {
+    border-bottom: 1px solid var(--c-rule);
+    transition: background var(--mo-fast) var(--ease-std);
+  }
+  .item:last-child { border-bottom: 0; }
+  .item:hover { background: color-mix(in oklch, var(--c-surface), transparent 50%); }
+  .item[open] {
+    background: color-mix(in oklch, var(--c-accent), transparent 96%);
+  }
+
+  summary {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--sp-5);
+    padding: var(--sp-5) var(--sp-2);
+    cursor: pointer;
+    list-style: none;
+    transition: color var(--mo-fast) var(--ease-std);
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary:hover .q { color: var(--c-accent); }
+
+  .num {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-wide);
+    font-feature-settings: "liga" 0, "calt" 0;
+    line-height: 1;
+  }
+  details[open] .num { color: var(--c-accent); }
+
+  .q {
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-medium);
+    color: var(--c-text);
+    line-height: var(--lh-snug);
+    letter-spacing: -0.005em;
+    transition: color var(--mo-fast) var(--ease-std);
+  }
+  details[open] .q { color: var(--c-text); }
+
+  .chev {
+    display: inline-grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--c-border);
+    color: var(--c-text-dim);
+    transition:
+      transform var(--mo-fast) var(--ease-std),
+      color var(--mo-fast) var(--ease-std),
+      border-color var(--mo-fast) var(--ease-std),
+      background var(--mo-fast) var(--ease-std);
+    flex-shrink: 0;
+  }
+  summary:hover .chev {
+    color: var(--c-accent);
+    border-color: var(--c-accent);
+  }
+  details[open] .chev {
+    transform: rotate(180deg);
+    color: var(--c-accent);
+    border-color: var(--c-accent);
+    background: color-mix(in oklch, var(--c-accent), transparent 88%);
+  }
+
+  .answer {
+    padding: 0 var(--sp-2) var(--sp-5);
+    padding-left: calc(var(--sp-2) + 2.25rem + var(--sp-5));
+  }
+  @media (max-width: 560px) {
+    .answer { padding-left: var(--sp-2); }
+  }
+  .a {
+    margin: 0;
+    max-width: var(--max-prose);
+    color: var(--c-text-dim);
+    font-family: var(--font-text);
+    font-size: var(--fs-md);
+    line-height: var(--lh-relaxed);
+  }
+  .a :global(code) {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+    background: var(--c-surface-sunken);
+    padding: 2px 5px;
+    border: 1px solid var(--c-border);
+    border-radius: var(--r-xs);
+    color: var(--c-text);
+  }
+
+  .more {
+    margin-top: var(--sp-7);
+    font-family: var(--font-text);
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+    line-height: var(--lh-relaxed);
+  }
+  .more a {
+    color: var(--c-text-dim);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in oklch, var(--c-accent), transparent 60%);
+    text-underline-offset: 3px;
+  }
+  .more a:hover { color: var(--c-accent); }
+</style>

@@ -1,0 +1,123 @@
+---
+const fits = [
+  "Solo dev with a Kiro subscription",
+  "Small trusted group (≤ 5 engineers)",
+  "Self-host enthusiasts on a home server, VPS, or Fly.io",
+  "Operators who want every request logged on their own disk",
+];
+const not_fits = [
+  "Multi-tenant AI gateway with billing — use LiteLLM or Portkey",
+  "Team collaboration tool with SSO + RBAC — use a team account",
+  "Pay-per-use customers — Kiro's web interface is the right shape",
+  "Anyone who needs SOC 2 / HIPAA / SSO — kiroxy ships none of that",
+];
+---
+<section id="audience" aria-labelledby="audience-title" class="alt">
+  <div class="container">
+    <span class="eyebrow">scope</span>
+    <h2 id="audience-title" class="section-heading">Who it's for. Who it isn't.</h2>
+    <p class="section-lead">
+      kiroxy is small on purpose. Smaller scope = smaller blast radius =
+      software you can keep on your machine for years.
+    </p>
+
+    <div class="cols">
+      <div class="col">
+        <h3 class="col-title">
+          <span class="check" aria-hidden="true">+</span>
+          For
+        </h3>
+        <ul class="list">
+          {fits.map((f) => <li>{f}</li>)}
+        </ul>
+      </div>
+      <div class="col">
+        <h3 class="col-title col-title-no">
+          <span class="cross" aria-hidden="true">−</span>
+          Not for
+        </h3>
+        <ul class="list list-no">
+          {not_fits.map((f) => <li>{f}</li>)}
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-7);
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+  }
+  .col {
+    padding: var(--sp-7) var(--sp-6);
+    background: var(--c-surface-sunken);
+  }
+  .col + .col {
+    border-left: 1px solid var(--c-rule);
+  }
+  .col-title {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-3);
+    font-family: var(--font-display);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--c-text);
+    letter-spacing: var(--tr-caps);
+    text-transform: uppercase;
+    margin-bottom: var(--sp-5);
+  }
+  .check, .cross {
+    width: 18px; height: 18px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: var(--r-sm);
+    font-size: 14px;
+    font-weight: var(--fw-bold);
+    line-height: 1;
+  }
+  .check {
+    background: color-mix(in oklch, var(--c-success), transparent 80%);
+    color: var(--c-success);
+  }
+  .cross {
+    background: color-mix(in oklch, var(--c-text-faint), transparent 80%);
+    color: var(--c-text-dim);
+  }
+  .list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: var(--sp-4);
+  }
+  .list li {
+    font-family: var(--font-text);
+    font-size: var(--fs-md);
+    color: var(--c-text-dim);
+    line-height: var(--lh-relaxed);
+    padding-left: var(--sp-5);
+    position: relative;
+  }
+  .list li::before {
+    content: "›";
+    position: absolute;
+    left: 0;
+    color: var(--c-accent);
+    font-family: var(--font-display);
+  }
+  .list-no li::before {
+    content: "·";
+    color: var(--c-text-faint);
+  }
+
+  @media (max-width: 720px) {
+    .cols { grid-template-columns: 1fr; }
+    .col + .col { border-left: 0; border-top: 1px solid var(--c-rule); }
+  }
+</style>

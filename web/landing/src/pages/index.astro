@@ -1,0 +1,33 @@
+---
+import Layout from '../components/Layout.astro';
+import Nav from '../components/Nav.astro';
+import Hero from '../components/Hero.astro';
+import WhatIs from '../components/WhatIs.astro';
+import FeatureGrid from '../components/FeatureGrid.astro';
+import Audience from '../components/Audience.astro';
+import Installation from '../components/Installation.astro';
+import DashboardPreview from '../components/DashboardPreview.astro';
+import Performance from '../components/Performance.astro';
+import Docs from '../components/Docs.astro';
+import FAQ from '../components/FAQ.astro';
+import Footer from '../components/Footer.astro';
+---
+<Layout
+  title="kiroxy — self-hosted Kiro proxy"
+  description="A single-user, self-hosted proxy that turns your own Kiro IDE subscription into a local Anthropic and OpenAI API endpoint. Open source, MIT, single Go binary."
+  path="/"
+>
+  <Nav />
+  <main id="main">
+    <Hero />
+    <WhatIs />
+    <FeatureGrid />
+    <Audience />
+    <Installation />
+    <DashboardPreview />
+    <Performance />
+    <Docs />
+    <FAQ />
+  </main>
+  <Footer />
+</Layout>

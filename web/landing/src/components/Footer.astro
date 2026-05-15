@@ -1,0 +1,150 @@
+---
+const year = new Date().getFullYear();
+---
+<footer class="foot">
+  <div class="container foot-inner">
+    <div class="col-brand">
+      <div class="brand">
+        <span class="mark" aria-hidden="true">k</span>
+        <span class="wordmark">kiroxy</span>
+      </div>
+      <p class="tag">
+        Self-hosted Kiro proxy. Community project, MIT licensed.
+      </p>
+      <p class="tag">
+        No affiliation with Amazon, AWS, or the Kiro team.
+      </p>
+    </div>
+
+    <nav class="col" aria-label="project">
+      <h4>project</h4>
+      <a href="https://github.com/nopperabbo/kiroxy" rel="noopener">GitHub</a>
+      <a href="https://github.com/nopperabbo/kiroxy/issues" rel="noopener">Issues</a>
+      <a href="https://github.com/nopperabbo/kiroxy/releases" rel="noopener">Releases</a>
+      <a href="https://github.com/nopperabbo/kiroxy/blob/main/LICENSE" rel="noopener">License</a>
+    </nav>
+
+    <nav class="col" aria-label="docs">
+      <h4>docs</h4>
+      <a href="https://github.com/nopperabbo/kiroxy#readme" rel="noopener">Quickstart</a>
+      <a href="https://github.com/nopperabbo/kiroxy/blob/main/docs/ARCHITECTURE.md" rel="noopener">Architecture</a>
+      <a href="https://github.com/nopperabbo/kiroxy/blob/main/docs/TROUBLESHOOTING.md" rel="noopener">Troubleshooting</a>
+      <a href="https://github.com/nopperabbo/kiroxy/blob/main/CHANGELOG.md" rel="noopener">Changelog</a>
+    </nav>
+
+    <nav class="col" aria-label="author">
+      <h4>author</h4>
+      <a href="https://github.com/nopperabbo" rel="noopener">GitHub / nopperabbo</a>
+      <a href="https://instagram.com/nopperabbo" rel="noopener">Instagram / nopperabbo</a>
+    </nav>
+  </div>
+
+  <div class="container foot-rule">
+    <p class="small">
+      © {year} · built by <a href="https://github.com/nopperabbo" rel="noopener">nopperabbo</a> ·
+      <span class="mono">{"{ status: 'ok', version: '0.3.0' }"}</span>
+    </p>
+    <p class="small muted">
+      No tracking. No analytics. This page knows nothing about you.
+    </p>
+  </div>
+</footer>
+
+<style>
+  .foot {
+    border-top: 1px solid var(--c-rule);
+    padding-top: var(--sp-10);
+    padding-bottom: var(--sp-6);
+    margin-top: var(--sp-8);
+  }
+  .foot-inner {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: var(--sp-8) var(--sp-7);
+    padding-bottom: var(--sp-8);
+  }
+  @media (max-width: 880px) {
+    .foot-inner { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 520px) {
+    .foot-inner { grid-template-columns: 1fr; }
+  }
+  .col-brand { max-width: 36ch; }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-4);
+  }
+  .mark {
+    display: inline-grid;
+    place-items: center;
+    width: 22px; height: 22px;
+    border: 1px solid var(--c-accent);
+    border-radius: var(--r-sm);
+    color: var(--c-accent);
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: var(--fw-semibold);
+    line-height: 1;
+  }
+  .wordmark {
+    font-family: var(--font-display);
+    font-weight: var(--fw-semibold);
+    color: var(--c-text);
+    letter-spacing: -0.01em;
+  }
+  .tag {
+    font-size: var(--fs-sm);
+    color: var(--c-text-faint);
+    line-height: var(--lh-relaxed);
+    max-width: none;
+  }
+  .tag + .tag { margin-top: var(--sp-2); }
+
+  .col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+  .col h4 {
+    font-family: var(--font-display);
+    font-size: var(--fs-xs);
+    letter-spacing: var(--tr-caps);
+    text-transform: uppercase;
+    color: var(--c-text-faint);
+    font-weight: var(--fw-medium);
+    margin-bottom: var(--sp-2);
+  }
+  .col a {
+    font-family: var(--font-text);
+    font-size: var(--fs-sm);
+    color: var(--c-text-dim);
+    text-decoration: none;
+  }
+  .col a:hover {
+    color: var(--c-accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .foot-rule {
+    padding-top: var(--sp-5);
+    border-top: 1px solid var(--c-rule);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--sp-4);
+  }
+  .small {
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    color: var(--c-text-faint);
+    letter-spacing: var(--tr-wide);
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  .small.muted { color: var(--c-text-ghost); }
+  .small a { color: var(--c-text-dim); }
+  .small a:hover { color: var(--c-accent); }
+  .mono { color: var(--c-text-dim); }
+</style>
