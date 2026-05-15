@@ -1,0 +1,202 @@
+# kiroxy Prometheus alert rules
+#
+# Drop into your Prometheus rules directory and reference from prometheus.yml:
+#
+#   rule_files:
+#     - /etc/prometheus/rules/kiroxy/alerts.yml
+#
+# All rules assume the kiroxy /metrics endpoint is scraped under job=kiroxy.
+# If your scrape job uses a different label, replace {job="kiroxy"} below.
+#
+# The four severity tiers:
+#   - page  — pool-level outage; on-call must respond
+#   - warn  — degraded but recovering; investigate within the day
+#   - info  — operator FYI; no immediate action
+#
+# Each alert documents:
+#   - A 'runbook' annotation pointing at the section in docs/TROUBLESHOOTING.md
+#     that explains diagnosis + remediation.
+#   - A 'why_it_matters' annotation so a paged operator who does not know
+#     kiroxy gets enough context to act.
+#
+# Source: kiroxy /metrics base names verified live 2026-05-15:
+#   kiroxy_accounts_available / _cooldown / _failed
+#   kiroxy_requests_total{model,stream,status}
+#   kiroxy_request_errors_total{model,stream,kind}
+#   kiroxy_request_duration_seconds_bucket{model,stream,le}
+#   kiroxy_refresh_attempts_total{kind,result}
+#   kiroxy_uptime_seconds
+#   kiroxy_vault_generation
+
+groups:
+  - name: kiroxy.pool
+    interval: 30s
+    rules:
+      - alert: KiroxyPoolDepleted
+        expr: kiroxy_accounts_available{job="kiroxy"} == 0
+        for: 2m
+        labels:
+          severity: page
+          component: pool
+        annotations:
+          summary: "kiroxy pool has zero available accounts"
+          description: |
+            The kiroxy account pool reports {{ $value }} available accounts
+            for 2 minutes. Every /v1/messages request will fail until at
+            least one account becomes pickable (cooldown expires, manual
+            re-enable, or new onboarding).
+          why_it_matters: "All proxy traffic is currently failing — every client connected to this kiroxy is down."
+          runbook: "docs/TROUBLESHOOTING.md#pool-depleted"
+
+      - alert: KiroxyPoolMostlyCooldown
+        expr: |
+          (kiroxy_accounts_cooldown{job="kiroxy"}
+            / (kiroxy_accounts_available{job="kiroxy"}
+               + kiroxy_accounts_cooldown{job="kiroxy"}
+               + kiroxy_accounts_failed{job="kiroxy"})) > 0.5
+        for: 10m
+        labels:
+          severity: warn
+          component: pool
+        annotations:
+          summary: "more than 50% of kiroxy accounts are in cooldown"
+          description: |
+            {{ $value | humanizePercentage }} of pool accounts are cooled
+            down for 10+ minutes. Likely upstream throttling, a bad
+            credential refresh batch, or a regional issue.
+          why_it_matters: "Pool capacity is degraded; surviving accounts will hit their own quotas faster."
+          runbook: "docs/TROUBLESHOOTING.md#pool-cooldown-storm"
+
+      - alert: KiroxyAccountsFailedSpike
+        expr: |
+          increase(kiroxy_accounts_failed{job="kiroxy"}[10m]) > 5
+        for: 5m
+        labels:
+          severity: warn
+          component: pool
+        annotations:
+          summary: "kiroxy_accounts_failed grew by >5 in 10 minutes"
+          description: |
+            {{ $value }} new accounts entered the failed (structural) bucket
+            in the last 10 minutes. Structural failures are non-recoverable
+            (UnknownOperationException, AccessDenied, etc.) and indicate
+            metadata drift or upstream API rejection.
+          why_it_matters: "Accounts in this state cannot self-heal — they need operator inspection and possibly re-onboarding."
+          runbook: "docs/TROUBLESHOOTING.md#structural-failures"
+
+  - name: kiroxy.refresh
+    interval: 30s
+    rules:
+      - alert: KiroxyRefreshFailing
+        expr: |
+          (sum(rate(kiroxy_refresh_attempts_total{job="kiroxy",result!="success"}[5m]))
+            / clamp_min(sum(rate(kiroxy_refresh_attempts_total{job="kiroxy"}[5m])), 1)) > 0.2
+        for: 5m
+        labels:
+          severity: warn
+          component: refresh
+        annotations:
+          summary: "more than 20% of token refreshes are failing"
+          description: |
+            {{ $value | humanizePercentage }} of refresh attempts in the
+            last 5m returned a non-success result. Common causes: dead
+            refresh_tokens (operator must re-onboard), upstream
+            /token endpoint outage, OIDC client_secret rotation
+            (check FAIL-006).
+          why_it_matters: "Failed refresh leaves accounts with stale Bearer tokens that will start returning 401 on every /v1/messages."
+          runbook: "docs/TROUBLESHOOTING.md#refresh-failing"
+
+  - name: kiroxy.upstream
+    interval: 30s
+    rules:
+      - alert: KiroxyHighErrorRate
+        expr: |
+          (sum(rate(kiroxy_request_errors_total{job="kiroxy"}[5m]))
+            / clamp_min(sum(rate(kiroxy_requests_total{job="kiroxy"}[5m])), 1)) > 0.1
+        for: 5m
+        labels:
+          severity: warn
+          component: upstream
+        annotations:
+          summary: "kiroxy /v1/messages error rate above 10%"
+          description: |
+            {{ $value | humanizePercentage }} of /v1/messages requests in
+            the last 5 minutes returned a non-2xx (proxy or upstream).
+            Group by the 'kind' label to triage:
+              sum by (kind) (rate(kiroxy_request_errors_total[5m]))
+          why_it_matters: "Beyond 10%, the proxy is making a noticeable user-visible dent in success rate."
+          runbook: "docs/TROUBLESHOOTING.md#high-error-rate"
+
+      - alert: KiroxyUpstreamLatencyHigh
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(kiroxy_request_duration_seconds_bucket{job="kiroxy"}[5m]))
+          ) > 60
+        for: 10m
+        labels:
+          severity: warn
+          component: upstream
+        annotations:
+          summary: "kiroxy p95 request duration above 60s"
+          description: |
+            p95 latency is {{ $value | humanizeDuration }} over the last
+            5m sliding window, sustained for 10m. Long thinking turns and
+            tool-search loops are normal up to ~30s; beyond 60s suggests
+            upstream is stalled or kiroxy is rotating through bad accounts.
+          why_it_matters: "Claude Code and OpenCode chunkTimeout default to ~30s; sustained p95 >60s means clients begin disconnecting."
+          runbook: "docs/TROUBLESHOOTING.md#upstream-latency"
+
+  - name: kiroxy.process
+    interval: 30s
+    rules:
+      - alert: KiroxyDown
+        expr: up{job="kiroxy"} == 0
+        for: 2m
+        labels:
+          severity: page
+          component: process
+        annotations:
+          summary: "kiroxy /metrics endpoint not responding"
+          description: |
+            Prometheus has been unable to scrape kiroxy for 2 minutes.
+            Either the process is down or the network path between
+            Prometheus and kiroxy is broken.
+          why_it_matters: "If kiroxy is down, every client behind it sees connection refused or timeout."
+          runbook: "docs/TROUBLESHOOTING.md#kiroxy-down"
+
+      - alert: KiroxyRecentRestart
+        expr: kiroxy_uptime_seconds{job="kiroxy"} < 300
+        for: 1m
+        labels:
+          severity: info
+          component: process
+        annotations:
+          summary: "kiroxy restarted within the last 5 minutes"
+          description: |
+            kiroxy has been up for {{ $value | humanizeDuration }}. If this
+            was unintentional, check the process supervisor logs (systemd /
+            launchd / docker) for crash/oom signals.
+          why_it_matters: "Unintentional restarts drop in-flight SSE streams and reset stickiness pins."
+          runbook: "docs/TROUBLESHOOTING.md#unexpected-restart"
+
+  - name: kiroxy.vault
+    interval: 1m
+    rules:
+      - alert: KiroxyVaultGenerationStalled
+        expr: |
+          changes(kiroxy_vault_generation{job="kiroxy"}[1h]) == 0
+          and kiroxy_accounts_available{job="kiroxy"} > 0
+        for: 30m
+        labels:
+          severity: info
+          component: vault
+        annotations:
+          summary: "kiroxy vault generation has not advanced in 1 hour"
+          description: |
+            kiroxy_vault_generation has not incremented in the last hour
+            even though there are available accounts. Either the
+            UsagePoller is not committing back to the vault, or the
+            refresh path has not produced a new bundle. Usually benign
+            during low traffic; investigate if traffic is high.
+          why_it_matters: "A stuck vault generation can mask a broken refresh path that will surface later as token-expired 401s."
+          runbook: "docs/TROUBLESHOOTING.md#vault-generation-stalled"
