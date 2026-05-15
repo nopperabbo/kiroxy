@@ -135,6 +135,7 @@
           {#if sortKey === "errors"}<span class="th__arrow">{arrow}</span>{/if}
         </button>
       </span>
+      <span role="columnheader" class="col col--usage">credits</span>
       <span role="columnheader" class="col col--cool">
         <button type="button" class="th" onclick={() => toggleSort("cooldown")}>
           cooldown
@@ -237,6 +238,23 @@
         <span class="col col--err mono tabular" class:dim={a.errors === 0} role="cell">
           {a.errors.toLocaleString()}
         </span>
+        <span class="col col--usage" role="cell">
+          {#if a.usage_known && a.usage_cap}
+            {@const pct = (a.usage_used ?? 0) / a.usage_cap}
+            {@const tone = pct >= 0.9 ? "danger" : pct >= 0.7 ? "warn" : "ok"}
+            <span class="usage usage--{tone}" title="{a.usage_used} / {a.usage_cap} credits used · {a.subscription_title ?? a.subscription_tier ?? ""} · resets in {a.usage_days_until_reset ?? "?"}d">
+              <span class="usage__bar" aria-hidden="true">
+                <span class="usage__fill" style:width="{Math.min(100, pct * 100).toFixed(1)}%"></span>
+              </span>
+              <span class="usage__num mono tabular">{a.usage_used ?? 0}<span class="usage__sep">/</span>{a.usage_cap}</span>
+              {#if a.subscription_tier && a.subscription_tier !== "unknown"}
+                <span class="tier tier--{a.subscription_tier}">{a.subscription_tier === "pro_plus" ? "pro+" : a.subscription_tier}</span>
+              {/if}
+            </span>
+          {:else}
+            <span class="faint">—</span>
+          {/if}
+        </span>
         <span class="col col--cool" role="cell">
           {#if a.cooldown_until}
             <span class="cool cool--{st}">
@@ -331,7 +349,7 @@
   .row {
     display: grid;
     grid-template-columns:
-      28px minmax(140px, 1.2fr) 54px 110px 64px 52px 96px minmax(0, 1.5fr);
+      28px minmax(140px, 1.2fr) 54px 110px 64px 52px minmax(140px, 1fr) 96px minmax(0, 1.5fr);
     align-items: center;
     gap: var(--sp-4);
     padding: var(--sp-3) var(--sp-5);
@@ -410,6 +428,69 @@
   }
   .col--note {
     font-size: var(--fs-xs);
+  }
+  .col--usage {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-inline-size: 0;
+  }
+  .usage {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    inline-size: 100%;
+    min-inline-size: 0;
+  }
+  .usage__bar {
+    inline-size: 56px;
+    block-size: 6px;
+    background: var(--c-surface-sunken);
+    border-radius: 999px;
+    overflow: hidden;
+    flex: 0 0 auto;
+  }
+  .usage__fill {
+    display: block;
+    block-size: 100%;
+    background: var(--c-accent);
+    border-radius: 999px;
+    transition: width var(--mo-fast) var(--ease-std);
+  }
+  .usage--warn .usage__fill {
+    background: var(--c-warn, #d4a017);
+  }
+  .usage--danger .usage__fill {
+    background: var(--c-danger, #d04646);
+  }
+  .usage__num {
+    font-size: var(--fs-xs);
+    color: var(--c-text);
+    white-space: nowrap;
+  }
+  .usage__sep {
+    color: var(--c-text-dim);
+    margin-inline: 1px;
+  }
+  .tier {
+    font-size: var(--fs-2xs);
+    text-transform: uppercase;
+    letter-spacing: var(--tr-caps);
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: var(--c-surface-sunken);
+    color: var(--c-text-dim);
+    font-weight: var(--fw-semibold);
+    flex: 0 0 auto;
+  }
+  .tier--pro,
+  .tier--pro_plus,
+  .tier--power {
+    background: color-mix(in oklch, var(--c-accent-wash), var(--c-surface));
+    color: var(--c-accent);
+  }
+  .tier--free {
+    color: var(--c-text-dim);
   }
 
   .th {

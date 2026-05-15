@@ -22,6 +22,37 @@ export interface Account {
   last_used?: string;
   /** Optional upstream-token expiry, if the backend exposes it. */
   expires_at?: string;
+
+  /** Pool health (v1.1+). */
+  success_rate?: number;
+  weight?: number;
+  requests_last_5m?: number;
+  avg_latency_ms?: number;
+  last_rate_limit?: string;
+
+  /** Usage / credit ledger (v1.1+, populated by UsagePoller). usage_known
+   *  is the gate field: false (or omitted) means the dashboard should
+   *  render "—" rather than "0 / 0". */
+  usage_known?: boolean;
+  usage_cap?: number;
+  usage_used?: number;
+  usage_remaining?: number;
+  usage_percent_used?: number;
+  usage_last_polled?: string;
+  usage_days_until_reset?: number;
+
+  /** Subscription / overage metadata (v1.4+). subscription_tier is the
+   *  canonical machine-readable label ("free" | "pro" | "pro_plus" |
+   *  "power" | "unknown"); subscription_title is the human display
+   *  string ("KIRO PRO"). */
+  subscription_title?: string;
+  subscription_tier?: "free" | "pro" | "pro_plus" | "power" | "unknown" | string;
+  overage_capable?: boolean;
+  overage_rate?: number;
+  overage_cap?: number;
+  current_overages?: number;
+  currency?: string;
+  email?: string;
 }
 
 export interface Snapshot {
