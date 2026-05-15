@@ -51,6 +51,18 @@ type DashboardAccount struct {
 	UsagePercentUsed  float64 `json:"usage_percent_used,omitempty"`
 	UsageLastPolled   string  `json:"usage_last_polled,omitempty"`
 	UsageDaysUntilRst int     `json:"usage_days_until_reset,omitempty"`
+
+	// v1.4+ subscription/overage fields. SubscriptionTier is canonical
+	// machine-readable ("free" | "pro" | "pro_plus" | "power" | "unknown");
+	// SubscriptionTitle is the human display label.
+	SubscriptionTitle string  `json:"subscription_title,omitempty"`
+	SubscriptionTier  string  `json:"subscription_tier,omitempty"`
+	OverageCapable    bool    `json:"overage_capable,omitempty"`
+	OverageRate       float64 `json:"overage_rate,omitempty"`
+	OverageCap        int64   `json:"overage_cap,omitempty"`
+	CurrentOverages   int64   `json:"current_overages,omitempty"`
+	Currency          string  `json:"currency,omitempty"`
+	Email             string  `json:"email,omitempty"`
 }
 
 // DashboardStateProvider is implemented by whatever owns the pool+vault.

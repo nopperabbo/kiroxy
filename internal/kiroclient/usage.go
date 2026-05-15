@@ -40,10 +40,42 @@ import (
 // All fields default to zero when the upstream response omits them; the
 // pool selection path treats a nil UsageLimits as "unknown, full weight"
 // so introspection failure never makes an account unusable for chat.
+//
+// Upstream shape (verified 2026-05-15 against q.us-east-1.amazonaws.com):
+//
+//	{
+//	  "subscriptionInfo": {
+//	    "subscriptionTitle": "KIRO PRO",
+//	    "type": "Q_DEVELOPER_STANDALONE_PRO",
+//	    "overageCapability": "OVERAGE_CAPABLE" | "OVERAGE_INCAPABLE",
+//	    "subscriptionManagementTarget": "MANAGE",
+//	    "upgradeCapability": "UPGRADE_CAPABLE"
+//	  },
+//	  "usageBreakdownList": [
+//	    {
+//	      "resourceType": "CREDIT",
+//	      "currentUsage": 132,
+//	      "currentUsageWithPrecision": 132.29,
+//	      "usageLimit": 1000,
+//	      "overageCap": 10000,
+//	      "overageRate": 0.04,
+//	      "currentOverages": 0,
+//	      "currency": "USD",
+//	      "unit": "INVOCATIONS",
+//	      "displayName": "Credit",
+//	      "nextDateReset": 1.780272E9
+//	    }
+//	  ],
+//	  "userInfo": {"email": "<account>", "userId": "<sso uuid>"},
+//	  "daysUntilReset": 0,
+//	  "nextDateReset": 1.780272E9
+//	}
+//
+// Earlier kiroxy code expected `limits[].type=AGENTIC_REQUEST` (a stale
+// schema sketch). Real upstream uses usageBreakdownList[]+resourceType=CREDIT.
 type UsageLimits struct {
 	// MonthlyCreditsUsed is the consumed-credit count within the current
-	// billing window. Corresponds to UsageLimitList.currentUsage in the
-	// AWS SDK schema, filtered to resourceType=AGENTIC_REQUEST.
+	// billing window. Maps to usageBreakdownList[resourceType=CREDIT].currentUsage.
 	MonthlyCreditsUsed int64 `json:"monthly_credits_used"`
 
 	// MonthlyCreditsRemaining is MonthlyCap - MonthlyCreditsUsed, clamped
@@ -51,19 +83,14 @@ type UsageLimits struct {
 	MonthlyCreditsRemaining int64 `json:"monthly_credits_remaining"`
 
 	// MonthlyCap is the tier quota (Free=50 / Pro=1000 / Pro+=2000 /
-	// Power=10000 etc.). Corresponds to UsageLimitList.totalUsageLimit.
+	// Power=10000). Maps to usageBreakdownList[resourceType=CREDIT].usageLimit.
 	MonthlyCap int64 `json:"monthly_cap"`
 
-	// PercentUsed is the ratio [0..1] as reported upstream, or computed
-	// client-side from used/cap when the upstream field is absent.
+	// PercentUsed is the ratio [0..1] computed client-side from used/cap.
 	PercentUsed float64 `json:"percent_used"`
 
-	// RollingHourUsed is the best-effort count of credits consumed in the
-	// last 60 minutes. The upstream API does NOT expose this today; the
-	// field is plumbed so the pool can populate it from its own
-	// per-account request history (the 60-minute credit window is
-	// evidenced by the "60-minute credit limit exceeded" error message
-	// — see research-v4/sources/rate-limiting-research.md).
+	// RollingHourUsed is plumbed for future request-history bookkeeping
+	// (not exposed by the upstream API today).
 	RollingHourUsed int64 `json:"rolling_hour_used,omitempty"`
 
 	// NextReset is when the monthly window rolls over. Zero when absent.
@@ -75,6 +102,91 @@ type UsageLimits struct {
 	// LastQueryTime is the wall-clock time of this poll. Dashboards
 	// display it to show freshness.
 	LastQueryTime time.Time `json:"last_query_time"`
+
+	// SubscriptionTitle is the human-readable plan label, e.g. "KIRO PRO",
+	// "KIRO FREE", "KIRO POWER". Sourced from subscriptionInfo.subscriptionTitle.
+	// Empty string when the upstream omits the field.
+	SubscriptionTitle string `json:"subscription_title,omitempty"`
+
+	// SubscriptionType is the canonical SKU id, e.g. Q_DEVELOPER_STANDALONE_PRO,
+	// Q_DEVELOPER_STANDALONE_FREE. Stable across language/UI changes; safer
+	// than SubscriptionTitle for routing decisions. Sourced from
+	// subscriptionInfo.type.
+	SubscriptionType string `json:"subscription_type,omitempty"`
+
+	// OverageCapable is true when the account can spend past its monthly
+	// cap (paid overage). Maps from subscriptionInfo.overageCapability ==
+	// "OVERAGE_CAPABLE". Free-tier accounts are typically not overage-capable.
+	OverageCapable bool `json:"overage_capable,omitempty"`
+
+	// OverageRate is the per-invocation overage cost (e.g. $0.04). Sourced
+	// from usageBreakdownList[].overageRate. Zero when the account has no
+	// overage facility.
+	OverageRate float64 `json:"overage_rate,omitempty"`
+
+	// OverageCap is the maximum overage the account can run up before
+	// hard-stopping. Maps from usageBreakdownList[].overageCap. Zero when
+	// no overage facility.
+	OverageCap int64 `json:"overage_cap,omitempty"`
+
+	// CurrentOverages is the count of invocations charged at OverageRate
+	// in the current billing window. Maps from usageBreakdownList[].currentOverages.
+	CurrentOverages int64 `json:"current_overages,omitempty"`
+
+	// Currency is the ISO-4217 currency code for OverageRate (e.g. "USD").
+	Currency string `json:"currency,omitempty"`
+
+	// Email is the human-readable account identifier surfaced by upstream
+	// userInfo.email. Useful for dashboards distinguishing accounts that
+	// share a connection_id token but are reported with different emails.
+	// May be empty when isEmailRequired=false or the account has none.
+	Email string `json:"email,omitempty"`
+}
+
+// SubscriptionTier is a coarse tier classification derived from
+// SubscriptionType + MonthlyCap. Used by routing/UI logic that wants to
+// reason about Free vs Pro vs Power without hardcoding SKU strings.
+type SubscriptionTier string
+
+const (
+	SubscriptionTierUnknown SubscriptionTier = "unknown"
+	SubscriptionTierFree    SubscriptionTier = "free"
+	SubscriptionTierPro     SubscriptionTier = "pro"
+	SubscriptionTierProPlus SubscriptionTier = "pro_plus"
+	SubscriptionTierPower   SubscriptionTier = "power"
+)
+
+// Tier classifies the subscription. Falls back to MonthlyCap-based heuristic
+// when SubscriptionType is unrecognized (covers future SKU additions).
+// Returns SubscriptionTierUnknown when both signals are absent.
+func (u *UsageLimits) Tier() SubscriptionTier {
+	if u == nil {
+		return SubscriptionTierUnknown
+	}
+	switch u.SubscriptionType {
+	case "Q_DEVELOPER_STANDALONE_FREE":
+		return SubscriptionTierFree
+	case "Q_DEVELOPER_STANDALONE_PRO":
+		return SubscriptionTierPro
+	case "Q_DEVELOPER_STANDALONE_PRO_PLUS":
+		return SubscriptionTierProPlus
+	case "Q_DEVELOPER_STANDALONE_POWER":
+		return SubscriptionTierPower
+	}
+	// Fallback heuristic by cap. Caps observed in the wild:
+	// Free=50, Pro=1000, Pro+=2000, Power=10000.
+	switch {
+	case u.MonthlyCap <= 0:
+		return SubscriptionTierUnknown
+	case u.MonthlyCap <= 100:
+		return SubscriptionTierFree
+	case u.MonthlyCap <= 1500:
+		return SubscriptionTierPro
+	case u.MonthlyCap <= 5000:
+		return SubscriptionTierProPlus
+	default:
+		return SubscriptionTierPower
+	}
 }
 
 // IsExhausted reports true when the monthly cap is known and the
@@ -252,32 +364,44 @@ func GetUsageLimits(ctx context.Context, httpClient *http.Client, token, profile
 	return parseUsageLimitsBody(body)
 }
 
-// parseUsageLimitsBody decodes the JSON response and selects the
-// AGENTIC_REQUEST limit (the only type Kiro chat consumes). Missing or
-// differently-shaped fields are tolerated — callers get a sparse
-// UsageLimits rather than an error so one-off shape drift does not
-// disable the polling pipeline.
+// parseUsageLimitsBody decodes the JSON response into UsageLimits.
+//
+// Upstream shape lives under usageBreakdownList[].resourceType=CREDIT
+// (verified live 2026-05-15). subscriptionInfo carries plan metadata,
+// usageBreakdownList[] carries per-resource usage. Older versions of
+// this file expected limits[].type=AGENTIC_REQUEST — that path is dead.
+//
+// Missing or differently-shaped fields are tolerated: callers get a
+// sparse UsageLimits with zero MonthlyCap rather than an error, so a
+// one-off shape drift does not disable the polling pipeline.
 func parseUsageLimitsBody(body string) (*UsageLimits, error) {
 	if body == "" {
 		return nil, errors.New("getUsageLimits: empty body")
 	}
 
 	var raw struct {
-		Limits []struct {
-			Type            string   `json:"type"`
-			CurrentUsage    int64    `json:"currentUsage"`
-			TotalUsageLimit int64    `json:"totalUsageLimit"`
-			PercentUsed     *float64 `json:"percentUsed"`
-		} `json:"limits"`
-		// NextDateReset is intentionally *float64 rather than *int64.
-		// Upstream emits this field in TWO inconsistent shapes: integer
-		// epoch seconds (1780272000) AND scientific-notation float
-		// (1.780272E9). Go's int64 unmarshaler rejects the latter with
-		// "cannot unmarshal JSON number 1.780272E9 into Go int64", which
-		// produces a hard parse error and discards the entire response.
-		// float64 accepts both forms and we round to int64 manually below.
-		// Float64 has 53 bits of mantissa, plenty for any plausible epoch
-		// second or millisecond value through the year 285,000.
+		SubscriptionInfo struct {
+			SubscriptionTitle string `json:"subscriptionTitle"`
+			Type              string `json:"type"`
+			OverageCapability string `json:"overageCapability"`
+		} `json:"subscriptionInfo"`
+		UsageBreakdownList []struct {
+			ResourceType    string  `json:"resourceType"`
+			CurrentUsage    int64   `json:"currentUsage"`
+			UsageLimit      int64   `json:"usageLimit"`
+			OverageCap      int64   `json:"overageCap"`
+			OverageRate     float64 `json:"overageRate"`
+			CurrentOverages int64   `json:"currentOverages"`
+			Currency        string  `json:"currency"`
+		} `json:"usageBreakdownList"`
+		UserInfo struct {
+			Email string `json:"email"`
+		} `json:"userInfo"`
+		// NextDateReset is *float64 not *int64 because upstream emits this
+		// field as scientific-notation float (1.780272E9) not pure integer.
+		// Go's int64 unmarshaler rejects scientific notation; float64
+		// accepts both forms with 53-bit mantissa precision (good through
+		// year 285,000 epoch seconds).
 		NextDateReset  *float64 `json:"nextDateReset"`
 		DaysUntilReset *int     `json:"daysUntilReset"`
 	}
@@ -285,22 +409,30 @@ func parseUsageLimitsBody(body string) (*UsageLimits, error) {
 		return nil, fmt.Errorf("getUsageLimits: parse json: %w", err)
 	}
 
-	u := &UsageLimits{LastQueryTime: time.Now()}
-	for _, l := range raw.Limits {
-		if l.Type != "AGENTIC_REQUEST" {
+	u := &UsageLimits{
+		LastQueryTime:     time.Now(),
+		SubscriptionTitle: raw.SubscriptionInfo.SubscriptionTitle,
+		SubscriptionType:  raw.SubscriptionInfo.Type,
+		OverageCapable:    raw.SubscriptionInfo.OverageCapability == "OVERAGE_CAPABLE",
+		Email:             raw.UserInfo.Email,
+	}
+
+	for _, b := range raw.UsageBreakdownList {
+		if b.ResourceType != "CREDIT" {
 			continue
 		}
-		u.MonthlyCreditsUsed = l.CurrentUsage
-		u.MonthlyCap = l.TotalUsageLimit
-		switch {
-		case l.PercentUsed != nil:
-			u.PercentUsed = *l.PercentUsed
-		case u.MonthlyCap > 0:
-			u.PercentUsed = float64(u.MonthlyCreditsUsed) / float64(u.MonthlyCap)
-		}
+		u.MonthlyCreditsUsed = b.CurrentUsage
+		u.MonthlyCap = b.UsageLimit
+		u.OverageCap = b.OverageCap
+		u.OverageRate = b.OverageRate
+		u.CurrentOverages = b.CurrentOverages
+		u.Currency = b.Currency
 		break
 	}
 
+	if u.MonthlyCap > 0 {
+		u.PercentUsed = float64(u.MonthlyCreditsUsed) / float64(u.MonthlyCap)
+	}
 	remaining := u.MonthlyCap - u.MonthlyCreditsUsed
 	if remaining < 0 {
 		remaining = 0
@@ -308,13 +440,8 @@ func parseUsageLimitsBody(body string) (*UsageLimits, error) {
 	u.MonthlyCreditsRemaining = remaining
 
 	if raw.NextDateReset != nil {
-		// AWS DateTime in JSON is either epoch seconds or epoch
-		// milliseconds depending on the operation. Both peer code and
-		// Smithy conventions for this endpoint emit epoch seconds; guard
-		// against future drift by clamping implausible millisecond
-		// values.
 		ts := int64(*raw.NextDateReset)
-		if ts > 10_000_000_000 { // > Nov 2286 if seconds, so treat as ms
+		if ts > 10_000_000_000 {
 			u.NextReset = time.UnixMilli(ts)
 		} else {
 			u.NextReset = time.Unix(ts, 0)

@@ -606,6 +606,14 @@ func (p *Pool) HealthSnapshots() []HealthSnapshot {
 			hs.UsagePercentUsed = u.PercentUsed
 			hs.UsageLastPolled = u.LastQueryTime
 			hs.UsageDaysUntilRst = u.DaysUntilReset
+			hs.SubscriptionTitle = u.SubscriptionTitle
+			hs.SubscriptionTier = string(u.Tier())
+			hs.OverageCapable = u.OverageCapable
+			hs.OverageRate = u.OverageRate
+			hs.OverageCap = u.OverageCap
+			hs.CurrentOverages = u.CurrentOverages
+			hs.Currency = u.Currency
+			hs.Email = u.Email
 		}
 		out = append(out, hs)
 	}

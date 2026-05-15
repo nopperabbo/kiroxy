@@ -312,4 +312,18 @@ type HealthSnapshot struct {
 	UsagePercentUsed  float64   `json:"usage_percent_used,omitempty"`
 	UsageLastPolled   time.Time `json:"usage_last_polled,omitempty"`
 	UsageDaysUntilRst int       `json:"usage_days_until_reset,omitempty"`
+
+	// Subscription / overage fields populated alongside usage_*. Empty
+	// strings / zero values when the upstream getUsageLimits response
+	// omitted the corresponding field. SubscriptionTier is the canonical
+	// machine-readable tier ("free" | "pro" | "pro_plus" | "power" | "unknown");
+	// SubscriptionTitle is the human display label ("KIRO PRO").
+	SubscriptionTitle string  `json:"subscription_title,omitempty"`
+	SubscriptionTier  string  `json:"subscription_tier,omitempty"`
+	OverageCapable    bool    `json:"overage_capable,omitempty"`
+	OverageRate       float64 `json:"overage_rate,omitempty"`
+	OverageCap        int64   `json:"overage_cap,omitempty"`
+	CurrentOverages   int64   `json:"current_overages,omitempty"`
+	Currency          string  `json:"currency,omitempty"`
+	Email             string  `json:"email,omitempty"`
 }

@@ -67,6 +67,14 @@ func (d *dashboardProvider) DashboardSnapshot(ctx context.Context) server.Dashbo
 					if !hs.UsageLastPolled.IsZero() {
 						row.UsageLastPolled = hs.UsageLastPolled.Format(time.RFC3339)
 					}
+					row.SubscriptionTitle = hs.SubscriptionTitle
+					row.SubscriptionTier = hs.SubscriptionTier
+					row.OverageCapable = hs.OverageCapable
+					row.OverageRate = hs.OverageRate
+					row.OverageCap = hs.OverageCap
+					row.CurrentOverages = hs.CurrentOverages
+					row.Currency = hs.Currency
+					row.Email = hs.Email
 				}
 			}
 			state.Accounts = append(state.Accounts, row)

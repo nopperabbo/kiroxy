@@ -17,25 +17,39 @@ import (
 )
 
 // successBody is the canonical happy-path JSON shape returned by
-// q.<region>.amazonaws.com/getUsageLimits, distilled from
-// amzn-codewhisperer-client/_get_usage_limits_output.rs and observed by
-// peer kiro-account-manager. Embeds a Pro-tier 1000-credit ledger with
-// 487 used so we can verify all three derived fields (remaining,
-// percent_used, exhaustion).
+// q.<region>.amazonaws.com/getUsageLimits, observed live 2026-05-15
+// across multiple Pro-tier social-flow accounts in our pool. Embeds a
+// Pro-tier 1000-credit ledger with 487 used so we can verify all three
+// derived fields (remaining, percent_used, exhaustion).
 const successBody = `{
-  "limits": [
+  "subscriptionInfo": {
+    "subscriptionTitle": "KIRO PRO",
+    "type": "Q_DEVELOPER_STANDALONE_PRO",
+    "overageCapability": "OVERAGE_CAPABLE",
+    "subscriptionManagementTarget": "MANAGE",
+    "upgradeCapability": "UPGRADE_CAPABLE"
+  },
+  "usageBreakdownList": [
     {
-      "type": "AGENTIC_REQUEST",
+      "resourceType": "CREDIT",
       "currentUsage": 487,
-      "totalUsageLimit": 1000,
-      "percentUsed": 48.7
-    },
-    {
-      "type": "CODE_COMPLETIONS",
-      "currentUsage": 11,
-      "totalUsageLimit": 999999
+      "currentUsageWithPrecision": 487.5,
+      "usageLimit": 1000,
+      "usageLimitWithPrecision": 1000.0,
+      "overageCap": 10000,
+      "overageRate": 0.04,
+      "currentOverages": 0,
+      "currency": "USD",
+      "unit": "INVOCATIONS",
+      "displayName": "Credit",
+      "displayNamePlural": "Credits",
+      "nextDateReset": 1.717200E9
     }
   ],
+  "userInfo": {
+    "email": "user@example.com",
+    "userId": "d-9067c98495.e4881468-9071-70c4-f6be-e4c63828e293"
+  },
   "nextDateReset": 1717200000,
   "daysUntilReset": 13
 }`
@@ -61,8 +75,8 @@ func TestGetUsageLimits_ParsesAgenticBucket(t *testing.T) {
 	if u.MonthlyCreditsRemaining != 513 {
 		t.Errorf("MonthlyCreditsRemaining: got %d, want 513", u.MonthlyCreditsRemaining)
 	}
-	if u.PercentUsed < 48.69 || u.PercentUsed > 48.71 {
-		t.Errorf("PercentUsed: got %f, want ~48.7", u.PercentUsed)
+	if u.PercentUsed < 0.486 || u.PercentUsed > 0.488 {
+		t.Errorf("PercentUsed: got %f, want ~0.487", u.PercentUsed)
 	}
 	if u.DaysUntilReset != 13 {
 		t.Errorf("DaysUntilReset: got %d, want 13", u.DaysUntilReset)
@@ -73,26 +87,48 @@ func TestGetUsageLimits_ParsesAgenticBucket(t *testing.T) {
 	if u.LastQueryTime.IsZero() {
 		t.Error("LastQueryTime must be set")
 	}
+	if u.SubscriptionTitle != "KIRO PRO" {
+		t.Errorf("SubscriptionTitle: got %q, want KIRO PRO", u.SubscriptionTitle)
+	}
+	if u.SubscriptionType != "Q_DEVELOPER_STANDALONE_PRO" {
+		t.Errorf("SubscriptionType: got %q, want Q_DEVELOPER_STANDALONE_PRO", u.SubscriptionType)
+	}
+	if !u.OverageCapable {
+		t.Error("OverageCapable should be true for OVERAGE_CAPABLE accounts")
+	}
+	if u.OverageRate != 0.04 {
+		t.Errorf("OverageRate: got %f, want 0.04", u.OverageRate)
+	}
+	if u.OverageCap != 10000 {
+		t.Errorf("OverageCap: got %d, want 10000", u.OverageCap)
+	}
+	if u.Currency != "USD" {
+		t.Errorf("Currency: got %q, want USD", u.Currency)
+	}
+	if u.Email != "user@example.com" {
+		t.Errorf("Email: got %q, want user@example.com", u.Email)
+	}
+	if got := u.Tier(); got != SubscriptionTierPro {
+		t.Errorf("Tier: got %q, want pro", got)
+	}
 }
 
 func TestGetUsageLimits_PercentRemainingComputesWhenAbsent(t *testing.T) {
-	body := `{"limits":[{"type":"AGENTIC_REQUEST","currentUsage":250,"totalUsageLimit":1000}]}`
+	body := `{"usageBreakdownList":[{"resourceType":"CREDIT","currentUsage":250,"usageLimit":1000}]}`
 	u := mustParseUsage(t, body)
 	if u.PercentUsed != 0.25 {
-		t.Errorf("PercentUsed should fall back to used/cap, got %f", u.PercentUsed)
+		t.Errorf("PercentUsed should be used/cap=0.25, got %f", u.PercentUsed)
 	}
 	if got := u.PercentRemaining(); got < 0.749 || got > 0.751 {
 		t.Errorf("PercentRemaining: got %f, want 0.75", got)
 	}
 }
 
-func TestGetUsageLimits_HandlesEmptyAgenticBucket(t *testing.T) {
-	// No AGENTIC_REQUEST entry means the account is provisioned only for
-	// editor-style features; usage struct should be zero but valid.
-	body := `{"limits":[{"type":"CODE_COMPLETIONS","currentUsage":5,"totalUsageLimit":100}]}`
+func TestGetUsageLimits_HandlesEmptyCreditBucket(t *testing.T) {
+	body := `{"usageBreakdownList":[{"resourceType":"CODE_COMPLETIONS","currentUsage":5,"usageLimit":100}]}`
 	u := mustParseUsage(t, body)
 	if u.MonthlyCap != 0 {
-		t.Errorf("missing AGENTIC_REQUEST should leave MonthlyCap zero, got %d", u.MonthlyCap)
+		t.Errorf("missing CREDIT bucket should leave MonthlyCap zero, got %d", u.MonthlyCap)
 	}
 	if got := u.PercentRemaining(); got != 1.0 {
 		t.Errorf("zero cap PercentRemaining must default to 1.0 (no penalty), got %f", got)
@@ -323,63 +359,63 @@ func TestParseUsageLimitsBody_NextDateResetEdgeCases(t *testing.T) {
 	}{
 		{
 			name:      "integer epoch seconds (canonical)",
-			raw:       `{"limits":[],"nextDateReset":1717200000}`,
+			raw:       `{"usageBreakdownList":[],"nextDateReset":1717200000}`,
 			wantParse: true,
 			wantUnix:  1717200000,
 			wantField: "should parse as Unix(1717200000, 0)",
 		},
 		{
 			name:      "scientific notation float (production bug)",
-			raw:       `{"limits":[],"nextDateReset":1.780272E9}`,
+			raw:       `{"usageBreakdownList":[],"nextDateReset":1.780272E9}`,
 			wantParse: true,
 			wantUnix:  1780272000, // int64(1.780272e9)
 			wantField: "Phase 2.10 fix — scientific notation must round-trip",
 		},
 		{
 			name:      "decimal float (non-scientific)",
-			raw:       `{"limits":[],"nextDateReset":1717200000.5}`,
+			raw:       `{"usageBreakdownList":[],"nextDateReset":1717200000.5}`,
 			wantParse: true,
 			wantUnix:  1717200000, // int64 truncation
 			wantField: "decimal float truncates to integer second",
 		},
 		{
 			name:      "epoch milliseconds (>10B threshold)",
-			raw:       `{"limits":[],"nextDateReset":1717200000000}`,
+			raw:       `{"usageBreakdownList":[],"nextDateReset":1717200000000}`,
 			wantParse: true,
 			wantUnix:  1717200000, // UnixMilli(1717200000000).Unix() == 1717200000
 			wantField: "ms heuristic: >10B treated as UnixMilli",
 		},
 		{
 			name:      "zero value",
-			raw:       `{"limits":[],"nextDateReset":0}`,
+			raw:       `{"usageBreakdownList":[],"nextDateReset":0}`,
 			wantParse: true,
 			wantUnix:  0,
 			wantField: "zero stays zero, not nil-skipped",
 		},
 		{
 			name:      "negative value (defensive)",
-			raw:       `{"limits":[],"nextDateReset":-1}`,
+			raw:       `{"usageBreakdownList":[],"nextDateReset":-1}`,
 			wantParse: true,
 			wantUnix:  -1, // time.Unix(-1, 0) is valid (1969-12-31 23:59:59 UTC)
 			wantField: "negative values must not panic",
 		},
 		{
 			name:      "absent field (nil pointer)",
-			raw:       `{"limits":[]}`,
+			raw:       `{"usageBreakdownList":[]}`,
 			wantParse: true,
 			wantUnix:  0, // NextReset is zero value time.Time, .Unix() returns -62135596800; but we check IsZero below
 			wantField: "missing field leaves NextReset zero-value",
 		},
 		{
 			name:      "very large value (year >2286, treated as ms)",
-			raw:       `{"limits":[],"nextDateReset":99999999999999}`,
+			raw:       `{"usageBreakdownList":[],"nextDateReset":99999999999999}`,
 			wantParse: true,
 			wantUnix:  99999999999, // UnixMilli(99999999999999).Unix()
 			wantField: "overflow protection via ms branch",
 		},
 		{
 			name:      "scientific notation milliseconds",
-			raw:       `{"limits":[],"nextDateReset":1.717200000e12}`,
+			raw:       `{"usageBreakdownList":[],"nextDateReset":1.717200000e12}`,
 			wantParse: true,
 			wantUnix:  1717200000, // int64(1.7172e12) > 10B → UnixMilli
 			wantField: "scientific ms also routes through UnixMilli",
@@ -423,9 +459,9 @@ func TestParseUsageLimitsBody_NextDateResetRejectsInvalid(t *testing.T) {
 	// Go's encoding/json rejects bare NaN/Infinity (not in JSON spec).
 	// jsonv2 is stricter still. We expect an error rather than a silent zero.
 	cases := []string{
-		`{"limits":[],"nextDateReset":NaN}`,
-		`{"limits":[],"nextDateReset":Infinity}`,
-		`{"limits":[],"nextDateReset":"not-a-number"}`,
+		`{"usageBreakdownList":[],"nextDateReset":NaN}`,
+		`{"usageBreakdownList":[],"nextDateReset":Infinity}`,
+		`{"usageBreakdownList":[],"nextDateReset":"not-a-number"}`,
 	}
 	for _, raw := range cases {
 		t.Run(raw, func(t *testing.T) {
