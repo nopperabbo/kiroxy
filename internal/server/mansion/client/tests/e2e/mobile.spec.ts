@@ -1,8 +1,11 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("mobile responsive", () => {
-  test.skip(({ browserName }, testInfo) => {
-    return testInfo.project.name !== "mobile-iphone";
+  test.beforeEach(({}, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "mobile-iphone",
+      "iPhone 13 emulation only",
+    );
   });
 
   for (const view of ["live", "pool", "metrics", "logs", "models", "tools", "settings"]) {

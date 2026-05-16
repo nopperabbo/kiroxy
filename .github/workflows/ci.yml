@@ -74,3 +74,82 @@ jobs:
           path: coverage.out
           if-no-files-found: warn
           retention-days: 14
+
+  e2e:
+    name: e2e (mansion dashboard)
+    runs-on: ubuntu-latest
+    needs: gate
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install pnpm dependencies
+        working-directory: internal/server/mansion/client
+        run: pnpm install --frozen-lockfile
+
+      - name: Build mansion frontend
+        working-directory: internal/server/mansion/client
+        run: pnpm build
+
+      - name: Build kiroxy binary
+        run: |
+          go build -o ./kiroxy ./cmd/kiroxy
+          ./kiroxy -version || true
+
+      - name: Install Playwright Chromium
+        working-directory: internal/server/mansion/client
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Start kiroxy server
+        run: |
+          ./kiroxy serve -port 8787 > /tmp/kiroxy-e2e.log 2>&1 &
+          echo $! > /tmp/kiroxy-e2e.pid
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -sf http://localhost:8787/healthz > /dev/null; then
+              echo "kiroxy ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "kiroxy did not become healthy in 10s"
+          cat /tmp/kiroxy-e2e.log
+          exit 1
+
+      - name: Run Playwright E2E
+        working-directory: internal/server/mansion/client
+        env:
+          MANSION_BASE_URL: http://localhost:8787
+        run: pnpm test:e2e
+
+      - name: Stop kiroxy server
+        if: always()
+        run: |
+          if [ -f /tmp/kiroxy-e2e.pid ]; then
+            kill "$(cat /tmp/kiroxy-e2e.pid)" || true
+          fi
+          tail -50 /tmp/kiroxy-e2e.log || true
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: internal/server/mansion/client/playwright-report/
+          retention-days: 7

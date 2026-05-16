@@ -48,6 +48,11 @@ research-v3/enowx-reference/
 /.sisyphus/notes/*.log
 /internal/server/mansion/client/build.log
 
+# Playwright E2E artifacts
+/internal/server/mansion/client/test-results/
+/internal/server/mansion/client/playwright-report/
+/internal/server/mansion/client/blob-report/
+/internal/server/mansion/client/.playwright/
 
 # filter-repo backup directories (created by user during pre-release scrub; never commit)
 /.git.backup-pre-filter-repo-*/

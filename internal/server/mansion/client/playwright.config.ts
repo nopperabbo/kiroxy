@@ -38,7 +38,13 @@ export default defineConfig({
     },
     {
       name: "mobile-iphone",
-      use: { ...devices["iPhone 13"] },
+      use: {
+        ...devices["Pixel 7"],
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+      },
     },
   ],
 });
