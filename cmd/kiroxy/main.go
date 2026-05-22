@@ -368,6 +368,7 @@ func runServe(ctx context.Context, args []string) error {
 		},
 		RequestTimeout: cfg.RequestTimeout,
 		PoolResetter:   poolInst,
+		AccountMode:    cfg.AccountMode,
 	})
 
 	addr := net.JoinHostPort(cfg.Bind, strconv.Itoa(cfg.Port))
@@ -386,6 +387,7 @@ func runServe(ctx context.Context, args []string) error {
 	slog.Info("kiroxy listening",
 		slog.String("version", version),
 		slog.String("addr", "http://"+addr),
+		slog.String("mode", cfg.AccountMode),
 	)
 	if cfg.ProxyURL != nil {
 		// Redact credentials from log output.

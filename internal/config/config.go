@@ -66,6 +66,14 @@ type Config struct {
 	// from a single host — without it, Kiro's anti-abuse system sees all
 	// accounts originating from the same IP and flags them.
 	ProxyURL *url.URL
+
+	// AccountMode controls how the pool selects accounts for each request.
+	// "roundrobin" (default) rotates across all healthy accounts using weighted
+	// random selection — good for throughput but may trigger suspicious-activity
+	// bans if the upstream detects many accounts from the same IP.
+	// "single" sticks to one account until it is exhausted or banned, then
+	// moves to the next — much less suspicious but lower throughput.
+	AccountMode string
 }
 
 // LogLevel returns the slog.Level parsed from LogLevelRaw.
@@ -142,6 +150,8 @@ func FromEnvAndFlags(args []string) (Config, error) {
 		}
 		cfg.ProxyURL = pu
 	}
+
+	cfg.AccountMode = strings.ToLower(envOr("KIROXY_ACCOUNT_MODE", "roundrobin"))
 
 	// Flag overrides (thin layer)
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)

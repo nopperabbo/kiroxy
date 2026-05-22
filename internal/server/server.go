@@ -85,6 +85,10 @@ type Options struct {
 	// PoolResetter, when set, powers POST /dashboard/api/pool/reset-cooldowns.
 	// Implemented by *pool.Pool. When nil, the endpoint returns 404.
 	PoolResetter PoolResetter
+
+	// AccountMode controls pool rotation behavior. "single" disables rotation
+	// to avoid suspicious-activity bans. "roundrobin" (default) rotates.
+	AccountMode string
 }
 
 // Server bundles the process-wide handler tree.
@@ -110,6 +114,9 @@ func New(opts Options) *Server {
 		}
 		if opts.RequestTimeout > 0 {
 			svcOpts = append(svcOpts, messages.WithRequestTimeout(opts.RequestTimeout))
+		}
+		if opts.AccountMode == "single" {
+			svcOpts = append(svcOpts, messages.WithPoolRetries(0))
 		}
 		svc = messages.New(opts.Auth, opts.KiroClient, svcOpts...)
 	}

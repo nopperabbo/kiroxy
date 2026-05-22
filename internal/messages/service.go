@@ -68,6 +68,12 @@ type Service struct {
 	// metrics is the nil-safe metric sink. A nil value disables emission
 	// on every instrumentation call; see internal/metrics.Sink.
 	metrics *metrics.Sink
+
+	// poolRetries is the number of account rotations to attempt on retryable
+	// upstream errors. Set to 0 in single-account mode to disable rotation
+	// entirely — this prevents suspicious_activity_ban triggers caused by
+	// rapid account switching from the same IP.
+	poolRetries int
 }
 
 // Option configures a Service.
@@ -85,11 +91,18 @@ func WithRequestTimeout(d time.Duration) Option {
 	return func(s *Service) { s.requestTimeout = d }
 }
 
+// WithPoolRetries overrides the default upstream pool retry count.
+// Set to 0 to disable account rotation (single-account mode).
+func WithPoolRetries(n int) Option {
+	return func(s *Service) { s.poolRetries = n }
+}
+
 // New constructs a message service.
 func New(authMgr TokenGetter, client kiroclient.Client, opts ...Option) *Service {
 	s := &Service{
-		auth:   authMgr,
-		client: client,
+		auth:        authMgr,
+		client:      client,
+		poolRetries: upstreamPoolRetries, // default from execute.go
 	}
 	for _, opt := range opts {
 		opt(s)

@@ -395,7 +395,7 @@ func (c *HTTPClient) callOneEndpoint(
 				n, _ := io.ReadFull(resp.Body, peek)
 				rebuilt := io.NopCloser(io.MultiReader(bytes.NewReader(peek[:n]), resp.Body))
 				if looksLikeEventStreamBody(string(peek[:n])) {
-					slog.WarnContext(ctx, "kiro: Content-Type mismatch, body looks like EventStream — passing through",
+					slog.InfoContext(ctx, "kiro: Content-Type mismatch, body looks like EventStream — passing through",
 						"trace_id", short, "account_id", logging.AccountIDFromContext(ctx),
 						"endpoint", ep.Name,
 						"content_type", ct)

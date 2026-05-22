@@ -328,7 +328,7 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 	callCtx := logging.WithAccountID(ctx, inv.creds.AccountID)
 	apiResp, err := s.client.GenerateAssistantResponse(callCtx, inv.creds.AccessToken, inv.payload, inv.creds.Region, inv.creds.MachineID)
 	suspiciousBanCount := 0
-	for poolAttempt := 0; err != nil && poolAttempt < upstreamPoolRetries; poolAttempt++ {
+	for poolAttempt := 0; err != nil && poolAttempt < s.poolRetries; poolAttempt++ {
 		ue, ok := isRotatableUpstreamError(err)
 		if !ok {
 			break
@@ -385,7 +385,7 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 				if waitErr := rotationSleep(ctx, delay); waitErr != nil {
 					slog.WarnContext(ctx, "kiro: pool rotation aborted by ctx",
 						"trace_id", short, "err", waitErr,
-						"pool_attempt", poolAttempt+1, "max", upstreamPoolRetries)
+						"pool_attempt", poolAttempt+1, "max", s.poolRetries)
 					break
 				}
 			}
@@ -394,12 +394,12 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 		if tokErr != nil {
 			slog.WarnContext(ctx, "kiro: pool rotation token fetch failed",
 				"trace_id", short, "err", tokErr,
-				"pool_attempt", poolAttempt+1, "max", upstreamPoolRetries)
+				"pool_attempt", poolAttempt+1, "max", s.poolRetries)
 			break
 		}
 		slog.WarnContext(ctx, "kiro: rotating account after retryable upstream error",
 			"trace_id", short, "exception", ue.Exception, "status", ue.Status,
-			"pool_attempt", poolAttempt+1, "max", upstreamPoolRetries,
+			"pool_attempt", poolAttempt+1, "max", s.poolRetries,
 			"prev_account_id", inv.creds.AccountID,
 			"new_account_id", newCreds.AccountID,
 			"new_client_id", newCreds.ClientID)
