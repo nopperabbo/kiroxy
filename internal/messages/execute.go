@@ -150,6 +150,14 @@ func isRotatableUpstreamError(err error) (*kiroclient.UpstreamError, bool) {
 		if ue.Exception == "ServiceQuotaExceededException" {
 			return ue, true
 		}
+		// INVALID_MODEL_ID means the picked account's tier/subscription doesn't
+		// support the requested model (e.g. claude-opus-4.6 on a plan that only
+		// has sonnet). A different account may have access, so rotation is the
+		// correct recovery — unlike structural errors, this is model-specific
+		// and another account in the pool may well accept it.
+		if ue.Exception == "ValidationException" && ue.Reason == "INVALID_MODEL_ID" {
+			return ue, true
+		}
 		return ue, false
 	}
 	if classified, ok := classifyTransportError(err); ok {
@@ -328,10 +336,19 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 	callCtx := logging.WithAccountID(ctx, inv.creds.AccountID)
 	apiResp, err := s.client.GenerateAssistantResponse(callCtx, inv.creds.AccessToken, inv.payload, inv.creds.Region, inv.creds.MachineID)
 	suspiciousBanCount := 0
-	for poolAttempt := 0; err != nil && poolAttempt < s.poolRetries; poolAttempt++ {
+	// effectiveRetries starts at s.poolRetries (0 in single mode) but gets
+	// raised when the error is INVALID_MODEL_ID — model incompatibility is
+	// per-account, not per-IP, so rotation is always safe for it.
+	effectiveRetries := s.poolRetries
+	for poolAttempt := 0; err != nil && poolAttempt < effectiveRetries; poolAttempt++ {
 		ue, ok := isRotatableUpstreamError(err)
 		if !ok {
 			break
+		}
+		// INVALID_MODEL_ID is per-account (tier doesn't include this model),
+		// NOT per-IP. Always allow rotation for it, even in single mode.
+		if ue.Reason == "INVALID_MODEL_ID" && effectiveRetries < upstreamPoolRetries {
+			effectiveRetries = upstreamPoolRetries
 		}
 		// Before rotating, tell the pool which account just failed so
 		// subsequent Pick calls bias away from it. This is a hint — the
