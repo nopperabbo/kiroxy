@@ -45,6 +45,15 @@ func (m *authMiddleware) wrap(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
+		// pprof: loopback-only, never exposed to non-loopback even with key.
+		if strings.HasPrefix(r.URL.Path, "/debug/pprof") {
+			if isLoopback(r) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			writeAuthProblem(w, http.StatusForbidden, "pprof_loopback_only", "/debug/pprof is only accessible from loopback")
+			return
+		}
 		// /metrics follows the same loopback bypass as /dashboard so that
 		// a Prometheus running on the same host can scrape without API key
 		// plumbing. Non-loopback scrapers must authenticate, UNLESS the

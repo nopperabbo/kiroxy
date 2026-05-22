@@ -124,6 +124,17 @@ func (s *Sink) ObserveUpstreamTTFB(model string, d time.Duration) {
 	s.reg.upstreamTTFB.WithLabelValues(normaliseModel(model)).Observe(d.Seconds())
 }
 
+// ObservePhase records a single connection phase duration.
+// phase is one of: "dns", "tls", "connect", "ttfb".
+//
+// Safe to call on nil Sink.
+func (s *Sink) ObservePhase(phase string, d time.Duration) {
+	if s == nil || s.reg == nil || d <= 0 {
+		return
+	}
+	s.reg.upstreamPhase.WithLabelValues(phase).Observe(d.Seconds())
+}
+
 // ObserveTokens records per-request token usage. Zero values are allowed
 // and still observed (they're meaningful — zero output means a failed or
 // empty generation).

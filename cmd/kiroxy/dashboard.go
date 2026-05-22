@@ -10,11 +10,12 @@ import (
 )
 
 type dashboardProvider struct {
-	version   string
-	vaultPath string
-	vault     *tokenvault.Vault
-	pool      *pool.Pool
-	startedAt time.Time
+	version    string
+	vaultPath  string
+	vault      *tokenvault.Vault
+	pool       *pool.Pool
+	stickiness *pool.Stickiness
+	startedAt  time.Time
 }
 
 func (d *dashboardProvider) DashboardSnapshot(ctx context.Context) server.DashboardState {
@@ -83,6 +84,11 @@ func (d *dashboardProvider) DashboardSnapshot(ctx context.Context) server.Dashbo
 			state.Ready = true
 		} else {
 			state.ReadyDetail = "no accounts configured; run `kiroxy add-account`"
+		}
+	}
+	if d.stickiness != nil {
+		if snap := d.stickiness.Snapshot(); len(snap) > 0 {
+			state.Stickiness = snap
 		}
 	}
 	return state

@@ -211,18 +211,22 @@ func (h *AccountHealth) Weight(now time.Time) float64 {
 
 // usageFactor translates the UsageLimits snapshot into a [0..1]
 // multiplier for the composite weight. Nil or unknown-cap accounts
-// return 1.0 (no penalty). Accounts below usageDrainedThreshold
-// (< 10% remaining) are treated as drained and collapse to the floor
-// fraction so weighted selection effectively skips them. Above the
-// threshold the factor scales linearly — a 50%-remaining account
-// competes at roughly half the strength of a fresh one, which spreads
-// load across the fleet instead of exhausting one account at a time.
+// return 1.0 (no penalty). For overage-capable accounts (Kiro Pro has
+// overageCap=10000), an exhausted base quota is NOT penalized — the
+// account can keep serving up to overageCap. Only non-overage accounts
+// below usageDrainedThreshold (<10% remaining) are collapsed to floor.
 func usageFactor(u *kiroclient.UsageLimits) float64 {
 	if u == nil || u.MonthlyCap <= 0 {
 		return 1.0
 	}
 	r := u.PercentRemaining()
 	if r <= usageDrainedThreshold {
+		// Overage-capable accounts with remaining overage headroom should
+		// NOT be deweighted — they can still serve requests past their
+		// monthly base cap up to overageCap (typically 10,000).
+		if u.OverageCapable && u.OverageCap > 0 && u.CurrentOverages < u.OverageCap {
+			return 0.5 // lower priority than fresh accounts but still usable
+		}
 		return weightFloor / weightCeil
 	}
 	return r

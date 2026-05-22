@@ -6,6 +6,7 @@
 package messages
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"testing"
 )
@@ -85,5 +86,43 @@ func TestGateWriter_Header(t *testing.T) {
 	gw.Header().Set("Content-Type", "text/event-stream")
 	if w.Header().Get("Content-Type") != "text/event-stream" {
 		t.Fatal("header should be set on underlying writer")
+	}
+}
+
+func TestGateWriter_WriteHeader_BeforePromote(t *testing.T) {
+	w := httptest.NewRecorder()
+	gw := NewGateWriter(w)
+
+	gw.WriteHeader(http.StatusAccepted)
+	if w.Code != http.StatusOK {
+		t.Fatal("WriteHeader before promote should not write to underlying")
+	}
+
+	gw.Promote()
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("expected 202 after promote, got %d", w.Code)
+	}
+}
+
+func TestGateWriter_WriteHeader_AfterPromote(t *testing.T) {
+	w := httptest.NewRecorder()
+	gw := NewGateWriter(w)
+
+	_, _ = gw.Write([]byte("x"))
+	gw.WriteHeader(http.StatusCreated)
+	gw.Promote()
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201 after promote with deferred status, got %d", w.Code)
+	}
+}
+
+func TestGateWriter_FlushAfterPromote(t *testing.T) {
+	w := httptest.NewRecorder()
+	gw := NewGateWriter(w)
+
+	gw.Promote()
+	gw.Flush()
+	if !w.Flushed {
+		t.Fatal("expected Flush to delegate after promote")
 	}
 }

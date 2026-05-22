@@ -26,6 +26,12 @@ const headerCCSessionID = "X-Claude-Code-Session-Id"
 
 func (s *Service) HandleMessages(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	if s.requestTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, s.requestTimeout)
+		defer cancel()
+		r = r.WithContext(ctx)
+	}
 	traceID, short := logging.TraceIDs(ctx)
 
 	// Metrics scaffolding: wrap the writer so the final status code can be

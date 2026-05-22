@@ -70,3 +70,11 @@ func TestWriteJSON_Map(t *testing.T) {
 		t.Errorf("status: got %q, want %q", m["status"], "ok")
 	}
 }
+
+func TestWriteJSON_UnmarshalableBody(t *testing.T) {
+	rec := httptest.NewRecorder()
+	httpx.WriteJSON(rec, http.StatusOK, make(chan int))
+	if rec.Code != http.StatusOK {
+		t.Errorf("status should still be set: got %d", rec.Code)
+	}
+}

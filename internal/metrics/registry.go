@@ -44,6 +44,7 @@ type Registry struct {
 	// Histograms
 	requestDuration *prometheus.HistogramVec
 	upstreamTTFB    *prometheus.HistogramVec
+	upstreamPhase   *prometheus.HistogramVec
 	tokensInput     *prometheus.HistogramVec
 	tokensOutput    *prometheus.HistogramVec
 
@@ -150,6 +151,17 @@ func New(startedAt time.Time) *Registry {
 		[]string{"model"},
 	)
 	reg.MustRegister(r.upstreamTTFB)
+
+	r.upstreamPhase = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: "kiroxy",
+			Name:      "upstream_phase_seconds",
+			Help:      "Connection phase durations (dns, tls, connect, ttfb) for upstream requests.",
+			Buckets:   []float64{0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5},
+		},
+		[]string{"phase"},
+	)
+	reg.MustRegister(r.upstreamPhase)
 
 	r.tokensInput = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{

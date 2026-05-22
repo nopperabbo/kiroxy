@@ -58,6 +58,18 @@ type Policy struct {
 	ShortCooldown             time.Duration
 	QuotaCooldown             time.Duration
 	MaxCooldown               time.Duration
+	// MinRestPeriod is the minimum time between consecutive requests to the
+	// same account. Avoids burst patterns where rapid rotation through the
+	// pool makes all accounts fire from the same IP in quick succession,
+	// which trips Kiro's anti-abuse detection. With 78 accounts and 5s rest,
+	// the pool can sustain ~15 req/s while looking like distributed users.
+	// Zero disables the check (used by tests with small pools).
+	MinRestPeriod time.Duration
+	// SuspiciousBanCooldown is the cooldown applied specifically for
+	// suspicious_activity_ban errors. Much longer than MaxCooldown because
+	// upstream bans last 24-48 hours — using a short cooldown just causes
+	// the account to be retried and immediately re-banned, burning quota.
+	SuspiciousBanCooldown time.Duration
 }
 
 // DefaultPolicy returns the personal-use cooldown defaults.
@@ -67,6 +79,8 @@ func DefaultPolicy() Policy {
 		ShortCooldown:             1 * time.Minute,
 		QuotaCooldown:             1 * time.Hour,
 		MaxCooldown:               2 * time.Hour,
+		MinRestPeriod:             5 * time.Second,
+		SuspiciousBanCooldown:     15 * time.Minute,
 	}
 }
 
@@ -93,6 +107,12 @@ type Pool struct {
 	// rng is used by the weighted-pick path. Not concurrency-safe on its
 	// own; every access must hold p.mu.
 	rng *rand.Rand
+
+	// consecutive401 tracks recent 401s across all accounts within a
+	// sliding window. When the count reaches the threshold, a warning is
+	// emitted suggesting OIDC token rotation may be needed.
+	consecutive401      int
+	consecutive401First time.Time
 }
 
 // New returns an empty Pool with the given policy.
@@ -258,6 +278,11 @@ func (p *Pool) Pick(ctx context.Context, vault *tokenvault.Vault) (*PickResult, 
 			if h != nil && h.CooldownUntil.After(now) {
 				continue
 			}
+			// Skip accounts that were used too recently to avoid burst
+			// patterns that trip suspicious-activity detection.
+			if p.policy.MinRestPeriod > 0 && now.Sub(a.LastUsed) < p.policy.MinRestPeriod {
+				continue
+			}
 			w := weightCeil
 			if ah := p.ext[a.ID]; ah != nil {
 				w = ah.Weight(now)
@@ -314,6 +339,10 @@ func (p *Pool) Pick(ctx context.Context, vault *tokenvault.Vault) (*PickResult, 
 			}
 			h := p.health[a.ID]
 			if h != nil && h.CooldownUntil.After(now) {
+				continue
+			}
+			// Skip recently-used accounts.
+			if p.policy.MinRestPeriod > 0 && now.Sub(a.LastUsed) < p.policy.MinRestPeriod {
 				continue
 			}
 			if best == nil || a.LastUsed.Before(best.LastUsed) {
@@ -397,6 +426,37 @@ func (p *Pool) RecordSuccessWithLatency(id string, latency time.Duration) {
 	}
 }
 
+// ClearAllCooldowns resets every account's cooldown, consecutive-error
+// counter, and last-error tag. Used by the operator "reset cooldowns"
+// dashboard action when a mass-throttle event has passed and the pool
+// needs to be brought back to full health immediately rather than waiting
+// for each account's cooldown timer to expire individually.
+func (p *Pool) ClearAllCooldowns() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	cleared := 0
+	now := time.Now()
+	for id, h := range p.health {
+		if h == nil {
+			continue
+		}
+		if h.CooldownUntil.After(now) || h.Consecutive > 0 {
+			cleared++
+		}
+		h.Consecutive = 0
+		h.CooldownUntil = time.Time{}
+		h.LastError = ""
+		if ah := p.ext[id]; ah != nil {
+			ah.recordSuccess(now, 0)
+		}
+	}
+	if cleared > 0 {
+		slog.Info("pool: operator cleared all cooldowns",
+			slog.Int("accounts_cleared", cleared))
+	}
+	return cleared
+}
+
 // FailureKind classifies an upstream error for cooldown purposes.
 type FailureKind int
 
@@ -440,7 +500,17 @@ func (p *Pool) RecordFailure(id string, kind FailureKind, reason string) {
 	cooldownJustApplied := false
 	switch kind {
 	case FailureQuota:
-		h.CooldownUntil = now.Add(p.policy.QuotaCooldown)
+		// Overage-capable accounts (Kiro Pro: overageCap=10,000) can serve
+		// requests past their monthly base cap. Use a short retry delay
+		// instead of the full QuotaCooldown (1h) so the account stays in
+		// rotation. The upstream may start accepting after a brief pause.
+		if ah := p.ext[id]; ah != nil && ah.UsageLimits != nil &&
+			ah.UsageLimits.OverageCapable && ah.UsageLimits.OverageCap > 0 &&
+			ah.UsageLimits.CurrentOverages < ah.UsageLimits.OverageCap {
+			h.CooldownUntil = now.Add(30 * time.Second)
+		} else {
+			h.CooldownUntil = now.Add(p.policy.QuotaCooldown)
+		}
 		cooldownJustApplied = wasInactive
 	default:
 		if h.Consecutive >= p.policy.ConsecutiveErrorThreshold {
@@ -510,9 +580,28 @@ func (p *Pool) RecordUnauthorized(id string, reason string) {
 		slog.String("account_id", id),
 		slog.String("reason", reason),
 		slog.String("cooldown_until", h.CooldownUntil.Format(time.RFC3339)))
+
+	// OIDC rotation detection: if 3+ accounts get 401 within 5 minutes,
+	// the OIDC provider token likely needs rotation.
+	const oidcWindow = 5 * time.Minute
+	const oidcThreshold = 3
+	if p.consecutive401First.IsZero() || now.Sub(p.consecutive401First) > oidcWindow {
+		p.consecutive401 = 1
+		p.consecutive401First = now
+	} else {
+		p.consecutive401++
+	}
+	warnOIDC := p.consecutive401 == oidcThreshold
+
 	sink := p.metricsSink
 	stick := p.stickiness
 	p.mu.Unlock()
+
+	if warnOIDC {
+		slog.Error("pool: multiple accounts unauthorized within short window — OIDC token rotation may be needed",
+			slog.Int("count", oidcThreshold),
+			slog.Duration("window", oidcWindow))
+	}
 	if wasInactive {
 		sink.Cooldown(metrics.CooldownReasonUnauthorized)
 	}
@@ -551,7 +640,14 @@ func (p *Pool) RecordStructuralError(id string, reason string) {
 	wasInactive := prev.IsZero() || !prev.After(now)
 	h.Consecutive++
 	h.LastError = reason
-	h.CooldownUntil = now.Add(p.policy.MaxCooldown)
+	// Suspicious-activity bans use a much longer cooldown (24h) because
+	// the upstream ban persists 24-48h. Using the normal 2h MaxCooldown
+	// just causes re-ban on the next attempt after cooldown expires.
+	if reason == "suspicious_activity_ban" && p.policy.SuspiciousBanCooldown > 0 {
+		h.CooldownUntil = now.Add(p.policy.SuspiciousBanCooldown)
+	} else {
+		h.CooldownUntil = now.Add(p.policy.MaxCooldown)
+	}
 	slog.Warn("pool: account structural error — needs operator attention",
 		slog.String("account_id", id),
 		slog.String("reason", reason),
@@ -668,12 +764,47 @@ func (tg *TokenGetter) RecordFailure(accountID string, quota bool, reason string
 // the account itself is incompatible with the upstream contract and needs
 // operator attention. Maps to messages.StructuralRecorder via duck typing.
 //
+// For suspicious_activity_ban specifically, the ban timestamp is persisted
+// to vault metadata so it survives server restarts. Without this, a restart
+// clears in-memory cooldowns and causes immediate re-ban of flagged accounts.
+//
 // No-op when accountID is empty or the pool is unset (test/fake paths).
 func (tg *TokenGetter) RecordStructuralError(accountID string, reason string) {
 	if accountID == "" || tg.Pool == nil {
 		return
 	}
 	tg.Pool.RecordStructuralError(accountID, reason)
+
+	// Persist suspicious-activity bans to vault metadata so they survive
+	// server restarts. The pool cooldown is in-memory only.
+	if reason == "suspicious_activity_ban" && tg.Vault != nil {
+		banUntil := time.Now().Add(tg.Pool.policy.SuspiciousBanCooldown)
+		patch := map[string]any{
+			"suspicious_ban_until": banUntil.Format(time.RFC3339),
+		}
+		ctx := context.Background()
+		b, err := tg.Vault.Get(ctx, "kiro", accountID)
+		if err != nil {
+			slog.Warn("pool: failed to read vault for ban persist",
+				slog.String("account_id", accountID),
+				slog.String("err", err.Error()))
+			return
+		}
+		if _, err := tg.Vault.CommitWithMetaPatch(ctx, "kiro", accountID, b.Generation, tokenvault.Tokens{
+			AccessToken:  b.AccessToken,
+			RefreshToken: b.RefreshToken,
+			Source:       b.Source,
+			Metadata:     b.Metadata,
+		}, patch); err != nil {
+			slog.Warn("pool: failed to persist suspicious ban to vault",
+				slog.String("account_id", accountID),
+				slog.String("err", err.Error()))
+		} else {
+			slog.Info("pool: suspicious ban persisted to vault",
+				slog.String("account_id", accountID),
+				slog.String("ban_until", banUntil.Format(time.RFC3339)))
+		}
+	}
 }
 
 // GetUsage forwards to Pool.GetUsage so callers holding only a *TokenGetter
@@ -689,6 +820,13 @@ func (tg *TokenGetter) GetUsage(accountID string) *kiroclient.UsageLimits {
 		return nil
 	}
 	return tg.Pool.GetUsage(accountID)
+}
+
+func (tg *TokenGetter) RecordLatency(accountID string, latency time.Duration) {
+	if accountID == "" || tg.Pool == nil {
+		return
+	}
+	tg.Pool.RecordLatency(accountID, latency)
 }
 
 // GetToken implements messages.TokenGetter. It picks an account from the

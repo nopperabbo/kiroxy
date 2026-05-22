@@ -2,6 +2,19 @@
 
 All notable changes to kiroxy will be documented in this file. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project follows semver from v0.1.0 onwards.
 
+## [Unreleased]
+
+### Added
+
+- **OIDC rotation detection.** Pool emits `slog.Error` when 3+ accounts hit 401 within 5 minutes, suggesting OIDC provider token rotation is needed.
+- **API key min-length warning.** Startup warns when `KIROXY_API_KEY` is set but shorter than 16 characters.
+- **LatencyRecorder interface.** `messages.Service` now feeds per-request latency into the pool's EWMA health tracker via `pool.TokenGetter.RecordLatency`.
+- **Stickiness in dashboard state.** `/dashboard/api/state` includes active session→account pins under `"stickiness"`.
+
+### Improved
+
+- **Test coverage push.** `internal/messages` 37.8%→76.6%, `cmd/kiroxy` 23.6%→50.4%, `internal/anthropic` 47.9%→97.9%, `internal/httpx` 66.7%→83.3%, `internal/tokencount` 50.0%→54.5%.
+
 ## [v1.4.0] — 2026-05-15
 
 Public release. Frontend polish round complete, all 7 dashboard views production-grade, landing page included as `web/landing/`.

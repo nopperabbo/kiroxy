@@ -14,6 +14,8 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/httptrace"
+	"net/url"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -44,10 +46,14 @@ const (
 	// header format. The kirocc-native Rust SDK UA is appropriate for kiro-cli
 	// accounts but breaks Builder ID accounts at the gateway ("credential is
 	// invalid"). Kiro IDE UA accepts both credential sources.
-	kiroIDEVersion      = "0.11.107"
-	kiroStreamingSDKVer = "1.0.34"
-	userAgentValue      = "aws-sdk-js/1.0.34 ua/2.1 os/darwin#24.6.0 lang/js md/nodejs#22.22.0 api/codewhispererstreaming#1.0.34 m/E KiroIDE-0.11.107"
-	amzUserAgentValue   = "aws-sdk-js/1.0.34 KiroIDE-0.11.107"
+	//
+	// NOTE: These are fallback defaults used when machineID is empty (no
+	// per-account UA diversity). With a machineID, headers.go generates
+	// a per-account profile with varied version components.
+	kiroIDEVersion      = "0.12.200"
+	kiroStreamingSDKVer = "1.0.36"
+	userAgentValue      = "aws-sdk-js/1.0.36 ua/2.1 os/darwin#24.6.0 lang/js md/nodejs#22.22.0 api/codewhispererstreaming#1.0.36 m/E KiroIDE-0.12.200"
+	amzUserAgentValue   = "aws-sdk-js/1.0.36 KiroIDE-0.12.200"
 )
 
 // Client is the interface for calling the Kiro API.
@@ -82,6 +88,8 @@ type HTTPClient struct {
 	tokenRefresher TokenRefresher
 	countTokens    func([]byte) (int, error) // nil = skip token counting
 	bodyReadIdle   time.Duration             // idle timeout for response body reads; 0 = use default
+	phaseObserver  PhaseObserver             // nil = skip phase timing
+	proxyURL       *url.URL                  // outbound proxy; nil = direct
 }
 
 // HTTPClientOption configures an HTTPClient.
@@ -121,6 +129,13 @@ func WithOTel(bodyLimit int) HTTPClientOption {
 	}
 }
 
+// WithProxyURL routes all outbound upstream requests through the given
+// HTTP/SOCKS5 proxy. Critical for IP diversification when running many
+// accounts from a single host.
+func WithProxyURL(u *url.URL) HTTPClientOption {
+	return func(c *HTTPClient) { c.proxyURL = u }
+}
+
 // NewHTTPClient creates a new HTTPClient.
 func NewHTTPClient(opts ...HTTPClientOption) *HTTPClient {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
@@ -150,6 +165,12 @@ func NewHTTPClient(opts ...HTTPClientOption) *HTTPClient {
 	c := &HTTPClient{}
 	for _, opt := range opts {
 		opt(c)
+	}
+
+	// Apply outbound proxy if configured. Must happen after opts are
+	// processed but before the transport is wrapped in OTel.
+	if c.proxyURL != nil {
+		transport.Proxy = http.ProxyURL(c.proxyURL)
 	}
 
 	var rt http.RoundTripper = transport
@@ -319,6 +340,13 @@ func (c *HTTPClient) callOneEndpoint(
 			return nil, fmt.Errorf("create request: %w", err)
 		}
 
+		var phaseState *phaseState
+		if c.phaseObserver != nil {
+			trace, ps := newPhaseTrace()
+			req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
+			phaseState = ps
+		}
+
 		req.Header.Set("Authorization", "Bearer "+currentToken)
 		if useNative {
 			applyNativeHeaders(req, currentToken, machineID, ep.AmzTarget, invocationID, attempt, maxRetries)
@@ -352,6 +380,9 @@ func (c *HTTPClient) callOneEndpoint(
 
 		switch {
 		case resp.StatusCode == http.StatusOK:
+			if phaseState != nil {
+				c.phaseObserver(phaseState.timings())
+			}
 			slog.DebugContext(ctx, "kiro response headers",
 				"trace_id", traceID,
 				"session_id", logging.SessionIDFromContext(ctx),
@@ -443,6 +474,25 @@ func (c *HTTPClient) callOneEndpoint(
 		case resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500:
 			errBody := readLimitedBody(resp.Body, upstreamBodyLimit)
 			exType, reason := resolveAWSExceptionFields(errBody, resp.Header)
+			ue := &UpstreamError{
+				Status:      resp.StatusCode,
+				ContentType: resp.Header.Get("Content-Type"),
+				Exception:   exType,
+				Reason:      reason,
+				Body:        errBody,
+			}
+			// Suspicious-activity ban: the account itself is flagged by
+			// Kiro's anti-abuse system. Retrying the same account on a
+			// different endpoint is pointless — skip the retry budget.
+			if IsSuspiciousActivityError(ue) {
+				slog.WarnContext(ctx, "kiro: account flagged for suspicious activity — skipping retries",
+					"trace_id", short, "account_id", logging.AccountIDFromContext(ctx),
+					"endpoint", ep.Name,
+					"status", resp.StatusCode,
+					"exception", exType)
+				c.recordError(ctx, ue)
+				return nil, ue
+			}
 			if attempt < maxRetries {
 				delay := effectiveDelay(resp, attempt)
 				slog.WarnContext(ctx, "kiro: upstream error, retrying",
@@ -456,13 +506,6 @@ func (c *HTTPClient) callOneEndpoint(
 					return nil, waitErr
 				}
 				continue
-			}
-			ue := &UpstreamError{
-				Status:      resp.StatusCode,
-				ContentType: resp.Header.Get("Content-Type"),
-				Exception:   exType,
-				Reason:      reason,
-				Body:        errBody,
 			}
 			c.recordError(ctx, ue)
 			return nil, ue
@@ -506,6 +549,11 @@ func (c *HTTPClient) callOneEndpoint(
 // matches HTTP 429 with any AWS exception classification, plus 200 OK
 // envelopes carrying ThrottlingException / TooManyRequestsException.
 //
+// Suspicious-activity bans are explicitly EXCLUDED: the account itself is
+// flagged, so all three endpoints will reject it identically. Fail-over
+// would burn retry budget for zero gain and delay pool-level rotation to
+// a different (unflagged) account.
+//
 // We deliberately do NOT fail over on 5xx because those are typically
 // transient gateway issues that affect ALL three endpoints (they share the
 // same underlying Bedrock + Kiro Service backend); fail-over would just
@@ -514,6 +562,10 @@ func (c *HTTPClient) callOneEndpoint(
 func isQuotaExhausted(err error) bool {
 	var ue *UpstreamError
 	if !errors.As(err, &ue) {
+		return false
+	}
+	// Suspicious-activity: account-level ban, not an endpoint quota issue.
+	if IsSuspiciousActivityError(ue) {
 		return false
 	}
 	if ue.Status == http.StatusTooManyRequests {

@@ -7,6 +7,7 @@ package anthropic
 
 import (
 	"encoding/json/v2"
+	"net/http"
 	"testing"
 )
 
@@ -365,5 +366,129 @@ func TestMessageContent_UnmarshalJSON_Object(t *testing.T) {
 	}
 	if len(b.ToolReferences) != 1 || b.ToolReferences[0].ToolName != "Read" {
 		t.Fatalf("tool_references = %+v", b.ToolReferences)
+	}
+}
+
+func TestHasContext1MBeta(t *testing.T) {
+	tests := []struct {
+		name   string
+		header map[string][]string
+		want   bool
+	}{
+		{"empty", nil, false},
+		{"no match", map[string][]string{"Anthropic-Beta": {"output-128k-2025-02-19"}}, false},
+		{"exact", map[string][]string{"Anthropic-Beta": {"context-1m-2025-10-22"}}, true},
+		{"comma-separated", map[string][]string{"Anthropic-Beta": {"output-128k-2025-02-19,context-1m-2025-10-22"}}, true},
+		{"with spaces", map[string][]string{"Anthropic-Beta": {"output-128k, context-1m-2025-10-22"}}, true},
+		{"multiple headers", map[string][]string{"Anthropic-Beta": {"foo", "context-1m"}}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := make(http.Header)
+			for k, vs := range tt.header {
+				for _, v := range vs {
+					h.Add(k, v)
+				}
+			}
+			if got := HasContext1MBeta(h); got != tt.want {
+				t.Errorf("HasContext1MBeta = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsThinkingEnabled(t *testing.T) {
+	tests := []struct {
+		name string
+		req  Request
+		want bool
+	}{
+		{"nil thinking", Request{}, false},
+		{"enabled", Request{Thinking: &ThinkingConfig{Type: ThinkingTypeEnabled}}, true},
+		{"adaptive", Request{Thinking: &ThinkingConfig{Type: ThinkingTypeAdaptive}}, true},
+		{"disabled", Request{Thinking: &ThinkingConfig{Type: "disabled"}}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.req.IsThinkingEnabled(); got != tt.want {
+				t.Errorf("IsThinkingEnabled = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMessageContent_String(t *testing.T) {
+	tests := []struct {
+		name string
+		mc   MessageContent
+		want string
+	}{
+		{"plain text", MessageContent{Text: "hello"}, "hello"},
+		{"single text block", MessageContent{Blocks: []ContentBlock{{Type: BlockTypeText, Text: "world"}}}, "world"},
+		{"multiple text blocks", MessageContent{Blocks: []ContentBlock{
+			{Type: BlockTypeText, Text: "hello"},
+			{Type: BlockTypeToolUse, Name: "tool"},
+			{Type: BlockTypeText, Text: "world"},
+		}}, "hello world"},
+		{"no text blocks", MessageContent{Blocks: []ContentBlock{{Type: BlockTypeToolUse}}}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.mc.String(); got != tt.want {
+				t.Errorf("String() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMessageContent_UnmarshalJSON_SingleObject(t *testing.T) {
+	raw := `{"type":"tool_search_tool_search_result","tool_references":[{"type":"tool_reference","tool_name":"Read"}]}`
+	var mc MessageContent
+	if err := json.Unmarshal([]byte(raw), &mc); err != nil {
+		t.Fatal(err)
+	}
+	if len(mc.Blocks) != 1 {
+		t.Fatalf("want 1 block, got %d", len(mc.Blocks))
+	}
+}
+
+func TestMessageContent_UnmarshalJSON_NumberError(t *testing.T) {
+	raw := `123`
+	var mc MessageContent
+	err := json.Unmarshal([]byte(raw), &mc)
+	if err == nil {
+		t.Fatal("expected error for number content")
+	}
+}
+
+func TestSystemPrompt_MarshalJSON(t *testing.T) {
+	tests := []struct {
+		name string
+		sp   SystemPrompt
+		want string
+	}{
+		{"empty", SystemPrompt{}, "null"},
+		{"text", SystemPrompt{Text: "hello"}, `"hello"`},
+		{"blocks", SystemPrompt{Blocks: []SystemBlock{{Type: "text", Text: "hi"}}}, `[{"type":"text","text":"hi"}]`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := json.Marshal(tt.sp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != tt.want {
+				t.Errorf("got %s, want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSystemPrompt_UnmarshalJSON_Invalid(t *testing.T) {
+	raw := `123`
+	var sp SystemPrompt
+	err := json.Unmarshal([]byte(raw), &sp)
+	if err == nil {
+		t.Fatal("expected error for number system prompt")
 	}
 }

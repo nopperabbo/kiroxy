@@ -60,6 +60,19 @@ const poolRotationBaseDelay = 500 * time.Millisecond
 // under ~14s for capacity events.
 const capacityShortageBaseDelay = 2 * time.Second
 
+// maxSuspiciousBansPerRotation caps how many consecutive suspicious-
+// activity bans the rotation loop tolerates before giving up. When
+// multiple accounts in a row are banned, it signals IP-level detection
+// rather than individual account issues — burning more accounts won't
+// help. Breaking early preserves the remaining pool.
+const maxSuspiciousBansPerRotation = 2
+
+// suspiciousBanRotationDelay is the pause injected after a suspicious-
+// activity ban before rotating to the next account. Without this,
+// rapid-fire rotation from the same IP makes the next account look
+// equally suspicious to the upstream anti-abuse system.
+const suspiciousBanRotationDelay = 3 * time.Second
+
 // poolRotationBackoff returns an exponential backoff delay with ±25% jitter
 // for the given rotation attempt number (0-indexed). attempt=0 returns 0
 // because the first rotation is the response to the original failure and
@@ -197,12 +210,21 @@ func classifyTransportError(err error) (string, bool) {
 //     pool is locked out for an hour while the upstream recovers in
 //     minutes. Treat as TRANSIENT (rotate, but don't cooldown).
 //
+// Suspicious-activity bans are explicitly EXCLUDED: they are per-account
+// bans that warrant immediate cooldown. Without this guard, the body
+// text ("experiencing high traffic"-style phrasing from Kiro) could
+// false-positive into the heuristic fallback below.
+//
 // Without this distinction, a 30-minute Kiro-side overload window
 // converts every account in the pool to "quota-cooldown for 1h" — even
 // though no account is actually rate-limited. Symptom: "akun yang error
 // dan ga bisa di pake" reported by users.
 func isCapacityShortage(ue *kiroclient.UpstreamError) bool {
 	if ue == nil {
+		return false
+	}
+	// Suspicious-activity is per-account, not fleet-wide.
+	if kiroclient.IsSuspiciousActivityError(ue) {
 		return false
 	}
 	// Explicit reason field (Kiro-specific extension).
@@ -305,6 +327,7 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 	upstreamStart := time.Now()
 	callCtx := logging.WithAccountID(ctx, inv.creds.AccountID)
 	apiResp, err := s.client.GenerateAssistantResponse(callCtx, inv.creds.AccessToken, inv.payload, inv.creds.Region, inv.creds.MachineID)
+	suspiciousBanCount := 0
 	for poolAttempt := 0; err != nil && poolAttempt < upstreamPoolRetries; poolAttempt++ {
 		ue, ok := isRotatableUpstreamError(err)
 		if !ok {
@@ -320,24 +343,51 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 		// account did nothing wrong — bumping its consecutive-error counter
 		// would falsely penalize healthy accounts during a regional Kiro
 		// hiccup. Skip recording entirely; just rotate.
-		if rec, ok := s.auth.(FailureRecorder); ok && inv.creds != nil && inv.creds.AccountID != "" && !isCapacityShortage(ue) {
+		//
+		// Suspicious-activity bans get structural-level cooldown (MaxCooldown)
+		// instead of normal quota cooldown: the ban is semi-permanent and
+		// retrying in 1h is too aggressive. RecordStructuralError applies
+		// MaxCooldown immediately and logs an operator-visible warning.
+		if kiroclient.IsSuspiciousActivityError(ue) {
+			if rec, ok := s.auth.(StructuralRecorder); ok && inv.creds != nil && inv.creds.AccountID != "" {
+				rec.RecordStructuralError(inv.creds.AccountID, "suspicious_activity_ban")
+			}
+			suspiciousBanCount++
+			if suspiciousBanCount >= maxSuspiciousBansPerRotation {
+				slog.ErrorContext(ctx, "kiro: multiple accounts banned for suspicious activity — IP may be flagged, stopping rotation to preserve pool",
+					"trace_id", short,
+					"suspicious_bans", suspiciousBanCount,
+					"pool_attempt", poolAttempt+1)
+				break
+			}
+			// Delay before rotating to the next account after a ban.
+			// Without this, rapid rotation from the same IP makes the
+			// next account equally suspicious.
+			if waitErr := rotationSleep(ctx, suspiciousBanRotationDelay); waitErr != nil {
+				break
+			}
+		} else if rec, ok := s.auth.(FailureRecorder); ok && inv.creds != nil && inv.creds.AccountID != "" && !isCapacityShortage(ue) {
 			reason := rotationFailureReason(ue)
 			rec.RecordFailure(inv.creds.AccountID, isQuotaFailure(ue), reason)
 		}
-		// Capacity shortages affect every account in the pool equally, so
-		// rotation alone won't help. Slow the loop down to give the upstream
-		// a chance to recover instead of burning the rotation budget at
-		// network-RTT speed.
-		base := poolRotationBaseDelay
-		if isCapacityShortage(ue) {
-			base = capacityShortageBaseDelay
-		}
-		if delay := rotationBackoffFor(poolAttempt, base); delay > 0 {
-			if waitErr := rotationSleep(ctx, delay); waitErr != nil {
-				slog.WarnContext(ctx, "kiro: pool rotation aborted by ctx",
-					"trace_id", short, "err", waitErr,
-					"pool_attempt", poolAttempt+1, "max", upstreamPoolRetries)
-				break
+		// Suspicious-activity bans use suspiciousBanRotationDelay (above).
+		// Non-suspicious errors use exponential backoff below.
+		if !kiroclient.IsSuspiciousActivityError(ue) {
+			// Capacity shortages affect every account in the pool equally, so
+			// rotation alone won't help. Slow the loop down to give the upstream
+			// a chance to recover instead of burning the rotation budget at
+			// network-RTT speed.
+			base := poolRotationBaseDelay
+			if isCapacityShortage(ue) {
+				base = capacityShortageBaseDelay
+			}
+			if delay := rotationBackoffFor(poolAttempt, base); delay > 0 {
+				if waitErr := rotationSleep(ctx, delay); waitErr != nil {
+					slog.WarnContext(ctx, "kiro: pool rotation aborted by ctx",
+						"trace_id", short, "err", waitErr,
+						"pool_attempt", poolAttempt+1, "max", upstreamPoolRetries)
+					break
+				}
 			}
 		}
 		newCreds, tokErr := s.auth.GetToken(ctx)
@@ -390,6 +440,9 @@ func (s *Service) callAndHandle(ctx context.Context, w http.ResponseWriter, inv 
 		reason = s.handleStreamingResponse(ctx, w, apiResp, inv.responseModel, inv.contextWindowSize, inv.req.StopSequences, inv.req.MaxTokens, apiResp.PromptTokens, capture, inv.toolNameMap, inv.metrics)
 	} else {
 		reason = s.handleNonStreamingResponse(ctx, w, apiResp, inv.responseModel, inv.contextWindowSize, inv.req.StopSequences, inv.req.MaxTokens, apiResp.PromptTokens, capture, inv.toolNameMap, inv.metrics)
+	}
+	if rec, ok := s.auth.(LatencyRecorder); ok && inv.creds != nil && inv.creds.AccountID != "" {
+		rec.RecordLatency(inv.creds.AccountID, time.Since(upstreamStart))
 	}
 	if reason == retryReasonEmptyVisibleEndTurn {
 		capture.logCapture(ctx, reason)

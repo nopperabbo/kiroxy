@@ -20,6 +20,7 @@ type DashboardState struct {
 	VaultOK     bool               `json:"vault_ok"`
 	VaultPath   string             `json:"vault_path,omitempty"`
 	Accounts    []DashboardAccount `json:"accounts"`
+	Stickiness  map[string]string  `json:"stickiness,omitempty"`
 }
 
 // DashboardAccount is the per-account row shape.
@@ -79,6 +80,12 @@ type DashboardControlProvider interface {
 	OpencodeConfig(ctx context.Context, baseURL string) ([]byte, error)
 }
 
+// PoolResetter exposes the operator-level "clear all cooldowns" action.
+// Implemented by *pool.Pool; nil when the server runs without a pool.
+type PoolResetter interface {
+	ClearAllCooldowns() int
+}
+
 // DashboardImportEntry matches the schema of cmd/kiroxy/import_json.go so
 // operators can paste the same JSON the CLI accepts.
 type DashboardImportEntry struct {
@@ -110,6 +117,7 @@ func (e dashboardError) Error() string { return string(e) }
 func (s *Server) registerDashboard(mux *http.ServeMux) {
 	mux.HandleFunc("GET /dashboard", s.handleDashboardHTML)
 	mux.HandleFunc("GET /dashboard/api/state", s.handleDashboardState)
+	mux.HandleFunc("POST /dashboard/api/pool/reset-cooldowns", s.handleResetCooldowns)
 	// Embedded operator documentation catalog consumed by the Mansion
 	// command palette. See docs.go for the curated source set and the
 	// one-shot build strategy.
@@ -151,4 +159,19 @@ func (s *Server) handleDashboardState(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(state)
+}
+
+func (s *Server) handleResetCooldowns(w http.ResponseWriter, _ *http.Request) {
+	if s.opts.PoolResetter == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]any{"error": "pool resetter not available"})
+		return
+	}
+	cleared := s.opts.PoolResetter.ClearAllCooldowns()
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"status":  "ok",
+		"cleared": cleared,
+	})
 }

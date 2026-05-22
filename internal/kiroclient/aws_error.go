@@ -156,6 +156,25 @@ func isEventStreamContentType(ct string) bool {
 	return strings.EqualFold(mt, want)
 }
 
+// IsSuspiciousActivityError reports whether the UpstreamError body contains
+// Kiro's anti-abuse "suspicious activity" message. This is a semi-permanent
+// account-level ban that is NOT resolved by retrying the same account across
+// different endpoints — the account itself is flagged. Callers should skip
+// intra-account retries and endpoint fail-over, apply an immediate long
+// cooldown, and rotate to a different account.
+//
+// Body pattern:
+//
+//	{"message":"Due to suspicious activity, we are imposing temporary limits
+//	 on how frequently your account (...) can send a request to Kiro ..."}
+func IsSuspiciousActivityError(ue *UpstreamError) bool {
+	if ue == nil {
+		return false
+	}
+	return strings.Contains(ue.Body, "suspicious activity") &&
+		strings.Contains(ue.Body, "imposing temporary limits")
+}
+
 // looksLikeEventStreamBody peeks at the first byte of body to detect a binary
 // AWS EventStream frame even when the upstream sent Content-Type: application/json.
 // Kiro (native endpoint, non-streaming mode) occasionally does this — it returns

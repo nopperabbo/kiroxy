@@ -7,6 +7,7 @@ package messages
 
 import (
 	"context"
+	"time"
 
 	"github.com/nopperabbo/kiroxy/internal/auth"
 	"github.com/nopperabbo/kiroxy/internal/kiroclient"
@@ -49,11 +50,20 @@ type UsageLimitsLooker interface {
 	GetUsage(accountID string) *kiroclient.UsageLimits
 }
 
+// LatencyRecorder is an optional interface for feeding per-request latency
+// into the pool's EWMA health tracker. Implementations should be cheap
+// (no I/O); the call happens on the request goroutine after the full
+// response has been streamed.
+type LatencyRecorder interface {
+	RecordLatency(accountID string, latency time.Duration)
+}
+
 // Service owns message execution and token counting flows.
 type Service struct {
 	auth           TokenGetter
 	client         kiroclient.Client
 	captureEnabled bool
+	requestTimeout time.Duration
 
 	// metrics is the nil-safe metric sink. A nil value disables emission
 	// on every instrumentation call; see internal/metrics.Sink.
@@ -68,6 +78,11 @@ type Option func(*Service)
 // when debug logging is on.
 func WithCapture(enabled bool) Option {
 	return func(s *Service) { s.captureEnabled = enabled }
+}
+
+// WithRequestTimeout sets the per-request context deadline.
+func WithRequestTimeout(d time.Duration) Option {
+	return func(s *Service) { s.requestTimeout = d }
 }
 
 // New constructs a message service.

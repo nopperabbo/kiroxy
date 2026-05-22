@@ -28,6 +28,7 @@
 package kiroclient
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"net/http"
 	"os"
@@ -35,6 +36,47 @@ import (
 
 	"github.com/nopperabbo/kiroxy/internal/kiroproto"
 )
+
+// uaProfile holds per-account User-Agent component variants.
+// Each account gets a deterministic profile derived from its machineID
+// so requests from different accounts look like distinct Kiro IDE
+// installations — critical for avoiding bulk-usage detection.
+type uaProfile struct {
+	kiroVersion string
+	sdkVersion  string
+	nodeVersion string
+	osVersion   string
+}
+
+var (
+	kiroVersionPool = []string{"0.12.200", "0.12.184", "0.12.160", "0.11.107"}
+	sdkVersionPool  = []string{"1.0.34", "1.0.35", "1.0.36"}
+	nodeVersionPool = []string{"22.22.0", "22.23.0", "22.24.0", "23.0.0", "23.1.0"}
+	osVersionPool   = []string{"24.5.0", "24.6.0", "24.7.0", "25.0.0"}
+)
+
+// profileFromMachineID returns a deterministic uaProfile for the given
+// machineID. The profile is derived by hashing the machineID and using
+// different byte positions to index into each variant pool. This ensures
+// each account has a stable, unique-looking User-Agent without any
+// external state.
+func profileFromMachineID(machineID string) uaProfile {
+	if machineID == "" {
+		return uaProfile{
+			kiroVersion: kiroIDEVersion,
+			sdkVersion:  kiroStreamingSDKVer,
+			nodeVersion: "22.22.0",
+			osVersion:   "24.6.0",
+		}
+	}
+	h := sha256.Sum256([]byte(machineID))
+	return uaProfile{
+		kiroVersion: kiroVersionPool[int(h[0])%len(kiroVersionPool)],
+		sdkVersion:  sdkVersionPool[int(h[1])%len(sdkVersionPool)],
+		nodeVersion: nodeVersionPool[int(h[2])%len(nodeVersionPool)],
+		osVersion:   osVersionPool[int(h[3])%len(osVersionPool)],
+	}
+}
 
 // nativeHeadersEnabled returns false ONLY when KIROXY_NATIVE_HEADERS=0 is set.
 // Default (unset or any other value including "1"/"true") means native ON.
@@ -269,12 +311,14 @@ func applyLegacyHeaders(req *http.Request, token, invocationID string, attempt, 
 	req.Header.Set("amz-sdk-request", fmt.Sprintf("attempt=%d; max=%d", attempt+1, maxAttempts+1))
 }
 
-// nativeUserAgent returns the streaming-endpoint UA with machine_id appended.
-// Format mirrors Quorinex's `aws-sdk-js/<sdk> ua/2.1 os/<os>#<ver> lang/js
-// md/nodejs#<ver> api/codewhispererstreaming#<sdk> m/E KiroIDE-<ver>-<mid>`.
-// Empty machineID drops the trailing dash + suffix so the UA stays valid.
+// nativeUserAgent returns the streaming-endpoint UA with per-account
+// fingerprint diversity. Each machineID deterministically selects variant
+// Kiro/Node/OS/SDK versions so different accounts look like distinct IDE
+// installations. Empty machineID falls back to the global defaults.
 func nativeUserAgent(machineID string) string {
-	base := userAgentValue
+	p := profileFromMachineID(machineID)
+	base := fmt.Sprintf("aws-sdk-js/%s ua/2.1 os/darwin#%s lang/js md/nodejs#%s api/codewhispererstreaming#%s m/E KiroIDE-%s",
+		p.sdkVersion, p.osVersion, p.nodeVersion, p.sdkVersion, p.kiroVersion)
 	if machineID == "" {
 		return base
 	}
@@ -282,9 +326,10 @@ func nativeUserAgent(machineID string) string {
 }
 
 // nativeAmzUserAgent mirrors nativeUserAgent for the abbreviated x-amz-
-// user-agent header. Same machine_id suffix logic.
+// user-agent header. Same per-account diversity logic.
 func nativeAmzUserAgent(machineID string) string {
-	base := amzUserAgentValue
+	p := profileFromMachineID(machineID)
+	base := fmt.Sprintf("aws-sdk-js/%s KiroIDE-%s", p.sdkVersion, p.kiroVersion)
 	if machineID == "" {
 		return base
 	}

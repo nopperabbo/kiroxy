@@ -143,3 +143,105 @@ func scrapeRegistry(t *testing.T, reg *metrics.Registry) string {
 	}
 	return rr.Body.String()
 }
+
+func TestStatusCapturingWriter_WriteHeader(t *testing.T) {
+	rr := httptest.NewRecorder()
+	w := &statusCapturingWriter{ResponseWriter: rr}
+	w.WriteHeader(http.StatusNotFound)
+	if w.status != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", w.status, http.StatusNotFound)
+	}
+	w.WriteHeader(http.StatusOK)
+	if w.status != http.StatusNotFound {
+		t.Error("second WriteHeader should not overwrite")
+	}
+}
+
+func TestStatusCapturingWriter_Write(t *testing.T) {
+	rr := httptest.NewRecorder()
+	w := &statusCapturingWriter{ResponseWriter: rr}
+	n, err := w.Write([]byte("hello"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 5 {
+		t.Errorf("n = %d, want 5", n)
+	}
+	if w.status != http.StatusOK {
+		t.Errorf("status after Write = %d, want 200", w.status)
+	}
+	if rr.Body.String() != "hello" {
+		t.Errorf("body = %q, want hello", rr.Body.String())
+	}
+}
+
+func TestStatusCapturingWriter_Flush(t *testing.T) {
+	rr := httptest.NewRecorder()
+	w := &statusCapturingWriter{ResponseWriter: rr}
+	w.Flush()
+	if rr.Flushed != true {
+		t.Error("expected Flush to delegate to underlying writer")
+	}
+}
+
+func TestStatusCapturingWriter_CurrentStatus(t *testing.T) {
+	rr := httptest.NewRecorder()
+	w := &statusCapturingWriter{ResponseWriter: rr}
+	if w.currentStatus() != http.StatusOK {
+		t.Errorf("default currentStatus = %d, want 200", w.currentStatus())
+	}
+	w.WriteHeader(http.StatusCreated)
+	if w.currentStatus() != http.StatusCreated {
+		t.Errorf("currentStatus after WriteHeader = %d, want 201", w.currentStatus())
+	}
+}
+
+func TestRequestMetrics_NilSafety(t *testing.T) {
+	var rm *requestMetrics
+	rm.setModel("model", true)
+	rm.observeTTFB(time.Now())
+	rm.setTokens(100, 50)
+	rm.errKind(metrics.RequestKindAuth)
+	rm.finalize(200)
+}
+
+func TestRequestMetrics_ObserveTTFB_OnlyOnce(t *testing.T) {
+	reg := metrics.New(time.Now())
+	rm := &requestMetrics{sink: reg.Sink(), start: time.Now(), model: "test"}
+	rm.observeTTFB(time.Now().Add(-10 * time.Millisecond))
+	rm.observeTTFB(time.Now().Add(-20 * time.Millisecond))
+	if !rm.ttfbSeen {
+		t.Error("expected ttfbSeen = true")
+	}
+}
+
+func TestRequestMetrics_SetTokens(t *testing.T) {
+	reg := metrics.New(time.Now())
+	rm := &requestMetrics{sink: reg.Sink(), start: time.Now(), model: "test"}
+	rm.setTokens(100, 50)
+	if rm.inputToks != 100 || rm.outputToks != 50 {
+		t.Errorf("tokens = (%d, %d), want (100, 50)", rm.inputToks, rm.outputToks)
+	}
+}
+
+func TestRequestMetrics_SetModel(t *testing.T) {
+	reg := metrics.New(time.Now())
+	rm := &requestMetrics{sink: reg.Sink(), start: time.Now()}
+	rm.setModel("claude-sonnet-4-20250514", true)
+	if rm.model != "claude-sonnet-4-20250514" {
+		t.Errorf("model = %q", rm.model)
+	}
+	if !rm.stream {
+		t.Error("expected stream = true")
+	}
+}
+
+func TestRequestMetrics_Finalize(t *testing.T) {
+	reg := metrics.New(time.Now())
+	rm := &requestMetrics{sink: reg.Sink(), start: time.Now(), model: "test", inputToks: 10, outputToks: 5}
+	rm.finalize(200)
+	scrape := scrapeRegistry(t, reg)
+	if !strings.Contains(scrape, "kiroxy_requests_total") {
+		t.Error("expected kiroxy_requests_total in metrics")
+	}
+}

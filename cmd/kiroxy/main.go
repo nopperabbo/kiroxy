@@ -17,12 +17,14 @@ package main
 
 import (
 	"context"
+	"encoding/json/v2"
 	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -144,7 +146,6 @@ func runServe(ctx context.Context, args []string) error {
 		return fmt.Errorf("config: %w", err)
 	}
 
-	// TODO(M7): swap for structured json handler with request_id middleware.
 	// Wrap the stderr JSON handler with a capturing handler so the Mansion
 	// Logs view (/dashboard/api/logs) can tail the same records the process
 	// writes to stderr. Capacity 2048 is ~3–5 minutes of normal traffic at
@@ -181,9 +182,16 @@ func runServe(ctx context.Context, args []string) error {
 	startedAt := time.Now()
 	metricsReg := metrics.New(startedAt)
 	metricsSink := metricsReg.Sink()
+	phaseObs := kiroclient.WithPhaseObserver(func(t kiroclient.PhaseTimings) {
+		metricsSink.ObservePhase("dns", t.DNS)
+		metricsSink.ObservePhase("tls", t.TLS)
+		metricsSink.ObservePhase("connect", t.Connect)
+		metricsSink.ObservePhase("ttfb", t.TTFB)
+	})
 	if cfg.KiroDBPath != "" {
 		authMgr = auth.NewAuthManager(cfg.KiroDBPath)
 		clientOpts := []kiroclient.HTTPClientOption{
+			phaseObs,
 			kiroclient.WithTokenRefresher(func(ctx context.Context) (string, error) {
 				authMgr.(*auth.AuthManager).InvalidateCache()
 				creds, err := authMgr.GetToken(ctx)
@@ -195,6 +203,9 @@ func runServe(ctx context.Context, args []string) error {
 		}
 		if cfg.KiroUpstreamURL != "" {
 			clientOpts = append(clientOpts, kiroclient.WithBaseURL(cfg.KiroUpstreamURL))
+		}
+		if cfg.ProxyURL != nil {
+			clientOpts = append(clientOpts, kiroclient.WithProxyURL(cfg.ProxyURL))
 		}
 		kiroClient = kiroclient.NewHTTPClient(clientOpts...)
 		slog.Info("upstream auth: kiro-cli SQLite",
@@ -230,6 +241,7 @@ func runServe(ctx context.Context, args []string) error {
 		if err != nil {
 			return fmt.Errorf("list vault accounts: %w", err)
 		}
+		var bannedCount int
 		for _, a := range accts {
 			poolInst.Add(pool.Account{
 				ID:       a.ConnectionID,
@@ -238,10 +250,24 @@ func runServe(ctx context.Context, args []string) error {
 				Region:   cfg.KiroRegion,
 				Enabled:  true,
 			})
+			// Restore persisted suspicious-activity bans from vault metadata
+			// so a server restart doesn't immediately re-try flagged accounts.
+			if a.Metadata != "" {
+				var meta map[string]any
+				if err := json.Unmarshal([]byte(a.Metadata), &meta); err == nil {
+					if banStr, ok := meta["suspicious_ban_until"].(string); ok {
+						if banUntil, err := time.Parse(time.RFC3339, banStr); err == nil && banUntil.After(time.Now()) {
+							poolInst.RecordStructuralError(a.ConnectionID, "suspicious_activity_ban")
+							bannedCount++
+						}
+					}
+				}
+			}
 		}
 		slog.Info("upstream auth: pool+tokenvault",
 			slog.String("db_path", cfg.DBPath),
 			slog.Int("account_count", poolInst.Count()),
+			slog.Int("banned_restored", bannedCount),
 		)
 		if poolInst.Count() == 0 {
 			slog.Warn("no accounts in token vault; /v1/messages will return 503 until 'kiroxy add-account' runs (M9)")
@@ -256,6 +282,7 @@ func runServe(ctx context.Context, args []string) error {
 		}
 		authMgr = tg
 		clientOpts := []kiroclient.HTTPClientOption{
+			phaseObs,
 			kiroclient.WithTokenRefresher(func(ctx context.Context) (string, error) {
 				creds, err := tg.GetToken(ctx)
 				if err != nil {
@@ -267,6 +294,9 @@ func runServe(ctx context.Context, args []string) error {
 		if cfg.KiroUpstreamURL != "" {
 			clientOpts = append(clientOpts, kiroclient.WithBaseURL(cfg.KiroUpstreamURL))
 		}
+		if cfg.ProxyURL != nil {
+			clientOpts = append(clientOpts, kiroclient.WithProxyURL(cfg.ProxyURL))
+		}
 		kiroClient = kiroclient.NewHTTPClient(clientOpts...)
 
 		// Background usage poller: calls getUsageLimits per account
@@ -275,7 +305,14 @@ func runServe(ctx context.Context, args []string) error {
 		// KIROXY_USAGE_POLL_DISABLED=1 for offline tests / mock setups
 		// where the upstream getUsageLimits endpoint is unreachable.
 		if os.Getenv("KIROXY_USAGE_POLL_DISABLED") != "1" {
-			pollerHTTP := &http.Client{Timeout: 10 * time.Second}
+			pollerTransport := http.DefaultTransport.(*http.Transport).Clone()
+			if cfg.ProxyURL != nil {
+				pollerTransport.Proxy = http.ProxyURL(cfg.ProxyURL)
+			}
+			pollerHTTP := &http.Client{
+				Timeout:   10 * time.Second,
+				Transport: pollerTransport,
+			}
 			usagePoller = pool.NewUsagePoller(pool.UsagePollerConfig{
 				Pool:  poolInst,
 				Vault: vault,
@@ -307,11 +344,12 @@ func runServe(ctx context.Context, args []string) error {
 		Metrics:         metricsReg,
 		LogSink:         logSink,
 		DashboardStateProvider: &dashboardProvider{
-			version:   version,
-			vaultPath: cfg.DBPath,
-			vault:     vault,
-			pool:      poolInst,
-			startedAt: startedAt,
+			version:    version,
+			vaultPath:  cfg.DBPath,
+			vault:      vault,
+			pool:       poolInst,
+			stickiness: stickiness,
+			startedAt:  startedAt,
 		},
 		InboundKeyProvider: newInboundKeyProvider(vault),
 		SettingsProvider: &settingsProvider{
@@ -328,6 +366,8 @@ func runServe(ctx context.Context, args []string) error {
 			vault:       vault,
 			pool:        poolInst,
 		},
+		RequestTimeout: cfg.RequestTimeout,
+		PoolResetter:   poolInst,
 	})
 
 	addr := net.JoinHostPort(cfg.Bind, strconv.Itoa(cfg.Port))
@@ -347,8 +387,27 @@ func runServe(ctx context.Context, args []string) error {
 		slog.String("version", version),
 		slog.String("addr", "http://"+addr),
 	)
+	if cfg.ProxyURL != nil {
+		// Redact credentials from log output.
+		redacted := *cfg.ProxyURL
+		if redacted.User != nil {
+			redacted.User = url.UserPassword("***", "***")
+		}
+		slog.Info("outbound proxy configured",
+			slog.String("proxy", redacted.String()),
+		)
+	}
 	if cfg.Bind != "127.0.0.1" && cfg.Bind != "localhost" && cfg.Bind != "::1" {
 		slog.Warn("binding to non-loopback address; ensure you have TLS + a reverse proxy in front")
+		if cfg.APIKey == "" {
+			slog.Warn("⚠️  KIROXY_API_KEY is empty while binding to non-loopback — auth is DISABLED for all inbound requests; set KIROXY_API_KEY if this port is reachable from the network")
+		}
+	} else if cfg.APIKey == "" {
+		slog.Info("KIROXY_API_KEY unset; auth disabled (loopback-only, acceptable for personal use)")
+	}
+	if cfg.APIKey != "" && len(cfg.APIKey) < 16 {
+		slog.Warn("KIROXY_API_KEY is shorter than 16 characters; consider using a stronger key",
+			slog.Int("length", len(cfg.APIKey)))
 	}
 
 	done := awaitShutdown(ctx, httpSrv, cfg.ShutdownTimeout, vault, stickiness, usagePoller, otelShutdown)

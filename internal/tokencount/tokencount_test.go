@@ -75,3 +75,28 @@ func TestCountBytes_Concurrent(t *testing.T) {
 		t.Fatalf("concurrent call failed: %v", err)
 	}
 }
+
+func TestPreload(t *testing.T) {
+	Preload()
+	count, err := CountBytes([]byte("test"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if count == 0 {
+		t.Fatal("expected non-zero after preload")
+	}
+}
+
+func TestGetEncoding_ReturnsCached(t *testing.T) {
+	e1, err := getEncoding()
+	if err != nil {
+		t.Fatal(err)
+	}
+	e2, err := getEncoding()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if e1 != e2 {
+		t.Fatal("expected same encoding instance")
+	}
+}

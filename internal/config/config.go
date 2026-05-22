@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,6 +54,18 @@ type Config struct {
 	// Intended for pointing kiroxy at a local mock_kiro during integration
 	// tests, or at a region-specific endpoint when experimenting.
 	KiroUpstreamURL string
+
+	// RequestTimeout is the maximum duration for a single /v1/messages request
+	// including streaming. Default 5 minutes. Set via KIROXY_REQUEST_TIMEOUT (seconds).
+	RequestTimeout time.Duration
+
+	// ProxyURL, if set, routes all outbound upstream requests through the
+	// given HTTP/SOCKS5 proxy. Parsed from KIROXY_PROXY_URL. Format:
+	// http://user:pass@host:port or socks5://user:pass@host:port.
+	// This is critical for IP diversification when running many accounts
+	// from a single host — without it, Kiro's anti-abuse system sees all
+	// accounts originating from the same IP and flags them.
+	ProxyURL *url.URL
 }
 
 // LogLevel returns the slog.Level parsed from LogLevelRaw.
@@ -112,6 +125,23 @@ func FromEnvAndFlags(args []string) (Config, error) {
 
 	cfg.KiroDBPath = os.Getenv("KIROXY_KIRO_DB_PATH")
 	cfg.KiroUpstreamURL = os.Getenv("KIROXY_UPSTREAM_URL")
+
+	cfg.RequestTimeout = 5 * time.Minute
+	if s := os.Getenv("KIROXY_REQUEST_TIMEOUT"); s != "" {
+		n, err := atoiWithDefault(s, 300)
+		if err != nil {
+			return cfg, fmt.Errorf("KIROXY_REQUEST_TIMEOUT: %w", err)
+		}
+		cfg.RequestTimeout = time.Duration(n) * time.Second
+	}
+
+	if raw := os.Getenv("KIROXY_PROXY_URL"); raw != "" {
+		pu, err := url.Parse(raw)
+		if err != nil {
+			return cfg, fmt.Errorf("KIROXY_PROXY_URL: %w", err)
+		}
+		cfg.ProxyURL = pu
+	}
 
 	// Flag overrides (thin layer)
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)

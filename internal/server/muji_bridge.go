@@ -1,7 +1,5 @@
-// Package server: bridge between the parent server's
-// DashboardStateProvider and the muji variant's decoupled Snapshot
-// type. Lives in its own file so concurrent edits to dashboard.go
-// and server.go don't collide with the muji wiring.
+//go:build dashboard_variants
+
 package server
 
 import (

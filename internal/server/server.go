@@ -12,12 +12,6 @@ import (
 	"github.com/nopperabbo/kiroxy/internal/metrics"
 	"github.com/nopperabbo/kiroxy/internal/server/mansion"
 	"github.com/nopperabbo/kiroxy/internal/server/next"
-	"github.com/nopperabbo/kiroxy/internal/server/variants/brutal"
-	"github.com/nopperabbo/kiroxy/internal/server/variants/linearpremium"
-	"github.com/nopperabbo/kiroxy/internal/server/variants/muji"
-	"github.com/nopperabbo/kiroxy/internal/server/variants/neon"
-	"github.com/nopperabbo/kiroxy/internal/server/variants/nord"
-	"github.com/nopperabbo/kiroxy/internal/server/variants/paper"
 )
 
 // Options is how main constructs a Server.
@@ -84,6 +78,13 @@ type Options struct {
 	// ToolsProvider, when set, powers /dashboard/api/tools/* — currently
 	// just doctor (diagnostic). When nil, the endpoints return 404.
 	ToolsProvider ToolsProvider
+
+	// RequestTimeout is the per-request context deadline for /v1/messages.
+	RequestTimeout time.Duration
+
+	// PoolResetter, when set, powers POST /dashboard/api/pool/reset-cooldowns.
+	// Implemented by *pool.Pool. When nil, the endpoint returns 404.
+	PoolResetter PoolResetter
 }
 
 // Server bundles the process-wide handler tree.
@@ -106,6 +107,9 @@ func New(opts Options) *Server {
 		svcOpts := []messages.Option{}
 		if opts.Metrics != nil {
 			svcOpts = append(svcOpts, messages.WithMetrics(opts.Metrics.Sink()))
+		}
+		if opts.RequestTimeout > 0 {
+			svcOpts = append(svcOpts, messages.WithRequestTimeout(opts.RequestTimeout))
 		}
 		svc = messages.New(opts.Auth, opts.KiroClient, svcOpts...)
 	}
@@ -140,16 +144,8 @@ func (s *Server) Handler() http.Handler {
 	s.registerModelsHandler(mux)
 	next.Register(mux)    // /_variants/dashboard-next (legacy /dashboard-next 302s)
 	mansion.Register(mux) // /dashboard-mansion: canonical operator dashboard (post-v1.0.0)
-	// Phase V taste-exploration variants, archived under /_variants/<slug>
-	// after Mansion was chosen as canonical. Each legacy /dashboard-<slug>
-	// URL 302s to its /_variants/<slug> equivalent. Kept fully functional
-	// for historical reference and future design-language comparisons.
-	brutal.Register(mux)           // /_variants/brutal:        terminal / htop aesthetic
-	paper.Register(mux)            // /_variants/paper:         ink on cream / document aesthetic
-	nord.Register(mux)             // /_variants/nord:          arctic calm palette
-	neon.Register(mux)             // /_variants/neon:          cyberpunk grafana aesthetic
-	muji.Register(mux, s.mujiSnap) // /_variants/muji:          zero-JS server-rendered
-	linearpremium.Register(mux)    // /_variants/linear-premium: refined SaaS dark + indigo
+	s.registerVariants(mux)
+	s.registerPprof(mux)
 
 	if s.msgSvc != nil {
 		mux.HandleFunc("POST /v1/messages", s.msgSvc.HandleMessages)

@@ -26,6 +26,7 @@
 package kiroclient
 
 import (
+	"bytes"
 	"context"
 	"encoding/json/v2"
 	"errors"
@@ -132,6 +133,14 @@ type UsageLimits struct {
 	// CurrentOverages is the count of invocations charged at OverageRate
 	// in the current billing window. Maps from usageBreakdownList[].currentOverages.
 	CurrentOverages int64 `json:"current_overages,omitempty"`
+
+	// OverageEnabled is true when the user has actively toggled on the
+	// overage feature via Settings or the setUserPreference API. When
+	// false and OverageCapable is true, the account *could* use overage
+	// but hasn't opted in — requests past the cap will still fail with
+	// ServiceQuotaExceededException. Maps from
+	// overageConfiguration.overageStatus == "ENABLED".
+	OverageEnabled bool `json:"overage_enabled,omitempty"`
 
 	// Currency is the ISO-4217 currency code for OverageRate (e.g. "USD").
 	Currency string `json:"currency,omitempty"`
@@ -397,6 +406,9 @@ func parseUsageLimitsBody(body string) (*UsageLimits, error) {
 		UserInfo struct {
 			Email string `json:"email"`
 		} `json:"userInfo"`
+		OverageConfiguration struct {
+			OverageStatus string `json:"overageStatus"`
+		} `json:"overageConfiguration"`
 		// NextDateReset is *float64 not *int64 because upstream emits this
 		// field as scientific-notation float (1.780272E9) not pure integer.
 		// Go's int64 unmarshaler rejects scientific notation; float64
@@ -414,6 +426,7 @@ func parseUsageLimitsBody(body string) (*UsageLimits, error) {
 		SubscriptionTitle: raw.SubscriptionInfo.SubscriptionTitle,
 		SubscriptionType:  raw.SubscriptionInfo.Type,
 		OverageCapable:    raw.SubscriptionInfo.OverageCapability == "OVERAGE_CAPABLE",
+		OverageEnabled:    raw.OverageConfiguration.OverageStatus == "ENABLED",
 		Email:             raw.UserInfo.Email,
 	}
 
@@ -461,4 +474,73 @@ func extractUsageReason(body string) string {
 	}
 	_ = json.Unmarshal([]byte(body), &m)
 	return m.Reason
+}
+
+// SetUserPreference calls the Kiro Q service to set user preferences,
+// primarily used to enable overage billing. When overage is ENABLED, a
+// Pro account can use up to 10,000 additional credits past its 1,000
+// monthly cap (at $0.04/credit — though for accounts without payment
+// methods this is effectively free).
+//
+// Endpoint: POST https://q.<region>.amazonaws.com/setUserPreference
+// Body: {"overageConfiguration":{"overageStatus":"ENABLED"},"profileArn":"<arn>"}
+//
+// Returns nil on success (HTTP 200 with empty body {}). Returns error
+// on any failure. The caller should check the account's OverageCapable
+// flag before calling — Free-tier accounts are OVERAGE_INCAPABLE and
+// this call will fail for them.
+func SetUserPreference(ctx context.Context, httpClient *http.Client, token, profileArn, region, overageStatus string) error {
+	if httpClient == nil {
+		return errors.New("kiroclient: nil httpClient")
+	}
+	if token == "" {
+		return errors.New("kiroclient: empty access token")
+	}
+	if region == "" {
+		region = "us-east-1"
+	}
+	if overageStatus == "" {
+		overageStatus = "ENABLED"
+	}
+
+	endpoint := fmt.Sprintf("https://q.%s.amazonaws.com/setUserPreference", region)
+
+	type overageCfg struct {
+		OverageStatus string `json:"overageStatus"`
+	}
+	body := struct {
+		OverageConfiguration overageCfg `json:"overageConfiguration"`
+		ProfileArn           string     `json:"profileArn"`
+	}{
+		OverageConfiguration: overageCfg{OverageStatus: overageStatus},
+		ProfileArn:           profileArn,
+	}
+
+	bodyBytes, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("setUserPreference: marshal: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return fmt.Errorf("setUserPreference: new request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", userAgentValue)
+	req.Header.Set("x-amz-user-agent", amzUserAgentValue)
+	req.Header.Set("amz-sdk-request", "attempt=1; max=1")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("setUserPreference: request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		errBody := readLimitedBody(resp.Body, usageBodyLimit)
+		return fmt.Errorf("setUserPreference: status=%d body=%s", resp.StatusCode, errBody)
+	}
+
+	return nil
 }
