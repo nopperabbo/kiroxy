@@ -1,6 +1,15 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("topbar navigation", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/dashboard-mansion");
+    const scrim = page.locator(".wiz-scrim");
+    if ((await scrim.count()) > 0) {
+      await scrim.click({ timeout: 2_000 }).catch(() => {});
+      await scrim.waitFor({ state: "hidden", timeout: 3_000 }).catch(() => {});
+    }
+  });
+
   const viewClassMap: Record<string, RegExp> = {
     live: /view--live/,
     pool: /view--pool/,
@@ -24,8 +33,6 @@ test.describe("topbar navigation", () => {
   }
 
   test("clicking a tab updates URL hash and active state", async ({ page }) => {
-    await page.goto("/dashboard-mansion");
-
     await page.locator(".nav__tab", { hasText: /metrics/i }).click();
     await expect(page).toHaveURL(/#view=metrics/);
     await expect(
