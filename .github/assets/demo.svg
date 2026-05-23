@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" fill="none">
+  <defs>
+    <style>
+      .term-text { font-family: ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace; font-size: 13px; }
+      .term-dim { fill: #6b6560; }
+      .term-bright { fill: #f5f0e8; }
+      .term-amber { fill: #c9a34a; }
+      .term-green { fill: #7dba6a; }
+      .term-blue { fill: #6ba3d6; }
+      .term-comment { fill: #5a5550; }
+    </style>
+  </defs>
+
+  <!-- Terminal window -->
+  <rect width="800" height="420" rx="12" fill="#141210"/>
+  <rect width="800" height="420" rx="12" stroke="#2a2724" stroke-width="1" fill="none"/>
+
+  <!-- Title bar -->
+  <rect width="800" height="36" rx="12" fill="#1e1b17"/>
+  <rect x="0" y="24" width="800" height="12" fill="#1e1b17"/>
+
+  <!-- Traffic lights -->
+  <circle cx="20" cy="18" r="6" fill="#ff5f57"/>
+  <circle cx="40" cy="18" r="6" fill="#febc2e"/>
+  <circle cx="60" cy="18" r="6" fill="#28c840"/>
+
+  <!-- Title -->
+  <text x="400" y="22" text-anchor="middle" class="term-text term-dim" font-size="12">kiroxy — Quick Start</text>
+
+  <!-- Terminal content -->
+  <g transform="translate(20, 52)">
+    <!-- Line 1: comment -->
+    <text y="0" class="term-text term-comment"># Install kiroxy</text>
+
+    <!-- Line 2: command -->
+    <text y="22" class="term-text term-amber">$</text>
+    <text y="22" x="16" class="term-text term-bright">curl -sSL https://github.com/nopperabbo/kiroxy/releases/download/v1.4.0/kiroxy_1.4.0_Darwin_arm64.tar.gz | tar xz</text>
+
+    <!-- Line 3: blank -->
+
+    <!-- Line 4: comment -->
+    <text y="55" class="term-text term-comment"># Start the proxy</text>
+
+    <!-- Line 5: command -->
+    <text y="77" class="term-text term-amber">$</text>
+    <text y="77" x="16" class="term-text term-bright">./kiroxy serve</text>
+
+    <!-- Line 6: output -->
+    <text y="99" class="term-text term-dim">{"time":"2026-05-23T10:00:00Z","level":"</text><text y="99" x="290" class="term-text term-green">INFO</text><text y="99" x="322" class="term-text term-dim">","msg":"kiroxy listening","addr":"http://127.0.0.1:8787"}</text>
+
+    <!-- Line 7: blank -->
+
+    <!-- Line 8: comment -->
+    <text y="132" class="term-text term-comment"># Point Claude Code at kiroxy</text>
+
+    <!-- Line 9: command -->
+    <text y="154" class="term-text term-amber">$</text>
+    <text y="154" x="16" class="term-text term-bright">export ANTHROPIC_BASE_URL=http://127.0.0.1:8787</text>
+
+    <!-- Line 10: command -->
+    <text y="176" class="term-text term-amber">$</text>
+    <text y="176" x="16" class="term-text term-bright">claude</text>
+
+    <!-- Line 11: blank -->
+
+    <!-- Line 12: comment -->
+    <text y="209" class="term-text term-comment"># Test with curl</text>
+
+    <!-- Line 13: command -->
+    <text y="231" class="term-text term-amber">$</text>
+    <text y="231" x="16" class="term-text term-bright">curl -sS http://127.0.0.1:8787/v1/messages \</text>
+    <text y="253" x="32" class="term-text term-bright">-H "Content-Type: application/json" \</text>
+    <text y="275" x="32" class="term-text term-bright">-d '{"model":"claude-sonnet-4-5","max_tokens":64,"messages":[{"role":"user","content":"Hi"}]}'</text>
+
+    <!-- Line 14: output -->
+    <text y="308" class="term-text term-dim">{"content":[{"type":"text","text":"</text><text y="308" x="250" class="term-text term-green">Hello! How can I help you today?</text><text y="308" x="500" class="term-text term-dim">"}],"model":"claude-sonnet-4-5",...}</text>
+
+    <!-- Line 15: blank + cursor -->
+    <text y="341" class="term-text term-amber">$</text>
+    <rect x="16" y="332" width="8" height="16" fill="#c9a34a" opacity="0.8">
+      <animate attributeName="opacity" values="0.8;0;0.8" dur="1.2s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+</svg>

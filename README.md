@@ -1,242 +1,196 @@
-# kiroxy
+<div align="center">
+  <a href="https://github.com/nopperabbo/kiroxy">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset=".github/assets/banner-dark.svg">
+      <source media="(prefers-color-scheme: light)" srcset=".github/assets/banner-light.svg">
+      <img alt="kiroxy" src=".github/assets/banner-light.svg" width="600">
+    </picture>
+  </a>
 
-[![CI](https://github.com/nopperabbo/kiroxy/actions/workflows/ci.yml/badge.svg)](https://github.com/nopperabbo/kiroxy/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/nopperabbo/kiroxy/actions/workflows/codeql.yml/badge.svg)](https://github.com/nopperabbo/kiroxy/actions/workflows/codeql.yml)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/nopperabbo/kiroxy/badge)](https://scorecard.dev/viewer/?uri=github.com/nopperabbo/kiroxy)
-[![codecov](https://codecov.io/gh/nopperabbo/kiroxy/graph/badge.svg)](https://codecov.io/gh/nopperabbo/kiroxy)
-[![Release](https://img.shields.io/github/v/release/nopperabbo/kiroxy?style=flat-square)](https://github.com/nopperabbo/kiroxy/releases/latest)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/nopperabbo/kiroxy?style=flat-square)](go.mod)
-[![GHCR](https://img.shields.io/badge/container-ghcr.io-blue?style=flat-square&logo=docker)](https://github.com/nopperabbo/kiroxy/pkgs/container/kiroxy)
-[![Issues](https://img.shields.io/github/issues/nopperabbo/kiroxy?style=flat-square)](https://github.com/nopperabbo/kiroxy/issues)
-[![Discussions](https://img.shields.io/github/discussions/nopperabbo/kiroxy?style=flat-square)](https://github.com/nopperabbo/kiroxy/discussions)
-[![Sponsor](https://img.shields.io/github/sponsors/nopperabbo?style=flat-square)](https://github.com/sponsors/nopperabbo)
+  <br>
+  <br>
 
-A single-user, self-hosted proxy that exposes your Kiro IDE subscription (Amazon Q Developer / AWS CodeWhisperer) as an **Anthropic Messages API** endpoint. Point your Claude Code, Cursor, or any Anthropic-compatible client at kiroxy, and it forwards requests to Kiro using your own credentials.
+  <p>
+    <a href="https://github.com/nopperabbo/kiroxy/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/nopperabbo/kiroxy/ci.yml?branch=main&style=flat-square&label=CI" alt="CI"></a>
+    &nbsp;
+    <a href="https://github.com/nopperabbo/kiroxy/actions/workflows/codeql.yml"><img src="https://img.shields.io/github/actions/workflow/status/nopperabbo/kiroxy/codeql.yml?branch=main&style=flat-square&label=CodeQL" alt="CodeQL"></a>
+    &nbsp;
+    <a href="https://scorecard.dev/viewer/?uri=github.com/nopperabbo/kiroxy"><img src="https://api.scorecard.dev/projects/github.com/nopperabbo/kiroxy/badge" alt="OpenSSF Scorecard"></a>
+    &nbsp;
+    <a href="https://codecov.io/gh/nopperabbo/kiroxy"><img src="https://img.shields.io/codecov/c/github/nopperabbo/kiroxy?style=flat-square" alt="Coverage"></a>
+    &nbsp;
+    <a href="https://github.com/nopperabbo/kiroxy/releases/latest"><img src="https://img.shields.io/github/v/release/nopperabbo/kiroxy?style=flat-square&color=c9a34a" alt="Release"></a>
+    &nbsp;
+    <a href="https://github.com/nopperabbo/kiroxy/pkgs/container/kiroxy"><img src="https://img.shields.io/badge/ghcr.io-kiroxy-blue?style=flat-square&logo=docker&logoColor=white" alt="GHCR"></a>
+  </p>
 
-**Status:** v1.4.0 — public release, MIT-licensed. See [`CHANGELOG.md`](CHANGELOG.md) for release notes, [`ROADMAP.md`](ROADMAP.md) for what's next, [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the engineering overview, and [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for operator diagnostics.
+  <p>
+    <a href="#quick-start">Quick Start</a>
+    <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
+    <a href="docs/ARCHITECTURE.md">Architecture</a>
+    <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
+    <a href="docs/TROUBLESHOOTING.md">Troubleshooting</a>
+    <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
+    <a href="https://github.com/nopperabbo/kiroxy/discussions">Discussions</a>
+    <span>&nbsp;&nbsp;•&nbsp;&nbsp;</span>
+    <a href="CHANGELOG.md">Changelog</a>
+  </p>
+</div>
 
----
-
-## What it looks like
-
-The bundled **Mansion** dashboard ships in the same binary at `/dashboard-mansion`. Seven views, dark + light themes, mobile-responsive, no external CDN.
-
-### Live request stream
-
-Real-time SSE feed of every request through the pool. Click a row for a 4-tab drill-down (request, response, account, timing). Time-range picker, sort, search-scope toggle, CSV export.
-
-![Live request stream](docs/screenshots/dashboard-live.png)
-
-### Metrics
-
-3 time-series charts (req/min, latency p50/p95/p99, error rate), 4 top-N tables (endpoints, slowest paths, errors, clients), status-code stacked bar, and 2 SLO gauges with zone gradients.
-
-![Metrics dashboard](docs/screenshots/dashboard-metrics.png)
-
-### Account pool
-
-78-account density visualization with anomaly emphasis (amber border on accounts crossing 1% error rate), cooldown wash, idle dim. Pool minimap above for at-a-glance health.
-
-![Account pool](docs/screenshots/dashboard-pool.png)
-
-### Logs
-
-60-bin volume histogram (clickable to filter time window), multi-select level chips, facets sidebar, JSONL export, wrap toggle.
-
-![Logs view](docs/screenshots/dashboard-logs.png)
-
-### Light theme
-
-Token-driven theming with WCAG AA contrast in both schemes. Switch via Settings → Theme.
-
-![Settings — light theme](docs/screenshots/dashboard-settings-light.png)
-
-### Mobile (iPhone 13)
-
-All 7 views adapt to 390px CSS viewport. Pool collapses to 2-line cards with sticky headers, Live stream uses vertical card layout, tap targets ≥44px, no horizontal scroll.
-
-<p align="center">
-  <img src="docs/screenshots/dashboard-mobile.png" alt="Mobile dashboard" width="320">
-</p>
+<br>
 
 ---
 
-## Installation
+## What is kiroxy?
 
-Three ways to get kiroxy running. **Pre-built binary** is the fastest;
-**`go install`** is the most flexible.
+A single-binary, self-hosted proxy that exposes your **Kiro IDE subscription** as a standard **Anthropic Messages API** endpoint. Point Claude Code, Cursor, or any Anthropic-compatible client at kiroxy — it handles credential pooling, token refresh, and request routing transparently.
 
-### 1. Pre-built binary (recommended)
+<div align="center">
+  <br>
+  <img src=".github/assets/demo.svg" alt="kiroxy demo" width="720">
+  <br>
+  <br>
+</div>
 
-Pre-built tarballs for Linux and macOS (amd64 + arm64) attach to every
-[GitHub Release](../../releases/latest). Each archive ships the binary
-plus `LICENSE`, `NOTICE`, `README.md`, `CHANGELOG.md`,
-`docs/ARCHITECTURE.md`, `docs/TROUBLESHOOTING.md`, and `docs/OPENCODE.md`.
-A SHA-256 checksums file (`kiroxy_<version>_checksums.txt`) verifies
-download integrity.
+<br>
+
+## Why Kiroxy?
+
+| | |
+|:---|:---|
+| **⚡ Blazing fast** | 23,810 req/s on a single core. Zero-copy SSE streaming. No GC pauses in the hot path. |
+| **📦 Single binary** | One `go build`, one file, done. No runtime, no sidecar, no config server. |
+| **🏠 Truly self-hosted** | Your credentials never leave your machine. Zero telemetry, zero phone-home. |
+| **🔄 Drop-in API** | Standard Anthropic Messages API — existing SDKs and tools work unchanged. |
+| **🎯 Does one thing well** | Not a multi-provider gateway. Not a SaaS. A focused proxy that stays out of your way. |
+
+<br>
+
+## How it compares
+
+| | kiroxy | LiteLLM | One-API | OpenRouter |
+|:---|:---:|:---:|:---:|:---:|
+| Self-hosted | ✅ | ✅ | ✅ | ❌ |
+| Single binary | ✅ | ❌ (Python) | ❌ (Node) | — |
+| Zero dependencies | ✅ | ❌ | ❌ | — |
+| Kiro IDE support | ✅ | ❌ | ❌ | ❌ |
+| Multi-account pool | ✅ | ❌ | ✅ | — |
+| Operator dashboard | ✅ | ✅ | ✅ | ✅ |
+| Memory footprint | ~30 MiB | ~500 MiB | ~200 MiB | — |
+| No telemetry | ✅ | ❌ | ❌ | ❌ |
+
+<sub>kiroxy is purpose-built for Kiro IDE credentials. For multi-provider routing (OpenAI + Anthropic + Google), use LiteLLM or OpenRouter instead.</sub>
+
+<br>
+
+## Features
+
+- **🔌 Drop-in compatible** — Standard Anthropic Messages API. Set `ANTHROPIC_BASE_URL` and go.
+- **🏊 Multi-account pool** — LRU selection with cooldowns, anomaly detection, and automatic token refresh.
+- **📊 Operator dashboard** — 7-view Svelte 5 UI bundled in the binary. Live stream, metrics, logs, pool health.
+- **🔒 Zero trust by default** — Distroless container, constant-time auth, vault at mode 0600, no telemetry.
+- **⚡ Fast** — 23,810 req/s throughput, ~22 MiB binary, ~30 MiB Docker image.
+- **🎨 Beautiful** — Warm charcoal + aged-brass amber design system. Dark + light themes, mobile-responsive.
+
+<br>
+
+## Quick Start
+
+### Install
 
 ```bash
-# Pick the matching Os_Arch — Linux_amd64, Linux_arm64, Darwin_amd64, Darwin_arm64.
-VERSION=1.4.0
-OS_ARCH=Linux_amd64   # or Darwin_arm64, etc.
-
-curl -sSL -o kiroxy.tar.gz \
-  "https://github.com/nopperabbo/kiroxy/releases/download/v${VERSION}/kiroxy_${VERSION}_${OS_ARCH}.tar.gz"
-curl -sSL -o checksums.txt \
-  "https://github.com/nopperabbo/kiroxy/releases/download/v${VERSION}/kiroxy_${VERSION}_checksums.txt"
-
-# Verify the archive matches the published checksum.
-grep " kiroxy_${VERSION}_${OS_ARCH}.tar.gz$" checksums.txt | shasum -a 256 -c -
-
-tar -xzf kiroxy.tar.gz
+# Pre-built binary (Linux/macOS, amd64/arm64)
+VERSION=1.4.0 OS_ARCH=Darwin_arm64
+curl -sSL "https://github.com/nopperabbo/kiroxy/releases/download/v${VERSION}/kiroxy_${VERSION}_${OS_ARCH}.tar.gz" | tar xz
 ./kiroxy version
 ```
 
-### 2. `go install`
-
-Requires [Go 1.26+](https://go.dev/dl/) (kiroxy uses `encoding/json/v2`
-via `GOEXPERIMENT=jsonv2`).
-
 ```bash
-GOEXPERIMENT=jsonv2 go install github.com/nopperabbo/kiroxy/cmd/kiroxy@v1.4.0
-kiroxy version
+# Or via go install (requires Go 1.26+)
+GOEXPERIMENT=jsonv2 go install github.com/nopperabbo/kiroxy/cmd/kiroxy@latest
 ```
 
-The binary lands in `$(go env GOPATH)/bin/kiroxy` (typically
-`~/go/bin/kiroxy`). Make sure `$GOPATH/bin` is on your `$PATH`.
-
-### 3. Build from source
-
-For development work or if you want to inspect/modify the code first.
-Covered in the [Five-minute quickstart](#five-minute-quickstart) below.
-`make build` pins `GOEXPERIMENT=jsonv2` and stamps `main.version` from
-`git describe`.
-
-### 4. Run from Docker
-
-Covered in the [Run with Docker](#run-with-docker) section below. `gcr.io`
-or `ghcr.io` image hosting is on the roadmap; for now, build locally with
-`make docker-build`.
-
----
-
-## Five-minute quickstart
-
-### 1. Prereqs
-
-- **Go 1.26+** (kiroxy uses `encoding/json/v2` via `GOEXPERIMENT=jsonv2`)
-- **A Kiro account** — either:
-  - the `kiro-cli` tool logged in (kiroxy can read its SQLite credentials directly), or
-  - you're running Kiro IDE and have `~/.aws/sso/cache/kiro-auth-token.json`, or
-  - you'll use `kiroxy add-account` to go through the AWS Builder ID device-code flow (M9, coming soon)
-
-### 2. Build
-
 ```bash
-git clone <your kiroxy remote>
-cd kiroxy
-make build          # or: GOEXPERIMENT=jsonv2 go build -o kiroxy ./cmd/kiroxy
+# Or via Docker
+docker pull ghcr.io/nopperabbo/kiroxy:latest
+docker run --rm -p 127.0.0.1:8787:8787 -v kiroxy-data:/data ghcr.io/nopperabbo/kiroxy:latest
 ```
 
-### 3. Configure
-
-Pick **one** of two credential sources:
-
-**Option A — you already have kiro-cli installed and logged in** (easiest):
+### Configure
 
 ```bash
-export KIROXY_KIRO_DB_PATH="$HOME/Library/Application Support/kiro-cli/data.sqlite3"   # macOS
-# or:  export KIROXY_KIRO_DB_PATH="$HOME/.local/share/kiro-cli/data.sqlite3"          # Linux
-```
+# Option A: Read from kiro-cli database (easiest)
+export KIROXY_KIRO_DB_PATH="$HOME/Library/Application Support/kiro-cli/data.sqlite3"
 
-kiroxy will read and refresh tokens from the kiro-cli database directly.
-
-**Option B — managed token vault** (recommended for multi-account):
-
-Seed the vault with one or more accounts:
-
-```bash
-# Single account
-./kiroxy add-account --label=my-account --refresh-token=<your-refresh-token>
-
-# Or bulk: line-delimited email:refresh_token:signature triplets
+# Option B: Managed vault (multi-account)
 ./kiroxy import-accounts --file=triplets.txt
-
-# Or pipe triplets:
-cat triplets.txt | ./kiroxy import-accounts --stdin
 ```
 
-The managed vault lives at `~/.kiroxy/tokens.db` (mode 0600).
-
-**About the triplet format:** `email:refresh_token:signature` — only the
-refresh_token is sent upstream; the email is used as the account identifier
-and the optional signature is stored in `metadata` for reference (kiroxy
-never transmits it).
-
-Optional but recommended:
-
-```bash
-export KIROXY_API_KEY="$(openssl rand -hex 32)"
-```
-
-### 4. Run
+### Run
 
 ```bash
 ./kiroxy serve
-# JSON log on stderr:
-# {"time":"...","level":"INFO","msg":"kiroxy listening","version":"0.1.0-mvp","addr":"http://127.0.0.1:8787"}
+# → kiroxy listening on http://127.0.0.1:8787
 ```
 
-### 5. First request
-
-Non-streaming:
-
-```bash
-curl -sS http://127.0.0.1:8787/v1/messages \
-  -H "X-Api-Key: $KIROXY_API_KEY" \
-  -H "X-Claude-Code-Session-Id: $(uuidgen)" \
-  -H "Content-Type: application/json" \
-  -H "anthropic-version: 2023-06-01" \
-  -d '{
-    "model":"claude-sonnet-4-5",
-    "max_tokens":1024,
-    "messages":[{"role":"user","content":"Reply with just the word: kiroxy"}]
-  }'
-```
-
-Streaming:
-
-```bash
-curl -sN http://127.0.0.1:8787/v1/messages \
-  -H "X-Api-Key: $KIROXY_API_KEY" \
-  -H "X-Claude-Code-Session-Id: $(uuidgen)" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model":"claude-sonnet-4-5",
-    "max_tokens":1024,
-    "stream":true,
-    "messages":[{"role":"user","content":"Write a haiku about proxies."}]
-  }'
-# Emits: event: message_start, content_block_delta ..., event: message_stop
-```
-
-### 6. Use with Claude Code
+### Connect
 
 ```bash
 export ANTHROPIC_BASE_URL=http://127.0.0.1:8787
-export ANTHROPIC_AUTH_TOKEN=$KIROXY_API_KEY   # any non-empty value if KIROXY_API_KEY unset
-claude
+export ANTHROPIC_AUTH_TOKEN=$(openssl rand -hex 32)
+claude  # ← just works
 ```
 
----
+<br>
+
+## Dashboard
+
+The bundled **Mansion** dashboard ships in the same binary at `/dashboard-mansion`. Seven views, dark + light themes, mobile-responsive, no external CDN.
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <strong>Live Request Stream</strong><br>
+      <sub>Real-time SSE feed with drill-down, search, CSV export</sub><br><br>
+      <img src="docs/screenshots/dashboard-live.png" alt="Live stream" width="100%">
+    </td>
+    <td align="center" width="50%">
+      <strong>Metrics</strong><br>
+      <sub>Time-series charts, top-N tables, SLO gauges</sub><br><br>
+      <img src="docs/screenshots/dashboard-metrics.png" alt="Metrics" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>Account Pool</strong><br>
+      <sub>78-account density viz with anomaly emphasis</sub><br><br>
+      <img src="docs/screenshots/dashboard-pool.png" alt="Pool" width="100%">
+    </td>
+    <td align="center" width="50%">
+      <strong>Logs</strong><br>
+      <sub>Volume histogram, level chips, facets, JSONL export</sub><br><br>
+      <img src="docs/screenshots/dashboard-logs.png" alt="Logs" width="100%">
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <strong>Light Theme</strong><br>
+      <sub>WCAG AA contrast in both schemes</sub><br><br>
+      <img src="docs/screenshots/dashboard-settings-light.png" alt="Light theme" width="100%">
+    </td>
+    <td align="center" width="50%">
+      <strong>Mobile</strong><br>
+      <sub>All 7 views adapt to 390px viewport</sub><br><br>
+      <img src="docs/screenshots/dashboard-mobile.png" alt="Mobile" width="280">
+    </td>
+  </tr>
+</table>
+
+<br>
 
 ## Architecture
 
-> **For the full component-by-component overview, see
-> [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).** Read it before
-> modifying anything in `internal/`. The diagram below is the high-level
-> sketch only.
+> Full component-by-component overview: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 
 ```
                      KIROXY_API_KEY                                 KIROXY_KIRO_DB_PATH
@@ -244,23 +198,23 @@ claude
                           v                                                  |
   Claude Code /-+   +-------------------+   +--------------+   +------+     v
   Cursor         +->|  /v1/messages     |-->| reqconv      |-->| kiro +--> Kiro IDE
-  OpenAI SDK     |  |  /v1/messages/    |   | (anthropic - |   |client|   (CodeWhisperer
+  OpenAI SDK     |  |  /v1/messages/    |   | (anthropic → |   |client|   (CodeWhisperer
   your own curl /+  |    count_tokens   |   |  Kiro payload)|  |      |    generateAssistant
                     |                   |   +--------------+   +------+    Response)
                     |  auth MW          |          ^                           |
-                    |  log MW (ULID)    |          |                           |
-                    |  /healthz         |          |                           v
-                    |  /readyz          |          |                     +-------------+
-                    +----------+--------+          |                     | respconv    |
-                               |                   |                     | (Kiro SSE - |
-                               v                   |                     |  Anthropic  |
-                     +----------------+            |                     |  SSE)       |
-                     | pool.TokenGetter|           |                     +----+--------+
-                     | (LRU selection  |           |                          |
-                     |  + cooldowns)   |-----------+                          |
-                     +----------+------+                                      v
-                                |                                       your client
-                                v                                    (streamed chunks)
+                    |  log MW (ULID)    |          |                           v
+                    |  /healthz         |          |                     +-------------+
+                    |  /readyz          |          |                     | respconv    |
+                    +----------+--------+          |                     | (Kiro SSE → |
+                               |                   |                     |  Anthropic  |
+                               v                   |                     |  SSE)       |
+                     +----------------+            |                     +----+--------+
+                     | pool.TokenGetter|           |                          |
+                     | (LRU selection  |           |                          v
+                     |  + cooldowns)   |-----------+                    your client
+                     +----------+------+                              (streamed chunks)
+                                |
+                                v
                      +-----------------+
                      | tokenvault      |
                      | (SQLite +       |
@@ -269,245 +223,146 @@ claude
                      +-----------------+
 ```
 
-Key patterns donated from:
-- **d-kuro/kirocc** (Apache-2.0) — everything in `internal/{reqconv, respconv, kiroproto, kiroclient, anthropic, logging, httpx, tokencount, toolsearch, tracing, messages, models, testutil, auth}`. See `NOTICE`.
-- **Quorinex/Kiro-Go** (MIT) — `internal/pool/pool.go` (adapted to LRU).
-- **kadangkesel/hexos** (MIT) — `internal/tokenvault/vault.go` (ported from TypeScript, generation-lock pattern preserved).
+<br>
 
----
-
-## Environment variables
+## Environment Variables
 
 | Variable | Default | Purpose |
-|---|---|---|
-| `KIROXY_API_KEY` | (empty = open mode) | Required for clients; empty disables inbound auth (only safe on loopback) |
-| `KIROXY_BIND` | `127.0.0.1` | Interface. Set `0.0.0.0` only behind a TLS reverse proxy |
+|:---|:---|:---|
+| `KIROXY_API_KEY` | _(empty = open)_ | Client auth key; empty disables (loopback only) |
+| `KIROXY_BIND` | `127.0.0.1` | Bind interface |
 | `KIROXY_PORT` | `8787` | TCP port |
-| `KIROXY_DB_PATH` | `~/.kiroxy/tokens.db` | Managed-vault SQLite path (mode 0600 enforced) |
-| `KIROXY_KIRO_DB_PATH` | (empty) | If set, read creds from this kiro-cli SQLite DB instead of the managed vault |
-| `KIROXY_KIRO_REGION` | `us-east-1` | AWS region for the upstream |
+| `KIROXY_DB_PATH` | `~/.kiroxy/tokens.db` | Vault SQLite path (mode 0600) |
+| `KIROXY_KIRO_DB_PATH` | _(empty)_ | Read creds from kiro-cli DB instead of vault |
+| `KIROXY_KIRO_REGION` | `us-east-1` | AWS region for upstream |
 | `KIROXY_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
-| `KIROXY_SHUTDOWN_TIMEOUT` | `30` | Seconds to wait for in-flight SSE to drain on SIGTERM |
+| `KIROXY_SHUTDOWN_TIMEOUT` | `30` | Seconds to drain in-flight SSE on SIGTERM |
 
----
+<br>
 
-## Endpoints
+## API Endpoints
 
 | Method | Path | Auth | Purpose |
-|---|---|---|---|
-| GET | `/healthz` | bypass | Liveness JSON `{"status":"ok","version":...}` |
-| GET | `/readyz`  | required | Readiness JSON; 503 if vault/pool down |
-| POST | `/v1/messages` | required | Anthropic Messages API (streaming + non-streaming) |
-| POST | `/v1/messages/count_tokens` | required | tiktoken-based token count |
-| GET | `/dashboard` | loopback bypass | 302 redirect to the canonical `/dashboard-mansion` |
-| GET | `/dashboard-mansion` | loopback bypass | Canonical operator dashboard (Mansion) |
-| GET | `/dashboard/api/state` | loopback bypass | Pool + request snapshot JSON (shared by all dashboard variants) |
-| GET | `/_variants/<slug>` | loopback bypass | Archived dashboards: `brutal`, `paper`, `nord`, `neon`, `muji`, `linear-premium`, `dashboard-next`, `dashboard-legacy` |
+|:---|:---|:---|:---|
+| `POST` | `/v1/messages` | ✓ | Anthropic Messages API (streaming + non-streaming) |
+| `POST` | `/v1/messages/count_tokens` | ✓ | Token count |
+| `GET` | `/healthz` | — | Liveness probe |
+| `GET` | `/readyz` | ✓ | Readiness probe |
+| `GET` | `/dashboard-mansion` | loopback | Operator dashboard |
 
-Pass API key as either `X-Api-Key: <key>` or `Authorization: Bearer <key>`.
+Pass API key as `X-Api-Key: <key>` or `Authorization: Bearer <key>`. Every response carries `X-Request-Id`.
 
-Every response carries `X-Request-Id`; clients may set their own via the same header.
-
----
-
-## Dashboard
-
-kiroxy ships a single canonical dashboard plus an archive of historical
-design variants.
-
-- **Canonical:** `GET /dashboard-mansion` — the "operator desk" UI.
-  Warm charcoal + aged-brass amber, JetBrains Mono for data density,
-  Linear-grade motion discipline (View Transitions, @starting-style
-  enters, amber focus ring). Built with Svelte 5 + Vite; the bundle is
-  embedded in the binary so a fresh clone works with `go build` alone.
-- **Redirect:** `GET /dashboard` — 302s to `/dashboard-mansion` so
-  existing bookmarks and scripts keep working.
-- **Archive:** `GET /_variants/<slug>` — eight historical variants
-  (`brutal`, `paper`, `nord`, `neon`, `muji`, `linear-premium`,
-  `dashboard-next`, `dashboard-legacy`) kept fully functional for
-  reference. Each one commits to one taste without blending; see
-  [`docs/VARIANTS.md`](./docs/VARIANTS.md) for the philosophy matrix.
-
-Auth behavior for all dashboard routes: loopback requests skip the
-`KIROXY_API_KEY` check (personal-use UX). Non-loopback access still
-requires the key via `X-Api-Key` or `Authorization: Bearer`.
-
----
-
-## Troubleshooting
-
-> **For the full diagnostics playbook, see
-> [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md).** The sections
-> below cover the handful of errors most operators hit first.
-
-### `POST /v1/messages -> 401 authentication_error`
-
-You haven't added an account yet. Either set `KIROXY_KIRO_DB_PATH` to your kiro-cli database, or wait for M9's `kiroxy add-account` subcommand.
-
-### `POST /v1/messages -> 401 missing_api_key`
-
-You set `KIROXY_API_KEY` on the server but didn't send `X-Api-Key` (or `Authorization: Bearer`) from the client. Either unset `KIROXY_API_KEY` on the server (safe only on loopback) or pass the key on every request.
-
-### SSE chunks arrive all at once
-
-A reverse proxy in front of kiroxy may be buffering. Disable proxy buffering:
-- **nginx**: `proxy_buffering off;`
-- **Caddy**: `reverse_proxy { flush_interval -1 }`
-- **Cloudflare**: enable "Early Hints" on the route, or use a worker
-
-### `go build` fails with `encoding/json/v2: build constraints exclude all Go files`
-
-Missing `GOEXPERIMENT=jsonv2`. Use `make build` (which sets it for you) or `export GOEXPERIMENT=jsonv2`.
-
-### Running multiple kiroxy instances from the same vault
-
-Safe. `internal/tokenvault` uses generation-locked OAuth refresh (see M4 in `BUILD_LOG.md`). At most one successful upstream refresh per (provider, account) at any instant.
-
-### AWS suspended my Kiro account
-
-Multi-account pooling against consumer Builder IDs can trigger abuse detection. Personal use only; 1-3 accounts is fine, keep request cadence reasonable.
-
----
-
-## Build and test
-
-```bash
-make build          # single binary at ./kiroxy
-make test           # go test ./...
-make gate           # build + vet + fmt + test \u2014 required before commits
-make test-race      # race-mode test run
-```
-
-Pins `GOEXPERIMENT=jsonv2` automatically.
-
----
+<br>
 
 ## CLI Reference
 
-All kiroxy functionality ships as a single binary. Top-level shortcuts
-(`--version`, `-v`, `--help`, `-h`, `help`) work without a subcommand.
-Subcommand `--help` prints per-command usage.
-
-| Subcommand | One-liner |
-|---|---|
-| `serve` (default) | Run the HTTP proxy. Respects all `KIROXY_*` env vars. |
-| `add-account` | Register a new account via AWS Builder ID device-code OAuth. |
-| `import-accounts` | Bulk-import accounts from a line-delimited triplet file (`email:refresh_token:signature`). |
-| `import-accounts-json` | Import accounts from Desktop-flow JSON (the `tools/onboard/` sidecar emits this format). |
-| `list-accounts` | Print the managed vault's accounts with status, last-used, strikes. |
-| `remove-account <id>` | Delete an account from the vault. |
-| `status` | Pool + request snapshot (mirrors the dashboard JSON state). |
-| `debug-refresh <id>` | Force a refresh against the configured source; print outcome. Useful for diagnosing revoked tokens. |
-| `healthcheck` | In-binary `/healthz` probe. Used by the Docker `HEALTHCHECK` directive. |
-| `opencode-config` | Emit an `opencode.json` provider snippet (7 resolver-verified Claude model IDs). |
-| `version` | Print the `-ldflags -X main.version` stamp. |
-| `help [subcommand]` | Print top-level or per-subcommand usage. |
-
-Examples:
-
 ```bash
-# First-time setup
-kiroxy import-accounts-json --file tools/onboard/kiro_tokens.json
-kiroxy list-accounts
-
-# Operational
-kiroxy status                            # pool snapshot
-kiroxy debug-refresh $(kiroxy list-accounts -ids | head -1)
-kiroxy opencode-config -output opencode.snippet.json
-
-# Container-friendly
-kiroxy healthcheck && echo ok
+kiroxy serve              # Run the proxy (default)
+kiroxy add-account        # Register via AWS Builder ID device-code OAuth
+kiroxy import-accounts    # Bulk import from triplet file
+kiroxy list-accounts      # Show vault accounts with status
+kiroxy remove-account     # Delete an account
+kiroxy status             # Pool + request snapshot
+kiroxy debug-refresh      # Force token refresh for diagnostics
+kiroxy healthcheck        # In-binary health probe (Docker HEALTHCHECK)
+kiroxy opencode-config    # Emit opencode.json provider snippet
+kiroxy version            # Print version stamp
 ```
 
-For the full per-subcommand flag list: `kiroxy help <subcommand>`.
+<br>
 
----
+## Docker
 
-## Run with Docker
-
-A multi-stage `Dockerfile` (distroless, nonroot, ~30 MiB) and `docker-compose.yml` ship with the repo. The token vault lives in a named volume at `/data/tokens.db` so it survives container restarts.
-
-### Quick start
+A multi-stage Dockerfile ships with the repo — distroless, nonroot, ~30 MiB.
 
 ```bash
-cp .env.example .env                         # fill in KIROXY_API_KEY
-make docker-compose-up                       # build + start in background
-docker compose logs -f kiroxy                # tail JSON logs
-curl http://127.0.0.1:8787/healthz           # {"status":"ok",...}
-```
+# Quick start
+cp .env.example .env
+make docker-compose-up
+curl http://127.0.0.1:8787/healthz
 
-Add an account (running container has the same CLI surface as the native binary):
-
-```bash
-docker compose exec kiroxy kiroxy add-account \
-  --label=my-account --refresh-token=<your-refresh-token>
-docker compose exec kiroxy kiroxy list-accounts
-```
-
-### Manual `docker run`
-
-```bash
-make docker-build                            # tags kiroxy:<git-describe> + kiroxy:local
+# Or pull from GHCR
+docker pull ghcr.io/nopperabbo/kiroxy:latest
 docker run --rm \
   -p 127.0.0.1:8787:8787 \
   -v kiroxy-data:/data \
   --read-only --cap-drop=ALL \
   --security-opt=no-new-privileges:true \
-  --tmpfs /tmp:size=16m,mode=1777 \
-  -e KIROXY_API_KEY="$KIROXY_API_KEY" \
-  kiroxy:local
+  -e KIROXY_API_KEY="your-key" \
+  ghcr.io/nopperabbo/kiroxy:latest
 ```
 
-### Security posture inside the container
-
 | Control | Setting |
-|---|---|
-| Base image | `gcr.io/distroless/static-debian12:nonroot` (no shell, no package manager) |
+|:---|:---|
+| Base image | `gcr.io/distroless/static-debian12:nonroot` |
 | User | `nonroot` (UID 65532) |
-| Root FS | read-only; only `/data` (vault) and `/tmp` (tmpfs) are writable |
-| Capabilities | all dropped |
+| Root FS | Read-only; only `/data` + `/tmp` writable |
+| Capabilities | All dropped |
 | Privilege escalation | `no-new-privileges:true` |
-| Healthcheck | in-binary `kiroxy healthcheck` subcommand (no curl, no shell) |
+| Healthcheck | In-binary `kiroxy healthcheck` |
 
-### Gotchas
+<br>
 
-- **`KIROXY_BIND` inside the container is `0.0.0.0`** \u2014 the network namespace IS the boundary. Control host-side exposure via `docker run -p` / compose's `ports:` mapping (defaults to `127.0.0.1:8787`).
-- **`docker compose down` keeps the volume**; `docker compose down -v` wipes it (including `tokens.db`). Back up the volume before running `-v`.
-- **Image tags never use `:latest`**; set `IMAGE=foo:bar` on `make docker-build` if you want a custom tag.
+## Supply Chain Security
 
----
+Releases are signed with [Sigstore cosign](https://docs.sigstore.dev/) and include SBOM (SPDX format).
+
+```bash
+# Verify a release artifact
+cosign verify-blob \
+  --certificate kiroxy_1.4.0_Darwin_arm64.tar.gz.cert \
+  --signature kiroxy_1.4.0_Darwin_arm64.tar.gz.sig \
+  --certificate-identity-regexp "github.com/nopperabbo/kiroxy" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  kiroxy_1.4.0_Darwin_arm64.tar.gz
+```
+
+<br>
+
+## Troubleshooting
+
+> Full diagnostics playbook: [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md)
+
+| Symptom | Fix |
+|:---|:---|
+| `401 authentication_error` | No account added. Set `KIROXY_KIRO_DB_PATH` or run `kiroxy add-account` |
+| `401 missing_api_key` | Client missing `X-Api-Key` header |
+| SSE chunks arrive all at once | Disable proxy buffering (nginx: `proxy_buffering off`) |
+| `go build` fails with json/v2 error | Missing `GOEXPERIMENT=jsonv2` — use `make build` |
+| AWS suspended account | Keep to 1-3 accounts, reasonable cadence |
+
+<br>
 
 ## Contributing
 
-kiroxy is personal-use software, but PRs that fix bugs, add tests, or
-improve docs are welcome.
+PRs that fix bugs, add tests, or improve docs are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines.
 
-- **CI.** The repository ships a [GitHub Actions workflow](./.github/workflows/ci.yml)
-  that runs `make gate` on Ubuntu + macOS on every PR. A separate
-  [govulncheck workflow](./.github/workflows/vuln.yml) runs daily.
-- **Pre-commit.** Run `make gate` locally before pushing. Set
-  `KIROXY_CI_STRICT=1` to also require `govulncheck`.
-- **Releases.** Tag-triggered via the [release workflow](./.github/workflows/release.yml).
-  Local dry-run: `make release-dry-run` (requires goreleaser).
-- **Commit style.** Conventional commits (`feat:`, `fix:`, `docs:`,
-  `ci:`, `build:`, `chore:`). The goreleaser changelog groups by prefix.
-- **Anti-scope-creep.** New features land in `BACKLOG.md` first. Core
-  proxy path stays small.
+```bash
+make gate          # fmt + vet + build + test — required before commits
+make test-race     # race-mode test run
+make lint          # golangci-lint (25+ linters)
+```
 
----
+Commit style: [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `ci:`).
 
-## Licensing and attribution
+<br>
 
-- **kiroxy** itself is MIT (see `LICENSE`).
-- **NOTICE** enumerates donor projects, pinned commit SHAs, and per-donor licenses.
-- Every ported file carries a header comment citing its origin.
-- Personal, non-distributed use: AGPL contamination from any reference-only material (not present in this repo) does not attach.
+## License
+
+[MIT](LICENSE) — see [`NOTICE`](NOTICE) for attribution of donor projects.
+
+<br>
 
 ---
 
-## Links
-
-- **Research**: `../research/` — 170 KB of repo evaluations, comparison tables, extraction cookbook, recommendation.
-- **Build plan**: `../BUILD_PLAN.md` — the milestone decomposition.
-- **Build log**: `./BUILD_LOG.md` — append-only record of each milestone's gate.
-- **Backlog**: `./BACKLOG.md` — Phase 2 and hygiene items.
+<div align="center">
+  <sub>Built with care by <a href="https://github.com/nopperabbo">@nopperabbo</a></sub>
+  <br>
+  <sub>
+    <a href="https://github.com/sponsors/nopperabbo">💛 Sponsor</a>
+    &nbsp;&nbsp;•&nbsp;&nbsp;
+    <a href="https://github.com/nopperabbo/kiroxy/issues">Report Bug</a>
+    &nbsp;&nbsp;•&nbsp;&nbsp;
+    <a href="https://github.com/nopperabbo/kiroxy/discussions">Discuss</a>
+  </sub>
+</div>

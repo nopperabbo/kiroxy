@@ -1,142 +1,177 @@
 # Contributing to kiroxy
 
-Thanks for taking interest. kiroxy is a single-user, self-hosted tool maintained by [@nopperabbo](https://github.com/nopperabbo); the project is public so others can audit, fork, and learn from it. Outside contributions are welcome but lightly gated — please read this document before opening a PR.
+<div align="center">
+  <br>
+  <strong>Thanks for taking interest in kiroxy.</strong>
+  <br>
+  <sub>Outside contributions are welcome but lightly gated — please read this document before opening a PR.</sub>
+  <br>
+  <br>
+</div>
 
-## Project Philosophy
+---
 
-kiroxy does **one thing well**: turn a Kiro IDE subscription into an Anthropic Messages API endpoint. We deliberately **do not** want to become:
+## Philosophy
 
-- A multi-tenant gateway (use [LiteLLM](https://github.com/BerriAI/litellm) or [Portkey](https://github.com/Portkey-AI/gateway))
-- A multi-provider router (Gemini, OpenAI, etc.)
-- A SaaS service
-- A general-purpose proxy framework
+kiroxy does **one thing well**: turn a Kiro IDE subscription into an Anthropic Messages API endpoint.
 
-If your contribution moves the project toward those directions, it will likely be rejected. Open an issue first to discuss scope.
+We deliberately **do not** want to become:
+
+| ❌ Not this | ✅ Use instead |
+|:---|:---|
+| Multi-tenant gateway | [LiteLLM](https://github.com/BerriAI/litellm), [Portkey](https://github.com/Portkey-AI/gateway) |
+| Multi-provider router | [OpenRouter](https://openrouter.ai) |
+| SaaS service | — |
+| General-purpose proxy framework | [Kong](https://github.com/Kong/kong), [Envoy](https://github.com/envoyproxy/envoy) |
+
+If your contribution moves toward those directions, it will likely be rejected. **Open an issue first** to discuss scope.
+
+---
 
 ## Before You Open a PR
 
-1. **Open an issue first** for anything beyond a typo fix or one-line bug. Sync on the approach.
-2. **Check the BACKLOG.md** — your idea may already be planned, deferred, or explicitly rejected with reasoning.
-3. **Read `docs/ARCHITECTURE.md`** — the engineering overview explains the boundaries and constraints.
-4. **Read `CHANGELOG.md`** — recent changes reveal the project's current direction and conventions.
+1. **Open an issue first** for anything beyond a typo fix
+2. **Check [`BACKLOG.md`](BACKLOG.md)** — your idea may already be planned or explicitly rejected
+3. **Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — understand the boundaries
+4. **Read [`CHANGELOG.md`](CHANGELOG.md)** — recent changes reveal current direction
+
+---
 
 ## Development Setup
 
 ### Prerequisites
 
-- **Go 1.26+** with `GOEXPERIMENT=jsonv2` enabled
-- **Node 20+** + **pnpm 9+** (for the Mansion dashboard)
-- **Astro 5+** (for `web/landing/`)
-- **Python 3.10+** (only if working on the onboarder tool)
-- **Make** (or run commands directly from the Makefile)
+| Tool | Version | Purpose |
+|:---|:---|:---|
+| Go | 1.26+ | Backend (`GOEXPERIMENT=jsonv2` required) |
+| Node | 20+ | Dashboard + landing page |
+| pnpm | 9+ | Package manager |
+| Make | any | Build orchestration |
 
-### Build
+### Build & Run
 
 ```bash
 # Backend
-GOEXPERIMENT=jsonv2 go build -o ./kiroxy ./cmd/kiroxy
+make build                    # or: GOEXPERIMENT=jsonv2 go build -o ./kiroxy ./cmd/kiroxy
 
-# Mansion dashboard (rebuild before binary if you change Svelte source)
-cd internal/server/mansion/client
-pnpm install
-pnpm run build
+# Dashboard (rebuild before binary if you change Svelte source)
+cd internal/server/mansion/client && pnpm install && pnpm run build
 
-# Landing page (independent of binary)
-cd web/landing
-pnpm install
-pnpm run build  # output to web/landing/dist/
+# Landing page
+cd web/landing && pnpm install && pnpm run build
 
-# Run all tests
-go test ./...
-
-# Lint
-gofmt -d .
-go vet ./...
-```
-
-### Run Locally
-
-```bash
-./kiroxy serve -port 8787
-# Health check
-curl http://localhost:8787/healthz
-# Dashboard
+# Run
+./kiroxy serve
 open http://localhost:8787/dashboard-mansion
 ```
+
+### Quality Gates
+
+```bash
+make gate          # fmt + vet + build + test (required before commits)
+make test-race     # race detector
+make lint          # golangci-lint (25+ linters)
+make bench         # performance benchmarks
+```
+
+---
 
 ## PR Guidelines
 
 ### Commit Messages
 
-Follow conventional commits: `<type>(<scope>): <subject>`
+[Conventional Commits](https://www.conventionalcommits.org/): `<type>(<scope>): <subject>`
 
-Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `polish`
+**Types:** `feat` · `fix` · `docs` · `style` · `refactor` · `perf` · `test` · `chore` · `polish`
 
-Scopes vary by area:
-- `kiroclient`, `pool`, `messages`, `auth` — backend
-- `mansion` — dashboard
-- `landing` or `web` — landing page
-- `docs`, `ci`, `gitignore` — meta
+**Scopes:**
 
-Examples:
-- `feat(mansion): make logs histogram bins clickable`
-- `fix(pool): cool down failed accounts during rotation`
-- `polish(landing): hero topology pulse animation`
+| Scope | Area |
+|:---|:---|
+| `kiroclient`, `pool`, `messages`, `auth` | Backend |
+| `mansion` | Dashboard |
+| `landing`, `web` | Landing page |
+| `docs`, `ci` | Meta |
 
-### Commit Hygiene
-
-- **One logical change per commit.** Don't bundle a feature with a refactor.
-- **Keep dependencies minimal.** No new npm or Go modules without discussion in the issue.
-- **No build artifacts.** `dist/`, `node_modules/`, and binaries are gitignored — keep them that way.
+**Examples:**
+```
+feat(mansion): make logs histogram bins clickable
+fix(pool): cool down failed accounts during rotation
+polish(landing): hero topology pulse animation
+```
 
 ### Code Style
 
-**Go:**
-- `gofmt` everything (CI will fail otherwise)
-- Use `slog` for structured logging, not `fmt.Println`
-- Prefer typed errors with `errors.Is/As` over string matching
+<details>
+<summary><strong>Go</strong></summary>
+
+- `gofmt` everything (CI enforces)
+- Use `slog` for structured logging
+- Prefer typed errors with `errors.Is/As`
 - Tests live alongside source: `foo.go` + `foo_test.go`
 
-**TypeScript / Svelte:**
-- Run `pnpm exec svelte-check` before committing — 0 errors required
-- Use `$state` / `$derived` runes (Svelte 5), not legacy `let` / `$:` syntax
-- No Tailwind, no shadcn, no icon libraries — inline SVG only
-- Brand identity is locked: warm charcoal + amber, JetBrains Mono + Inter, hairline borders, max border-radius 6px
+</details>
 
-**CSS:**
+<details>
+<summary><strong>TypeScript / Svelte</strong></summary>
+
+- Run `pnpm exec svelte-check` — 0 errors required
+- Use `$state` / `$derived` runes (Svelte 5)
+- No Tailwind, no shadcn, no icon libraries — inline SVG only
+- Brand identity is locked (see below)
+
+</details>
+
+<details>
+<summary><strong>CSS / Brand Identity</strong></summary>
+
 - Use `--c-*` design tokens from `tokens.css` — never hard-code colors
-- The amber budget has 5 roles: wordmark cursor, live dot, primary CTA, keyboard pills, section underlines. Adding a 6th requires retiring one and justifying the swap.
-- Motion budget: 4 ambient idle-loop animations max. See `motion-budget.css`.
+- **Palette:** warm charcoal + aged-brass amber
+- **Typography:** JetBrains Mono (display) + Inter (text)
+- **Borders:** hairline, max `border-radius: 6px`
+- **Amber budget:** 5 roles only (wordmark cursor, live dot, primary CTA, keyboard pills, section underlines). Adding a 6th requires retiring one.
+- **Motion budget:** 4 ambient idle-loop animations max
+
+</details>
 
 ### Tests
 
-- **Backend:** Go unit tests for any logic change. Integration tests (using real or mocked Kiro endpoint) for protocol changes.
-- **Frontend:** Visual changes verified via Playwright DOM probes; the multimodal review path is encouraged but not required.
-- **Mobile:** Test at iPhone 13 emulation (390px viewport) — Pool view must stay under 6000px height.
+- **Backend:** Unit tests for any logic change. Integration tests for protocol changes.
+- **Frontend:** Playwright DOM probes for visual changes.
+- **Mobile:** Test at iPhone 13 (390px viewport).
 
-## What Counts as a Good First Issue
+---
 
-If you want to contribute but don't have a specific feature in mind:
+## Good First Issues
 
-- Check issues labeled [`good first issue`](https://github.com/nopperabbo/kiroxy/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+- Issues labeled [`good first issue`](https://github.com/nopperabbo/kiroxy/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
 - Add a missing test for a function in `internal/`
 - Improve a documentation page in `docs/`
-- Translate a section of the landing page (currently English-only)
-- Add a sample integration in `docs/SAMPLE_RUN.md` for a client kiroxy hasn't been tested with
+- Add a sample integration for an untested client
+
+---
 
 ## What Will Be Closed
 
-- PRs that change the project scope (multi-tenant, multi-provider, SaaS direction)
-- PRs adding new dependencies without prior issue discussion
-- PRs introducing UI frameworks (Tailwind, shadcn, etc.)
-- PRs with build artifacts committed
-- PRs without a corresponding issue for non-trivial changes
-- PRs that violate the brand identity / motion budget without justification
+- ❌ PRs that change project scope (multi-tenant, multi-provider, SaaS)
+- ❌ PRs adding dependencies without prior issue discussion
+- ❌ PRs introducing UI frameworks (Tailwind, shadcn, etc.)
+- ❌ PRs with build artifacts committed
+- ❌ PRs without a corresponding issue for non-trivial changes
+- ❌ PRs violating brand identity / motion budget without justification
+
+---
 
 ## License
 
-By contributing, you agree your contributions will be licensed under the [MIT License](LICENSE). The `NOTICE` file tracks meaningful upstream attributions.
+By contributing, you agree your contributions will be licensed under the [MIT License](LICENSE).
 
-## Questions?
+---
 
-Open a [Discussion](https://github.com/nopperabbo/kiroxy/discussions) (Q&A category) or file an [Issue](https://github.com/nopperabbo/kiroxy/issues). For sensitive matters, see [SECURITY.md](SECURITY.md).
+<div align="center">
+  <sub>
+    <a href="https://github.com/nopperabbo/kiroxy/discussions">💬 Questions? Open a Discussion</a>
+    &nbsp;&nbsp;•&nbsp;&nbsp;
+    <a href="SECURITY.md">🔒 Security concerns? See SECURITY.md</a>
+  </sub>
+</div>

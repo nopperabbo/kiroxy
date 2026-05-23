@@ -128,4 +128,14 @@ release:
     ./kiroxy version
     ```
 
+    ```bash
+    # Or via Docker
+    docker pull ghcr.io/nopperabbo/kiroxy:{{ .Version }}
+    ```
+
     Artefact checksums: `kiroxy_{{ .Version }}_checksums.txt` (SHA-256).
+    Signatures: each artefact has a `.sig` + `.cert` file for [cosign](https://docs.sigstore.dev/) verification.
+
+    ---
+
+    **Links:** [Documentation](https://nopperabbo.github.io/kiroxy/) · [Discussions](https://github.com/nopperabbo/kiroxy/discussions) · [Sponsor](https://github.com/sponsors/nopperabbo)
