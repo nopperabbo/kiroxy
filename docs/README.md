@@ -22,7 +22,7 @@ an explicit rationale here in the repo).
 | [VISION.md](./VISION.md) | What kiroxy is. Who it's for. Anti-goals. Signature primitive. |
 | [ROADMAP.md](./ROADMAP.md) | Trajectory v1.x → v2.0. |
 | [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) | Color, typography, motion, layout, primitives, accessibility. |
-| `../research-v3/REFERENCE_GALLERY.md` | 43 references studied; the evidence under every Part 1 decision. |
+| [REFERENCE_GALLERY.md](./REFERENCE_GALLERY.md) | 43 references studied; the evidence under every Part 1 decision. |
 
 Editing Part 1 documents requires a PR with operator review.
 

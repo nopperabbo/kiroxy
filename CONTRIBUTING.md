@@ -31,7 +31,7 @@ If your contribution moves toward those directions, it will likely be rejected. 
 ## Before You Open a PR
 
 1. **Open an issue first** for anything beyond a typo fix
-2. **Check [`BACKLOG.md`](BACKLOG.md)** — your idea may already be planned or explicitly rejected
+2. **Check [existing issues](https://github.com/nopperabbo/kiroxy/issues)** — your idea may already be planned or explicitly rejected
 3. **Read [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — understand the boundaries
 4. **Read [`CHANGELOG.md`](CHANGELOG.md)** — recent changes reveal current direction
 

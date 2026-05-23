@@ -59,5 +59,20 @@ research-v3/enowx-reference/
 /test_*.py
 /research_script.py
 
+# Internal dev logs & AI agent artifacts
+/BUILD_LOG.md
+/OVERNIGHT_LOG.md
+/SMOKE_TEST.md
+/BLOCKED.md
+/BACKLOG.md
+/kiroxy_session_summary.md
+/.sisyphus/
+/.opencode/
+/research-v*/
+!/docs/REFERENCE_GALLERY.md
+
+# Build artifacts
+/dist/
+
 # filter-repo backup directories (created by user during pre-release scrub; never commit)
 /.git.backup-pre-filter-repo-*/
