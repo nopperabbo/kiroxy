@@ -1,14 +1,8 @@
-# Dependabot — pre-traction, solo dev cadence.
+# Dependabot — weekly cadence for security responsiveness.
 #
-# Cadence rationale:
-#   - Monthly (not weekly) — solo maintainer, no CI to verify auto-PRs
-#     until billing is restored, no external contributors yet.
-#   - Aggressive grouping — minor + patch updates batched per ecosystem
-#     so one merge sweeps a whole ecosystem at once.
-#   - Major versions get their own PR — they need human review anyway.
-#
-# Bump back to weekly + per-package PRs after the project sees real
-# contributor traffic or when CI is back online.
+# Aggressive grouping — minor + patch updates batched per ecosystem
+# so one merge sweeps a whole ecosystem at once.
+# Major versions get their own PR — they need human review anyway.
 
 version: 2
 updates:
@@ -16,9 +10,9 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "go"
@@ -35,9 +29,9 @@ updates:
   - package-ecosystem: "npm"
     directory: "/internal/server/mansion/client"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "frontend"
@@ -54,9 +48,9 @@ updates:
   - package-ecosystem: "npm"
     directory: "/internal/server/next/client"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "frontend"
@@ -74,9 +68,9 @@ updates:
   - package-ecosystem: "npm"
     directory: "/web/landing"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "landing"
@@ -93,8 +87,8 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 2
+      interval: "weekly"
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "ci"

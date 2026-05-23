@@ -25,16 +25,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # go.mod declares `go 1.26`, so we pin the matrix at that floor.
-        # Extend with newer versions once they become available.
         os: [ubuntu-latest, macos-latest]
         go: ['1.26.x']
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v5
         with:
           go-version: ${{ matrix.go }}
           cache: true
@@ -49,14 +47,20 @@ jobs:
         run: go mod download
 
       - name: Verify go.mod is tidy
-        # Fail if `go mod tidy` would produce changes — prevents drift.
         run: |
           go mod tidy
           git diff --exit-code -- go.mod go.sum
 
       - name: make gate
-        # Runs fmt + vet + build + test with GOEXPERIMENT=jsonv2 baked in.
         run: make gate
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@db582008a42febd596419635a5abc9d9815daa9c # v6
+        with:
+          version: latest
+          args: --timeout=5m
+          only-new-issues: true
+          skip-cache: false
 
       - name: Race tests
         run: go test -race -timeout 120s ./...
@@ -68,12 +72,22 @@ jobs:
 
       - name: Upload coverage artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: coverage-${{ matrix.os }}-go${{ matrix.go }}
           path: coverage.out
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Upload to Codecov
+        if: matrix.os == 'ubuntu-latest'
+        uses: codecov/codecov-action@cddd853df119a48c5be31a973f8cd97e12e35e16 # v4
+        with:
+          files: coverage.out
+          flags: unittests
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   e2e:
     name: e2e (mansion dashboard)
@@ -82,21 +96,21 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v5
         with:
           go-version: '1.26.x'
           cache: true
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v4
         with:
           node-version: '22'
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@d15e628ca66d93ee5f352c71671a7bc6a97af5c9 # v4
         with:
           version: 10
 
@@ -148,7 +162,7 @@ jobs:
 
       - name: Upload Playwright report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: playwright-report
           path: internal/server/mansion/client/playwright-report/

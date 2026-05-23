@@ -1,8 +1,13 @@
 # kiroxy
 
+[![CI](https://github.com/nopperabbo/kiroxy/actions/workflows/ci.yml/badge.svg)](https://github.com/nopperabbo/kiroxy/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/nopperabbo/kiroxy/actions/workflows/codeql.yml/badge.svg)](https://github.com/nopperabbo/kiroxy/actions/workflows/codeql.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/nopperabbo/kiroxy/badge)](https://scorecard.dev/viewer/?uri=github.com/nopperabbo/kiroxy)
+[![codecov](https://codecov.io/gh/nopperabbo/kiroxy/graph/badge.svg)](https://codecov.io/gh/nopperabbo/kiroxy)
 [![Release](https://img.shields.io/github/v/release/nopperabbo/kiroxy?style=flat-square)](https://github.com/nopperabbo/kiroxy/releases/latest)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/nopperabbo/kiroxy?style=flat-square)](go.mod)
+[![GHCR](https://img.shields.io/badge/container-ghcr.io-blue?style=flat-square&logo=docker)](https://github.com/nopperabbo/kiroxy/pkgs/container/kiroxy)
 [![Issues](https://img.shields.io/github/issues/nopperabbo/kiroxy?style=flat-square)](https://github.com/nopperabbo/kiroxy/issues)
 [![Discussions](https://img.shields.io/github/discussions/nopperabbo/kiroxy?style=flat-square)](https://github.com/nopperabbo/kiroxy/discussions)
 [![Sponsor](https://img.shields.io/github/sponsors/nopperabbo?style=flat-square)](https://github.com/sponsors/nopperabbo)

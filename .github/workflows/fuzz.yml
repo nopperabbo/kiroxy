@@ -1,0 +1,57 @@
+name: Fuzz
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * 3'
+
+concurrency:
+  group: fuzz-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GOEXPERIMENT: jsonv2
+
+jobs:
+  fuzz:
+    name: Go Fuzz
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - ./internal/messages
+          - ./internal/kiroproto
+          - ./internal/auth
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v5
+        with:
+          go-version: '1.26.x'
+          cache: true
+
+      - name: Run fuzz tests (30s per target)
+        run: |
+          cd $(echo "${{ matrix.package }}" | sed 's|^\./||')
+          for fuzz in $(grep -r "^func Fuzz" *_test.go 2>/dev/null | cut -d: -f2 | awk '{print $2}' | cut -d'(' -f1); do
+            echo "=== Fuzzing $fuzz ==="
+            go test -fuzz="^${fuzz}$" -fuzztime=30s . || true
+          done
+
+      - name: Upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
+        with:
+          name: fuzz-crashes-${{ strategy.job-index }}
+          path: '**/testdata/fuzz/**'
+          if-no-files-found: ignore
+          retention-days: 30

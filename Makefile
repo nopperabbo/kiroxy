@@ -1,4 +1,4 @@
-.PHONY: build vet fmt test test-race run tidy all gate clean \
+.PHONY: build vet fmt test test-race run tidy all gate clean lint bench \
         docker-build docker-run docker-compose-up docker-compose-down docker-clean \
         vuln release-dry-run docs-sync
 
@@ -29,6 +29,17 @@ test:
 
 test-race:
 	go test -race -timeout 120s ./...
+
+lint:
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+	  golangci-lint run --timeout=5m; \
+	else \
+	  echo "golangci-lint not found on PATH; skipping."; \
+	  echo "  install with:  go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"; \
+	fi
+
+bench:
+	go test -bench=. -benchmem -count=3 -timeout=120s ./...
 
 run: build
 	./$(BIN) serve

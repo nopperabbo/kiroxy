@@ -1,0 +1,56 @@
+# Auto-label PRs based on file paths changed.
+# Docs: https://github.com/actions/labeler
+
+go:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.go'
+          - 'go.mod'
+          - 'go.sum'
+
+frontend:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'internal/server/mansion/client/**'
+          - 'internal/server/next/client/**'
+
+landing:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'web/landing/**'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - 'Makefile'
+          - 'Dockerfile'
+          - '.goreleaser.yml'
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'docs/**'
+          - '*.md'
+          - 'CHANGELOG.md'
+
+security:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'internal/auth/**'
+          - 'internal/vault/**'
+          - 'SECURITY.md'
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*_test.go'
+          - '**/tests/**'
+          - '**/testdata/**'
+
+docker:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'Dockerfile'
+          - 'docker-compose*.yml'
+          - '.dockerignore'
