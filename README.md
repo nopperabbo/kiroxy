@@ -323,7 +323,5 @@ make test-race  # race detector
     <a href="https://github.com/nopperabbo/kiroxy/discussions">Discuss</a>
   </sub>
   <br><br>
-  <a href="https://repobeats.axiom.co/api/embed/kiroxy">
-    <img src="https://repobeats.axiom.co/api/embed/placeholder.svg" alt="Repobeats analytics" width="100%">
-  </a>
+  <img src="https://repobeats.axiom.co/api/embed/457437c1a8f1b0118a87d4dab9ed1c7984e638e1.svg" alt="Repobeats analytics image" width="100%">
 </div>
