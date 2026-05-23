@@ -23,33 +23,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5
         with:
           go-version: '1.26.x'
           cache: true
 
       - name: Run benchmarks
-        run: go test -bench=. -benchmem -count=5 -timeout=300s ./... > bench-results.txt 2>&1 || true
+        run: |
+          go test -bench=. -benchmem -count=3 -timeout=300s ./internal/messages/... > bench-results.txt 2>&1 || true
+          cat bench-results.txt
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: bench-results
           path: bench-results.txt
           retention-days: 30
-
-      - name: Compare with base (PR only)
-        if: github.event_name == 'pull_request'
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          tool: go
-          output-file-path: bench-results.txt
-          alert-threshold: '150%'
-          comment-on-alert: true
-          fail-on-alert: false
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          comment-always: false
-          save-data-file: false
