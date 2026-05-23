@@ -64,3 +64,25 @@ Even without specific CVEs, kiroxy operators should:
 ## Disclosure History
 
 No public CVEs as of v1.4.0.
+
+## Supply Chain Security
+
+Kiroxy follows supply chain hardening practices aligned with SLSA and OpenSSF:
+
+- **Signed releases**: All binaries are signed with [cosign](https://github.com/sigstore/cosign) via keyless signing (Sigstore OIDC)
+- **SBOM**: Every release includes a Software Bill of Materials in SPDX format
+- **Pinned actions**: All GitHub Actions are pinned to full SHA commit hashes
+- **Dependency review**: PRs introducing vulnerable dependencies are automatically blocked
+- **OpenSSF Scorecard**: Automated weekly scoring with results published to SARIF
+- **Container images**: Published to `ghcr.io/nopperabbo/kiroxy` with multi-arch support (amd64/arm64)
+
+### Verifying Release Signatures
+
+```bash
+cosign verify-blob \
+  --certificate-identity-regexp="https://github.com/nopperabbo/kiroxy" \
+  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
+  --signature kiroxy_<version>_checksums.txt.sig \
+  --certificate kiroxy_<version>_checksums.txt.pem \
+  kiroxy_<version>_checksums.txt
+```

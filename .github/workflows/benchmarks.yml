@@ -1,0 +1,55 @@
+name: Benchmarks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: bench-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  GOEXPERIMENT: jsonv2
+
+jobs:
+  benchmark:
+    name: Go Benchmarks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache: true
+
+      - name: Run benchmarks
+        run: go test -bench=. -benchmem -count=5 -timeout=300s ./... > bench-results.txt 2>&1 || true
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-results
+          path: bench-results.txt
+          retention-days: 30
+
+      - name: Compare with base (PR only)
+        if: github.event_name == 'pull_request'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: go
+          output-file-path: bench-results.txt
+          alert-threshold: '150%'
+          comment-on-alert: true
+          fail-on-alert: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          comment-always: false
+          save-data-file: false

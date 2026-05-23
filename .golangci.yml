@@ -1,0 +1,69 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+    - bodyclose
+    - durationcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - gocritic
+    - godot
+    - gofmt
+    - misspell
+    - nilerr
+    - noctx
+    - prealloc
+    - predeclared
+    - revive
+    - unconvert
+    - unparam
+    - wastedassign
+
+linters-settings:
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+    disabled-checks:
+      - hugeParam
+  revive:
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: exported
+      - name: increment-decrement
+      - name: var-naming
+      - name: package-comments
+        disabled: true
+  exhaustive:
+    default-signifies-exhaustive: true
+  godot:
+    scope: toplevel
+    capital: true
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - gocritic
+        - unparam
+    - path: cmd/
+      linters:
+        - unparam
+  max-issues-per-linter: 0
+  max-same-issues: 0

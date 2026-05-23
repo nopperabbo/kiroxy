@@ -3,6 +3,12 @@ import { test, expect } from "@playwright/test";
 test.describe("metrics view essentials", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/dashboard-mansion#view=metrics");
+    // Dismiss wizard scrim if present (fresh server has no accounts configured)
+    const scrim = page.locator(".wiz-scrim");
+    if ((await scrim.count()) > 0) {
+      await scrim.click({ timeout: 2_000 }).catch(() => {});
+      await scrim.waitFor({ state: "hidden", timeout: 3_000 }).catch(() => {});
+    }
     await page.waitForSelector(".series-chart, .metrics-empty", { timeout: 5_000 });
   });
 
