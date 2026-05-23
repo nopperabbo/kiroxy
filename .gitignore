@@ -54,5 +54,10 @@ research-v3/enowx-reference/
 /internal/server/mansion/client/blob-report/
 /internal/server/mansion/client/.playwright/
 
+# Ad-hoc test/research scripts (local only)
+/exploit_test*.py
+/test_*.py
+/research_script.py
+
 # filter-repo backup directories (created by user during pre-release scrub; never commit)
 /.git.backup-pre-filter-repo-*/
