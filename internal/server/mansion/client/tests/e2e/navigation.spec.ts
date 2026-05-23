@@ -1,15 +1,14 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
+
+async function dismissScrim(page: Page) {
+  const scrim = page.locator(".wiz-scrim");
+  if ((await scrim.count()) > 0) {
+    await scrim.click({ timeout: 2_000 }).catch(() => {});
+    await scrim.waitFor({ state: "hidden", timeout: 3_000 }).catch(() => {});
+  }
+}
 
 test.describe("topbar navigation", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto("/dashboard-mansion");
-    const scrim = page.locator(".wiz-scrim");
-    if ((await scrim.count()) > 0) {
-      await scrim.click({ timeout: 2_000 }).catch(() => {});
-      await scrim.waitFor({ state: "hidden", timeout: 3_000 }).catch(() => {});
-    }
-  });
-
   const viewClassMap: Record<string, RegExp> = {
     live: /view--live/,
     pool: /view--pool/,
@@ -23,6 +22,7 @@ test.describe("topbar navigation", () => {
   for (const [view, expected] of Object.entries(viewClassMap)) {
     test(`hash routing to #view=${view} renders the matching view`, async ({ page }) => {
       await page.goto(`/dashboard-mansion#view=${view}`);
+      await dismissScrim(page);
       const section = page.locator(`main section.view`);
       await expect(section).toHaveClass(expected);
 
@@ -33,6 +33,8 @@ test.describe("topbar navigation", () => {
   }
 
   test("clicking a tab updates URL hash and active state", async ({ page }) => {
+    await page.goto("/dashboard-mansion");
+    await dismissScrim(page);
     await page.locator(".nav__tab", { hasText: /metrics/i }).click();
     await expect(page).toHaveURL(/#view=metrics/);
     await expect(
