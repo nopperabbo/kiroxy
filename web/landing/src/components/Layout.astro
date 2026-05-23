@@ -34,12 +34,17 @@ import '../styles/base.css';
     <link rel="icon" type="image/svg+xml" href="/kiroxy/favicon.svg" />
 
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="kiroxy" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    <meta name="twitter:card" content="summary" />
+    <meta property="og:image" content={origin + base + '/social-preview.png'} />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="640" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={origin + base + '/social-preview.png'} />
 
     <meta name="robots" content="index,follow" />
   </head>
