@@ -3,9 +3,10 @@ import { test, expect, Page } from "@playwright/test";
 async function dismissScrim(page: Page) {
   const scrim = page.locator(".wiz-scrim");
   if ((await scrim.count()) > 0) {
-    await scrim.click({ timeout: 2_000 }).catch(() => {});
+    await scrim.click({ force: true, timeout: 2_000 }).catch(() => {});
     await scrim.waitFor({ state: "hidden", timeout: 3_000 }).catch(() => {});
   }
+  await page.waitForTimeout(200);
 }
 
 test.describe("topbar navigation", () => {
