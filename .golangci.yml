@@ -4,6 +4,10 @@ run:
   timeout: 5m
   modules-download-mode: readonly
 
+formatters:
+  enable:
+    - gofmt
+
 linters:
   enable:
     - errcheck
@@ -19,7 +23,6 @@ linters:
     - exhaustive
     - gocritic
     - godot
-    - gofmt
     - misspell
     - nilerr
     - noctx
